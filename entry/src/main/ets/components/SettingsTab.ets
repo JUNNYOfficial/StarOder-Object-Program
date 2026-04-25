@@ -42,8 +42,19 @@ export struct SettingsTab {
       this.feishuMsg = '请先填写 App ID 和 App Secret'
       return
     }
-    // 原子化服务无法跳转外部浏览器，提示用户手动复制 URL 授权
-    this.feishuMsg = '请复制下方授权链接到浏览器打开并完成授权'
+    // 尝试跳转系统浏览器打开授权页
+    try {
+      const context = getContext(this) as common.UIAbilityContext
+      const want: Want = {
+        action: 'ohos.want.action.viewData',
+        uri: FeishuSyncService.getAuthUrl()
+      }
+      context.startAbility(want)
+      this.feishuMsg = '已唤起浏览器，请完成授权后复制 code 回来'
+    } catch (e) {
+      // 如果跳转失败，提示用户手动复制链接
+      this.feishuMsg = '自动跳转失败，请复制下方链接到浏览器打开'
+    }
   }
 
   submitAuthCode() {
@@ -287,8 +298,9 @@ export struct SettingsTab {
                         .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
                         .fontColor(UiTokens.brand)
                         .width('100%')
-                        .maxLines(2)
-                        .textOverflow({ overflow: TextOverflow.Ellipsis })
+                        .padding(12)
+                        .backgroundColor(UiTokens.bgHover)
+                        .borderRadius(UiTokens.radiusM)
 
                       TextInput({ placeholder: '粘贴浏览器回调地址中的 code 参数', text: $$this.feishuAuthCode })
                         .width('100%')
