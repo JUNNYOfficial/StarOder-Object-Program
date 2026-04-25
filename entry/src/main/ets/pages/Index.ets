@@ -2,7 +2,11 @@ import { router } from '@kit.ArkUI'
 import { Task, TaskStatus, UserPreferences } from '../models/DataModels'
 import { dataStore } from '../models/DataStore'
 import { ScheduleCard } from '../components/ScheduleCard'
+import { CalendarTab } from '../components/CalendarTab'
+import { TimerTab } from '../components/TimerTab'
+import { SettingsTab } from '../components/SettingsTab'
 import { UiTokens } from '../design/UiTokens'
+import { addDays, todayStr } from '../utils/DateUtils'
 
 @Entry
 @Component
@@ -13,6 +17,7 @@ struct Index {
   @State currentDate: string = ''
   @State greeting: string = ''
   @State searchQuery: string = ''
+  @State activeTab: number = 0
 
   aboutToAppear() {
     const now = new Date()
@@ -29,6 +34,21 @@ struct Index {
     this.settings = dataStore.getUserPrefs()
     this.tasks = dataStore.getTasksByDate(this.currentDate)
     this.applyFilter()
+  }
+
+  prevDay() {
+    this.currentDate = addDays(this.currentDate, -1)
+    this.loadData()
+  }
+
+  nextDay() {
+    this.currentDate = addDays(this.currentDate, 1)
+    this.loadData()
+  }
+
+  goToday() {
+    this.currentDate = this.formatDate(new Date())
+    this.loadData()
   }
 
   applyFilter() {
@@ -91,135 +111,133 @@ struct Index {
             .fontWeight(FontWeight.Bold)
             .margin({ right: 8 })
 
-          Text(this.currentDate)
-            .fontSize(this.settings.largeText ? UiTokens.text2XL : UiTokens.textXL)
-            .fontWeight(FontWeight.Bold)
-            .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+          if (this.activeTab === 0) {
+            Row({ space: 8 }) {
+              Button() {
+                Text('<')
+                  .fontSize(this.settings.largeText ? UiTokens.textL : UiTokens.textM)
+                  .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+              }
+              .width(32)
+              .height(32)
+              .backgroundColor(UiTokens.bgHover)
+              .borderRadius(UiTokens.radiusM)
+              .onClick(() => { this.prevDay() })
 
-          Row({ space: 8 }) {
-            Button() {
-              Text('日历')
-                .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
-                .fontColor(UiTokens.brand)
-                .fontWeight(FontWeight.Medium)
-            }
-            .backgroundColor(UiTokens.brandSoft)
-            .padding({ left: 12, right: 12, top: 6, bottom: 6 })
-            .borderRadius(UiTokens.radiusM)
-            .onClick(() => {
-              router.pushUrl({ url: 'pages/CalendarView' })
-            })
+              Text(this.currentDate)
+                .fontSize(this.settings.largeText ? UiTokens.text2XL : UiTokens.textXL)
+                .fontWeight(FontWeight.Bold)
+                .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
 
-            Button() {
-              Text('专注')
-                .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
-                .fontColor(UiTokens.brand)
-                .fontWeight(FontWeight.Medium)
-            }
-            .backgroundColor(UiTokens.brandSoft)
-            .padding({ left: 12, right: 12, top: 6, bottom: 6 })
-            .borderRadius(UiTokens.radiusM)
-            .onClick(() => {
-              router.pushUrl({ url: 'pages/TimerPage' })
-            })
+              Button() {
+                Text('>')
+                  .fontSize(this.settings.largeText ? UiTokens.textL : UiTokens.textM)
+                  .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+              }
+              .width(32)
+              .height(32)
+              .backgroundColor(UiTokens.bgHover)
+              .borderRadius(UiTokens.radiusM)
+              .onClick(() => { this.nextDay() })
 
-            Button() {
-              Text('语音')
-                .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
-                .fontColor(UiTokens.brand)
-                .fontWeight(FontWeight.Medium)
+              if (this.currentDate !== todayStr()) {
+                Button() {
+                  Text('回今天')
+                    .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                    .fontColor(UiTokens.brand)
+                    .fontWeight(FontWeight.Medium)
+                }
+                .backgroundColor(UiTokens.brandSoft)
+                .padding({ left: 10, right: 10, top: 4, bottom: 4 })
+                .borderRadius(UiTokens.radiusM)
+                .onClick(() => { this.goToday() })
+              }
             }
-            .backgroundColor(UiTokens.brandSoft)
-            .padding({ left: 12, right: 12, top: 6, bottom: 6 })
-            .borderRadius(UiTokens.radiusM)
-            .onClick(() => {
-              router.pushUrl({ url: 'pages/VoiceInputPage' })
-            })
           }
-          .margin({ left: 12 })
         }
         .width('100%')
         .alignItems(VerticalAlign.Center)
 
-        Row() {
-          TextInput({ placeholder: '搜索日程', text: $$this.searchQuery })
-            .width('100%')
-            .height(40)
-            .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
-            .backgroundColor(UiTokens.bgHover)
-            .placeholderColor(this.settings.highContrast ? '#999999' : UiTokens.textTertiary)
-            .borderRadius(UiTokens.radiusL)
-            .padding({ left: 14, right: 14 })
-            .onChange(() => {
-              this.applyFilter()
-            })
+        if (this.activeTab === 0) {
+          Row() {
+            TextInput({ placeholder: '搜索日程', text: $$this.searchQuery })
+              .width('100%')
+              .height(40)
+              .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+              .backgroundColor(UiTokens.bgHover)
+              .placeholderColor(this.settings.highContrast ? '#999999' : UiTokens.textTertiary)
+              .borderRadius(UiTokens.radiusL)
+              .padding({ left: 14, right: 14 })
+              .onChange(() => {
+                this.applyFilter()
+              })
+          }
+          .width('100%')
+          .padding({ top: 8, bottom: 4 })
         }
-        .width('100%')
-        .padding({ top: 8, bottom: 4 })
       }
       .width('100%')
       .alignItems(HorizontalAlign.Start)
       .padding({ left: UiTokens.pagePadding, right: UiTokens.pagePadding, top: 20, bottom: 4 })
 
       // Content
-      if (this.filteredTasks.length === 0) {
-        Column() {
-          Text('今天还没有安排')
-            .fontSize(this.settings.largeText ? UiTokens.textXL : UiTokens.textL)
-            .fontWeight(FontWeight.Medium)
-            .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
-            .margin({ bottom: 6 })
-          Text('点击下方按钮添加第一个日程')
-            .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
-            .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textSecondary)
+      if (this.activeTab === 0) {
+        if (this.filteredTasks.length === 0) {
+          Column() {
+            Text(this.currentDate === todayStr() ? '今天还没有安排' : '这天还没有安排')
+              .fontSize(this.settings.largeText ? UiTokens.textXL : UiTokens.textL)
+              .fontWeight(FontWeight.Medium)
+              .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+              .margin({ bottom: 6 })
+            Text('点击下方按钮添加第一个日程')
+              .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+              .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textSecondary)
+          }
+          .layoutWeight(1)
+          .justifyContent(FlexAlign.Center)
+          .alignItems(HorizontalAlign.Center)
+          .padding(32)
+        } else {
+          List({ space: 0 }) {
+            ForEach(this.filteredTasks, (task: Task) => {
+              ListItem() {
+                ScheduleCard({
+                  task: task,
+                  settings: this.settings,
+                  onClickCard: () => {
+                    router.pushUrl({ url: 'pages/ScheduleDetail', params: { id: task.id } })
+                  },
+                  onToggleStatus: () => {
+                    this.advanceStatus(task)
+                  }
+                })
+              }
+              .padding({ left: UiTokens.pagePadding, right: UiTokens.pagePadding })
+            })
+          }
+          .width('100%')
+          .layoutWeight(1)
+          .edgeEffect(EdgeEffect.Spring)
+          .scrollBar(BarState.Auto)
+          .padding({ top: 8, bottom: 8 })
         }
-        .layoutWeight(1)
-        .justifyContent(FlexAlign.Center)
-        .alignItems(HorizontalAlign.Center)
-        .padding(32)
-      } else {
-        List({ space: 0 }) {
-          ForEach(this.filteredTasks, (task: Task) => {
-            ListItem() {
-              ScheduleCard({
-                task: task,
-                settings: this.settings,
-                onClickCard: () => {
-                  router.pushUrl({ url: 'pages/ScheduleDetail', params: { id: task.id } })
-                },
-                onToggleStatus: () => {
-                  this.advanceStatus(task)
-                }
-              })
-            }
-            .padding({ left: UiTokens.pagePadding, right: UiTokens.pagePadding })
-          })
-        }
-        .width('100%')
-        .layoutWeight(1)
-        .edgeEffect(EdgeEffect.Spring)
-        .scrollBar(BarState.Auto)
-        .padding({ top: 8, bottom: 8 })
+      } else if (this.activeTab === 1) {
+        CalendarTab()
+          .layoutWeight(1)
+      } else if (this.activeTab === 2) {
+        TimerTab()
+          .layoutWeight(1)
+      } else if (this.activeTab === 3) {
+        SettingsTab()
+          .layoutWeight(1)
       }
 
       // Bottom Navigation
       Row() {
-        Column() {
-          Button() {
-            Text('今日')
-              .fontSize(this.settings.largeText ? UiTokens.textL : UiTokens.textM)
-              .fontColor(UiTokens.brand)
-              .fontWeight(FontWeight.Medium)
-          }
-          .type(ButtonType.Circle)
-          .backgroundColor('transparent')
-          .onClick(() => {
-            this.loadData()
-          })
-        }
-        .layoutWeight(1)
-        .alignItems(HorizontalAlign.Center)
+        this.NavItem('今日', 0)
+        this.NavItem('日历', 1)
 
+        // 添加（中间突出）
         Column() {
           Button() {
             Text('+')
@@ -238,29 +256,37 @@ struct Index {
         .layoutWeight(1)
         .alignItems(HorizontalAlign.Center)
 
-        Column() {
-          Button() {
-            Text('设置')
-              .fontSize(this.settings.largeText ? UiTokens.textL : UiTokens.textM)
-              .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textSecondary)
-              .fontWeight(FontWeight.Medium)
-          }
-          .type(ButtonType.Circle)
-          .backgroundColor('transparent')
-          .onClick(() => {
-            router.pushUrl({ url: 'pages/Settings' })
-          })
-        }
-        .layoutWeight(1)
-        .alignItems(HorizontalAlign.Center)
+        this.NavItem('专注', 2)
+        this.NavItem('设置', 3)
       }
       .width('100%')
       .height(72)
-      .padding({ left: 24, right: 24 })
+      .padding({ left: 16, right: 16 })
       .backgroundColor(UiTokens.bgCard)
     }
     .width('100%')
     .height('100%')
     .backgroundColor(this.settings.highContrast ? UiTokens.hcBg : UiTokens.bgPage)
+  }
+
+  @Builder
+  NavItem(label: string, tabIndex: number) {
+    Column() {
+      Button() {
+        Text(label)
+          .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+          .fontColor(this.activeTab === tabIndex
+            ? UiTokens.brand
+            : (this.settings.highContrast ? '#555555' : UiTokens.textSecondary))
+          .fontWeight(this.activeTab === tabIndex ? FontWeight.Medium : FontWeight.Regular)
+      }
+      .type(ButtonType.Circle)
+      .backgroundColor('transparent')
+      .onClick(() => {
+        this.activeTab = tabIndex
+      })
+    }
+    .layoutWeight(1)
+    .alignItems(HorizontalAlign.Center)
   }
 }

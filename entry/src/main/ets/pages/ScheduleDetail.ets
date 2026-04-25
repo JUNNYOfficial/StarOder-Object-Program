@@ -107,15 +107,29 @@ struct ScheduleDetail {
           .fontWeight(FontWeight.Bold)
           .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
 
-        Button() {
-          Text('删除')
-            .fontSize(this.baseFont())
-            .fontColor(UiTokens.paused)
+        Row({ space: 8 }) {
+          Button() {
+            Text('编辑')
+              .fontSize(this.baseFont())
+              .fontColor(UiTokens.brand)
+          }
+          .backgroundColor('transparent')
+          .onClick(() => {
+            if (this.task) {
+              router.pushUrl({ url: 'pages/AddSchedule', params: { id: this.task.id } })
+            }
+          })
+
+          Button() {
+            Text('删除')
+              .fontSize(this.baseFont())
+              .fontColor(UiTokens.paused)
+          }
+          .backgroundColor('transparent')
+          .onClick(() => {
+            this.deleteTask()
+          })
         }
-        .backgroundColor('transparent')
-        .onClick(() => {
-          this.deleteTask()
-        })
       }
       .width('100%')
       .height(56)
@@ -145,7 +159,9 @@ struct ScheduleDetail {
                   .fontSize(UiTokens.textS)
                   .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textSecondary)
 
-                Text(`${this.task.date}  ${this.task.startTime} - ${this.task.endTime}`)
+                Text(this.task.startTime || this.task.endTime
+                  ? `${this.task.date}  ${this.task.startTime || '-'} - ${this.task.endTime || '-'}`
+                  : this.task.date)
                   .fontSize(UiTokens.textS)
                   .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textTertiary)
               }

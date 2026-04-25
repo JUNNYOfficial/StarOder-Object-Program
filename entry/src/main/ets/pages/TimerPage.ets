@@ -13,6 +13,8 @@ struct TimerPage {
   @State isRunning: boolean = false
   @State isPaused: boolean = false
   @State startTimeStr: string = ''
+  @State showCompleteMsg: boolean = false
+  @State completeMsg: string = ''
   private timerId: number = -1
 
   aboutToAppear() {
@@ -97,8 +99,14 @@ struct TimerPage {
       clearInterval(this.timerId)
       this.timerId = -1
     }
+    const actualMinutes = Math.floor((this.totalSeconds - this.remainingSeconds) / 60)
     this.saveRecord(true)
+    this.completeMsg = `专注完成！本次专注了 ${actualMinutes} 分钟，做得好。`
+    this.showCompleteMsg = true
     this.resetTimer()
+    setTimeout(() => {
+      this.showCompleteMsg = false
+    }, 5000)
   }
 
   private saveRecord(completed: boolean) {
@@ -223,6 +231,21 @@ struct TimerPage {
             .width('100%')
           }
           .width('100%')
+
+          if (this.showCompleteMsg) {
+            Column({ space: UiTokens.gapS }) {
+              Text(this.completeMsg)
+                .fontSize(this.settings.largeText ? UiTokens.textL : UiTokens.textM)
+                .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
+                .fontWeight(FontWeight.Medium)
+                .width('100%')
+                .textAlign(TextAlign.Center)
+                .padding(16)
+                .backgroundColor(this.settings.highContrast ? UiTokens.hcBg : UiTokens.brandSoft)
+                .borderRadius(UiTokens.radiusXL)
+            }
+            .width('100%')
+          }
 
           // Controls
           Column({ space: UiTokens.gapM }) {

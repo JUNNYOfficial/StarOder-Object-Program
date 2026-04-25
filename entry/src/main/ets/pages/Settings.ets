@@ -13,6 +13,9 @@ struct Settings {
   @State feishuAppSecret: string = ''
   @State feishuConnected: boolean = false
   @State feishuMsg: string = ''
+  @State exportDataStr: string = ''
+  @State importDataStr: string = ''
+  @State dataMsg: string = ''
 
   aboutToAppear() {
     this.settings = dataStore.getUserPrefs()
@@ -70,6 +73,25 @@ struct Settings {
     FeishuSyncService.clearAuth()
     this.loadFeishuStatus()
     this.feishuMsg = '已断开连接'
+  }
+
+  exportDataFn() {
+    this.exportDataStr = dataStore.exportAll()
+    this.dataMsg = '数据已导出到下方文本框，请复制保存'
+  }
+
+  importDataFn() {
+    if (!this.importDataStr.trim()) {
+      this.dataMsg = '请先粘贴备份数据'
+      return
+    }
+    try {
+      dataStore.importAll(this.importDataStr.trim(), 'overwrite')
+      this.dataMsg = '数据恢复成功'
+      this.importDataStr = ''
+    } catch (e) {
+      this.dataMsg = '恢复失败，请检查数据格式'
+    }
   }
 
   toggleHighContrast() {
@@ -380,6 +402,114 @@ struct Settings {
               .alignItems(VerticalAlign.Center)
               .onClick(() => {
                 router.pushUrl({ url: 'pages/WellnessView' })
+              })
+            }
+            .width('100%')
+            .backgroundColor(UiTokens.bgCard)
+            .borderRadius(UiTokens.radiusXL)
+            .shadow({
+              radius: this.settings.highContrast ? 0 : 8,
+              color: '#0A000000',
+              offsetX: 0,
+              offsetY: 2
+            })
+          }
+          .width('100%')
+
+          // Data management
+          Column({ space: UiTokens.gapM }) {
+            Text('数据管理')
+              .fontSize(this.sectionTitle())
+              .fontWeight(FontWeight.Medium)
+              .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+              .width('100%')
+
+            Column({ space: UiTokens.gapM }) {
+              Row({ space: UiTokens.gapM }) {
+                Button('导出备份')
+                  .layoutWeight(1)
+                  .height(44)
+                  .fontSize(this.baseFont())
+                  .fontColor(UiTokens.textInverse)
+                  .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
+                  .borderRadius(UiTokens.radiusXL)
+                  .onClick(() => { this.exportDataFn() })
+
+                Button('恢复备份')
+                  .layoutWeight(1)
+                  .height(44)
+                  .fontSize(this.baseFont())
+                  .fontColor(UiTokens.textInverse)
+                  .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
+                  .borderRadius(UiTokens.radiusXL)
+                  .onClick(() => { this.importDataFn() })
+              }
+              .width('100%')
+
+              if (this.exportDataStr) {
+                TextArea({ text: $$this.exportDataStr })
+                  .width('100%')
+                  .height(120)
+                  .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                  .backgroundColor(UiTokens.bgHover)
+                  .borderRadius(UiTokens.radiusL)
+                  .enabled(false)
+              }
+
+              TextArea({ placeholder: '在此粘贴备份数据以恢复...', text: $$this.importDataStr })
+                .width('100%')
+                .height(80)
+                .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                .backgroundColor(UiTokens.bgHover)
+                .placeholderColor(this.settings.highContrast ? '#999999' : UiTokens.textTertiary)
+                .borderRadius(UiTokens.radiusL)
+
+              if (this.dataMsg) {
+                Text(this.dataMsg)
+                  .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                  .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textSecondary)
+                  .width('100%')
+                  .textAlign(TextAlign.Center)
+              }
+            }
+            .width('100%')
+            .padding(UiTokens.cardPadding)
+            .backgroundColor(UiTokens.bgCard)
+            .borderRadius(UiTokens.radiusXL)
+            .shadow({
+              radius: this.settings.highContrast ? 0 : 8,
+              color: '#0A000000',
+              offsetX: 0,
+              offsetY: 2
+            })
+          }
+          .width('100%')
+
+          // Recycle bin
+          Column({ space: UiTokens.gapM }) {
+            Text('回收站')
+              .fontSize(this.sectionTitle())
+              .fontWeight(FontWeight.Medium)
+              .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+              .width('100%')
+
+            Column() {
+              Row() {
+                Text('查看已删除的日程')
+                  .fontSize(this.baseFont())
+                  .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+                  .layoutWeight(1)
+
+                Text('>')
+                  .fontSize(this.baseFont())
+                  .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textTertiary)
+              }
+              .width('100%')
+              .padding(14)
+              .justifyContent(FlexAlign.SpaceBetween)
+              .alignItems(VerticalAlign.Center)
+              .onClick(() => {
+                router.pushUrl({ url: 'pages/RecycleBin' })
               })
             }
             .width('100%')

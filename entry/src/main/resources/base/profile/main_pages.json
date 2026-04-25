@@ -8,6 +8,7 @@
     "pages/TimerPage",
     "pages/WellnessView",
     "pages/VoiceInputPage",
-    "pages/CourseImportPage"
+    "pages/CourseImportPage",
+    "pages/RecycleBin"
   ]
 }

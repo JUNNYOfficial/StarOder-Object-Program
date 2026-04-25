@@ -140,9 +140,8 @@ export function createTaskFromParsed(parsed: ParsedSchedule): Task {
   return task
 }
 
-// 系统提醒设置 — 占位，待集成 reminderAgent
 export function setSystemReminder(task: Task): void {
-  // HarmonyOS reminderAgent 集成点
-  // 需要确认 API 12 中 reminderAgent 的确切路径
-  console.info(`设置提醒: ${task.title} ${task.date} ${task.startTime}`)
+  // 原子化服务(atomicService)不支持 reminderAgentManager
+  // 如需系统提醒，需将应用改为普通应用(bundleType: app)
+  console.info(`[提醒占位] ${task.title} ${task.date} ${task.startTime}`)
 }

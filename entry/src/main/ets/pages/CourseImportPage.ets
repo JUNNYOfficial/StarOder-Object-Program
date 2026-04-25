@@ -4,12 +4,13 @@ import { dataStore } from '../models/DataStore'
 import { CourseItem, parseCourseCSV, generateTasksFromCourses } from '../services/CourseParser'
 import { UiTokens } from '../design/UiTokens'
 
-// 文件选择器与 OCR 尝试导入，编译报错时可快速切换路径
+// 文件选择器导入
 import picker from '@ohos.file.picker'
-import { textRecognition } from '@kit.CoreVisionKit'
-import image from '@ohos.multimedia.image'
-import fileIo from '@ohos.file.fs'
-import { BusinessError } from '@kit.BasicServicesKit'
+// 原子化服务不支持 @kit.CoreVisionKit 的 textRecognition
+// import { textRecognition } from '@kit.CoreVisionKit'
+// import image from '@ohos.multimedia.image'
+// import fileIo from '@ohos.file.fs'
+// import { BusinessError } from '@kit.BasicServicesKit'
 
 @Entry
 @Component
@@ -60,36 +61,8 @@ struct CourseImportPage {
   }
 
   recognizeImage(uri: string) {
-    this.importMsg = '正在读取图片...'
-    try {
-      const file = fileIo.openSync(uri, fileIo.OpenMode.READ_ONLY)
-      const stat = fileIo.statSync(file.fd)
-      const buf = new ArrayBuffer(stat.size)
-      fileIo.readSync(file.fd, buf)
-      fileIo.closeSync(file.fd)
-
-      const imageSource = image.createImageSource(buf)
-      imageSource.createPixelMap().then((pixelMap: image.PixelMap) => {
-        const visionInfo: textRecognition.VisionInfo = { pixelMap: pixelMap }
-        const textConfiguration: textRecognition.TextRecognitionConfiguration = {
-          isDirectionDetectionSupported: false
-        }
-        textRecognition.recognizeText(visionInfo, textConfiguration,
-          (error: BusinessError, data: textRecognition.TextRecognitionResult) => {
-            if (error && error.code !== 0) {
-              this.importMsg = `识别失败: ${error.message}，请手动粘贴课表内容`
-              return
-            }
-            this.pasteText = data.value
-            this.parseText()
-            this.importMsg = '识别完成，已填充到下方'
-          })
-      }).catch((err: Error) => {
-        this.importMsg = `图片解析失败: ${err.message}，请手动粘贴课表内容`
-      })
-    } catch (e) {
-      this.importMsg = 'OCR 功能暂不可用，请手动粘贴课表内容'
-    }
+    // 原子化服务暂不支持 OCR，直接提示用户手动粘贴
+    this.importMsg = '原子化服务暂不支持图片识别，请手动粘贴课表内容'
   }
 
   parseText() {

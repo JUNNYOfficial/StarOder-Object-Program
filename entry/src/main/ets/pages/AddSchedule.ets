@@ -6,6 +6,8 @@ import {
 } from '../models/DataModels'
 import { dataStore } from '../models/DataStore'
 import { UiTokens } from '../design/UiTokens'
+import { todayStr, tomorrowStr, dayAfterTomorrowStr } from '../utils/DateUtils'
+import { setSystemReminder } from '../services/VoiceScheduleService'
 
 @Entry
 @Component
@@ -22,8 +24,11 @@ struct AddSchedule {
   @State subTasks: string[] = []
   @State startTime: string = '09:00'
   @State endTime: string = '10:00'
+  @State selectedDate: string = todayStr()
   @State settings: UserPreferences = new UserPreferences()
   @State templates: TaskTemplate[] = []
+  @State isEditMode: boolean = false
+  @State editTaskId: string = ''
 
   aboutToAppear() {
     this.settings = dataStore.getUserPrefs()
@@ -34,6 +39,30 @@ struct AddSchedule {
     else if (h < 18) this.selectedTimeBlock = TimeBlock.AFTERNOON
     else this.selectedTimeBlock = TimeBlock.EVENING
     this.initTemplates()
+    this.loadEditTask()
+  }
+
+  loadEditTask() {
+    const params = router.getParams() as Record<string, string>
+    const id = params?.['id']
+    if (id) {
+      const task = dataStore.getActiveTasks().find(t => t.id === id)
+      if (task) {
+        this.isEditMode = true
+        this.editTaskId = task.id
+        this.title = task.title
+        this.selectedType = task.type
+        this.selectedIntensity = task.intensity
+        this.selectedTimeBlock = task.timeBlock
+        this.selectedPriority = task.priority
+        this.selectedRepeat = task.repeatMode
+        this.startTime = task.startTime
+        this.endTime = task.endTime
+        this.selectedDate = task.date
+        this.prepareItems = [...task.prepareItems]
+        this.subTasks = task.subTasks.map(st => st.title)
+      }
+    }
   }
 
   private initTemplates() {
@@ -104,12 +133,8 @@ struct AddSchedule {
     return this.settings.largeText ? UiTokens.textL : UiTokens.textM
   }
 
-  private todayStr(): string {
-    const d = new Date()
-    const y = d.getFullYear()
-    const m = String(d.getMonth() + 1).padStart(2, '0')
-    const day = String(d.getDate()).padStart(2, '0')
-    return `${y}-${m}-${day}`
+  private pageTitle(): string {
+    return this.isEditMode ? '编辑日程' : '新建日程'
   }
 
   addSubTask() {
@@ -128,15 +153,40 @@ struct AddSchedule {
 
   saveTask() {
     if (!this.title.trim()) return
-    const task = new Task(this.title.trim(), this.todayStr(), this.startTime, this.endTime)
-    task.type = this.selectedType
-    task.intensity = this.selectedIntensity
-    task.timeBlock = this.selectedTimeBlock
-    task.priority = this.selectedPriority
-    task.repeatMode = this.selectedRepeat
-    task.prepareItems = [...this.prepareItems]
-    task.subTasks = this.subTasks.map((title, i) => new SubTask(title, String(i)))
-    dataStore.addTask(task)
+    const start = this.startTime.trim() || ''
+    const end = this.endTime.trim() || ''
+    if (this.isEditMode) {
+      const all = dataStore.getActiveTasks()
+      const idx = all.findIndex(t => t.id === this.editTaskId)
+      if (idx >= 0) {
+        all[idx].title = this.title.trim()
+        all[idx].type = this.selectedType
+        all[idx].intensity = this.selectedIntensity
+        all[idx].timeBlock = this.selectedTimeBlock
+        all[idx].priority = this.selectedPriority
+        all[idx].repeatMode = this.selectedRepeat
+        all[idx].startTime = start
+        all[idx].endTime = end
+        all[idx].date = this.selectedDate
+        all[idx].prepareItems = [...this.prepareItems]
+        all[idx].subTasks = this.subTasks.map((title) => new SubTask(title, this.editTaskId))
+        all[idx].updatedAt = Date.now()
+        dataStore.saveTasks(all)
+      }
+    } else {
+      const task = new Task(this.title.trim(), this.selectedDate, start, end)
+      task.type = this.selectedType
+      task.intensity = this.selectedIntensity
+      task.timeBlock = this.selectedTimeBlock
+      task.priority = this.selectedPriority
+      task.repeatMode = this.selectedRepeat
+      task.prepareItems = [...this.prepareItems]
+      task.subTasks = this.subTasks.map((title, i) => new SubTask(title, String(i)))
+      dataStore.addTask(task)
+      if (start && end) {
+        setSystemReminder(task)
+      }
+    }
     router.back()
   }
 
@@ -154,7 +204,7 @@ struct AddSchedule {
           router.back()
         })
 
-        Text('新建日程')
+        Text(this.pageTitle())
           .fontSize(this.settings.largeText ? UiTokens.textXL : UiTokens.textL)
           .fontWeight(FontWeight.Bold)
           .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
@@ -216,6 +266,55 @@ struct AddSchedule {
           }
           .width('100%')
 
+          // Date selection
+          Column({ space: UiTokens.gapS }) {
+            Text('日期')
+              .fontSize(this.sectionTitle())
+              .fontWeight(FontWeight.Medium)
+              .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+              .width('100%')
+
+            Row({ space: 10 }) {
+              TextInput({ placeholder: 'YYYY-MM-DD', text: $$this.selectedDate })
+                .layoutWeight(1)
+                .height(48)
+                .fontSize(this.baseFont())
+                .backgroundColor(UiTokens.bgHover)
+                .placeholderColor(this.settings.highContrast ? '#999999' : UiTokens.textTertiary)
+                .borderRadius(UiTokens.radiusL)
+                .textAlign(TextAlign.Center)
+
+              Button('今天')
+                .width(56)
+                .height(48)
+                .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                .fontColor(UiTokens.brand)
+                .backgroundColor(UiTokens.brandSoft)
+                .borderRadius(UiTokens.radiusL)
+                .onClick(() => { this.selectedDate = todayStr() })
+
+              Button('明天')
+                .width(56)
+                .height(48)
+                .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                .fontColor(UiTokens.brand)
+                .backgroundColor(UiTokens.brandSoft)
+                .borderRadius(UiTokens.radiusL)
+                .onClick(() => { this.selectedDate = tomorrowStr() })
+
+              Button('后天')
+                .width(56)
+                .height(48)
+                .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                .fontColor(UiTokens.brand)
+                .backgroundColor(UiTokens.brandSoft)
+                .borderRadius(UiTokens.radiusL)
+                .onClick(() => { this.selectedDate = dayAfterTomorrowStr() })
+            }
+            .width('100%')
+          }
+          .width('100%')
+
           // Title input
           Column({ space: UiTokens.gapS }) {
             Text('日程名称')
@@ -237,14 +336,14 @@ struct AddSchedule {
 
           // Time
           Column({ space: UiTokens.gapS }) {
-            Text('时间')
+            Text('时间（可选）')
               .fontSize(this.sectionTitle())
               .fontWeight(FontWeight.Medium)
               .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
               .width('100%')
 
             Row({ space: UiTokens.gapM }) {
-              TextInput({ placeholder: '开始', text: $$this.startTime })
+              TextInput({ placeholder: '开始时间', text: $$this.startTime })
                 .layoutWeight(1)
                 .height(48)
                 .fontSize(this.baseFont())
@@ -257,7 +356,7 @@ struct AddSchedule {
                 .fontSize(this.baseFont())
                 .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textSecondary)
 
-              TextInput({ placeholder: '结束', text: $$this.endTime })
+              TextInput({ placeholder: '结束时间', text: $$this.endTime })
                 .layoutWeight(1)
                 .height(48)
                 .fontSize(this.baseFont())
@@ -346,7 +445,7 @@ struct AddSchedule {
 
           // Time block
           Column({ space: UiTokens.gapS }) {
-            Text('时间段')
+            Text('时间段 *')
               .fontSize(this.sectionTitle())
               .fontWeight(FontWeight.Medium)
               .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
@@ -354,10 +453,11 @@ struct AddSchedule {
 
             Row({ space: 10 }) {
               ForEach([
-                TimeBlock.MORNING,
+                TimeBlock.DAWN,
                 TimeBlock.MORNING,
                 TimeBlock.AFTERNOON,
-                TimeBlock.EVENING
+                TimeBlock.EVENING,
+                TimeBlock.NIGHT
               ], (block: TimeBlock) => {
                 Button() {
                   Text(getTimeBlockConfig(block).label)

@@ -1,7 +1,8 @@
 import { router } from '@kit.ArkUI'
-import { UserPreferences, MoodSurveyRecord } from '../models/DataModels'
+import { UserPreferences, MoodSurveyRecord, EnergyRecord } from '../models/DataModels'
 import { dataStore } from '../models/DataStore'
 import { UiTokens } from '../design/UiTokens'
+import { todayStr } from '../utils/DateUtils'
 
 class DayEnergy {
   date: string
@@ -25,12 +26,17 @@ struct WellnessView {
   @State completedFocusSessions: number = 0
   @State moodRecords: MoodSurveyRecord[] = []
   @State hasAnyData: boolean = false
-  @State todayStr: string = ''
   @State weekdayLabels: string[] = ['日', '一', '二', '三', '四', '五', '六']
+  @State showEnergyInput: boolean = false
+  @State showMoodInput: boolean = false
+  @State energyRating: number = 3
+  @State energyNote: string = ''
+  @State moodRating: number = 3
+  @State moodTrigger: string = ''
+  @State moodContext: string = ''
 
   aboutToAppear() {
     this.settings = dataStore.getUserPrefs()
-    this.todayStr = this.formatDate(new Date())
     this.loadData()
   }
 
@@ -101,6 +107,30 @@ struct WellnessView {
       recent.push(all[i])
     }
     this.moodRecords = recent
+  }
+
+  saveEnergyRecord() {
+    const record = new EnergyRecord(todayStr(), this.energyRating)
+    record.note = this.energyNote.trim()
+    dataStore.saveEnergyRecord(record)
+    this.energyNote = ''
+    this.energyRating = 3
+    this.showEnergyInput = false
+    this.loadData()
+  }
+
+  saveMoodRecord() {
+    const now = new Date()
+    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+    const record = new MoodSurveyRecord(todayStr(), timeStr, this.moodRating)
+    record.trigger = this.moodTrigger.trim()
+    record.context = this.moodContext.trim()
+    dataStore.saveMoodSurvey(record)
+    this.moodTrigger = ''
+    this.moodContext = ''
+    this.moodRating = 3
+    this.showMoodInput = false
+    this.loadData()
   }
 
   build() {
@@ -221,10 +251,10 @@ struct WellnessView {
                       Text(day.label)
                         .width(22)
                         .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
-                        .fontColor(day.date === this.todayStr
+                        .fontColor(day.date === todayStr()
                           ? (this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
                           : (this.settings.highContrast ? '#555555' : UiTokens.textTertiary))
-                        .fontWeight(day.date === this.todayStr ? FontWeight.Bold : FontWeight.Regular)
+                        .fontWeight(day.date === todayStr() ? FontWeight.Bold : FontWeight.Regular)
                         .textAlign(TextAlign.Center)
 
                       Stack() {
@@ -320,6 +350,145 @@ struct WellnessView {
               }
               .width('100%')
             }
+
+            // Record entry
+            Column({ space: UiTokens.gapM }) {
+              Text('记录当下')
+                .fontSize(this.sectionTitle())
+                .fontWeight(FontWeight.Medium)
+                .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+                .width('100%')
+
+              Row({ space: UiTokens.gapM }) {
+                Button('记录能量')
+                  .layoutWeight(1)
+                  .height(48)
+                  .fontSize(this.baseFont())
+                  .fontColor(UiTokens.textInverse)
+                  .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
+                  .borderRadius(UiTokens.radiusXL)
+                  .onClick(() => {
+                    this.showEnergyInput = !this.showEnergyInput
+                    this.showMoodInput = false
+                  })
+
+                Button('记录情绪')
+                  .layoutWeight(1)
+                  .height(48)
+                  .fontSize(this.baseFont())
+                  .fontColor(UiTokens.textInverse)
+                  .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
+                  .borderRadius(UiTokens.radiusXL)
+                  .onClick(() => {
+                    this.showMoodInput = !this.showMoodInput
+                    this.showEnergyInput = false
+                  })
+              }
+              .width('100%')
+
+              if (this.showEnergyInput) {
+                Column({ space: UiTokens.gapM }) {
+                  Text('今天感觉有多少能量？')
+                    .fontSize(this.baseFont())
+                    .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+                    .width('100%')
+
+                  Row({ space: UiTokens.gapM }) {
+                    ForEach([1, 2, 3, 4, 5], (n: number) => {
+                      Button(String(n))
+                        .width(48)
+                        .height(48)
+                        .fontSize(this.baseFont())
+                        .fontColor(this.energyRating === n ? UiTokens.textInverse : UiTokens.textPrimary)
+                        .backgroundColor(this.energyRating === n
+                          ? (this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
+                          : (this.settings.highContrast ? '#EEEEEE' : UiTokens.bgHover))
+                        .borderRadius(UiTokens.radiusL)
+                        .onClick(() => { this.energyRating = n })
+                    })
+                  }
+                  .width('100%')
+                  .justifyContent(FlexAlign.SpaceBetween)
+
+                  TextInput({ placeholder: '可选：写点什么', text: $$this.energyNote })
+                    .width('100%')
+                    .height(44)
+                    .fontSize(this.baseFont())
+                    .backgroundColor(UiTokens.bgHover)
+                    .placeholderColor(this.settings.highContrast ? '#999999' : UiTokens.textTertiary)
+                    .borderRadius(UiTokens.radiusL)
+
+                  Button('保存能量记录')
+                    .width('100%')
+                    .height(48)
+                    .fontSize(this.baseFont())
+                    .fontColor(UiTokens.textInverse)
+                    .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
+                    .borderRadius(UiTokens.radiusXL)
+                    .onClick(() => { this.saveEnergyRecord() })
+                }
+                .width('100%')
+                .padding(UiTokens.cardPadding)
+                .backgroundColor(UiTokens.bgCard)
+                .borderRadius(UiTokens.radiusXL)
+              }
+
+              if (this.showMoodInput) {
+                Column({ space: UiTokens.gapM }) {
+                  Text('此刻心情怎么样？')
+                    .fontSize(this.baseFont())
+                    .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+                    .width('100%')
+
+                  Row({ space: UiTokens.gapM }) {
+                    ForEach([1, 2, 3, 4, 5], (n: number) => {
+                      Button(String(n))
+                        .width(48)
+                        .height(48)
+                        .fontSize(this.baseFont())
+                        .fontColor(this.moodRating === n ? UiTokens.textInverse : UiTokens.textPrimary)
+                        .backgroundColor(this.moodRating === n
+                          ? (this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
+                          : (this.settings.highContrast ? '#EEEEEE' : UiTokens.bgHover))
+                        .borderRadius(UiTokens.radiusL)
+                        .onClick(() => { this.moodRating = n })
+                    })
+                  }
+                  .width('100%')
+                  .justifyContent(FlexAlign.SpaceBetween)
+
+                  TextInput({ placeholder: '什么触发了这个情绪？', text: $$this.moodTrigger })
+                    .width('100%')
+                    .height(44)
+                    .fontSize(this.baseFont())
+                    .backgroundColor(UiTokens.bgHover)
+                    .placeholderColor(this.settings.highContrast ? '#999999' : UiTokens.textTertiary)
+                    .borderRadius(UiTokens.radiusL)
+
+                  TextInput({ placeholder: '当时在做什么？', text: $$this.moodContext })
+                    .width('100%')
+                    .height(44)
+                    .fontSize(this.baseFont())
+                    .backgroundColor(UiTokens.bgHover)
+                    .placeholderColor(this.settings.highContrast ? '#999999' : UiTokens.textTertiary)
+                    .borderRadius(UiTokens.radiusL)
+
+                  Button('保存情绪记录')
+                    .width('100%')
+                    .height(48)
+                    .fontSize(this.baseFont())
+                    .fontColor(UiTokens.textInverse)
+                    .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
+                    .borderRadius(UiTokens.radiusXL)
+                    .onClick(() => { this.saveMoodRecord() })
+                }
+                .width('100%')
+                .padding(UiTokens.cardPadding)
+                .backgroundColor(UiTokens.bgCard)
+                .borderRadius(UiTokens.radiusXL)
+              }
+            }
+            .width('100%')
 
             // Bottom hint
             Text('数据仅保存在本地，保护你的隐私')

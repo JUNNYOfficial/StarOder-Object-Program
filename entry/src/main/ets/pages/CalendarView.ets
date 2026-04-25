@@ -1,5 +1,5 @@
 import { router } from '@kit.ArkUI'
-import { Task, UserPreferences } from '../models/DataModels'
+import { Task, UserPreferences, TaskStatus } from '../models/DataModels'
 import { dataStore } from '../models/DataStore'
 import { ScheduleCard } from '../components/ScheduleCard'
 import { UiTokens } from '../design/UiTokens'
@@ -133,6 +133,19 @@ struct CalendarView {
     if (!day.isCurrentMonth || day.day === 0) return
     this.selectedDate = day.date
     this.loadDayTasks()
+  }
+
+  advanceStatus(task: Task) {
+    const all = dataStore.getActiveTasks()
+    const idx = all.findIndex(t => t.id === task.id)
+    if (idx >= 0) {
+      const statusOrder = [TaskStatus.TODO, TaskStatus.STARTED, TaskStatus.MOSTLY, TaskStatus.DONE]
+      const currentIdx = statusOrder.indexOf(all[idx].status)
+      all[idx].status = statusOrder[(currentIdx + 1) % statusOrder.length]
+      all[idx].updatedAt = Date.now()
+      dataStore.saveTasks(all)
+      this.loadDayTasks()
+    }
   }
 
   build() {
@@ -325,7 +338,9 @@ struct CalendarView {
                     onClickCard: () => {
                       router.pushUrl({ url: 'pages/ScheduleDetail', params: { id: task.id } })
                     },
-                    onToggleStatus: () => {}
+                    onToggleStatus: () => {
+                      this.advanceStatus(task)
+                    }
                   })
                 })
               }
