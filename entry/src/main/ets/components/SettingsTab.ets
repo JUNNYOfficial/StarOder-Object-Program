@@ -57,14 +57,17 @@ export struct SettingsTab {
   private extractCodeFromUrl(input: string): string {
     // 如果输入是完整 URL，提取 code 参数
     if (input.includes('code=')) {
-      try {
-        const url = new URL(input)
-        const code = url.searchParams.get('code')
-        if (code) return code
-      } catch (e) {
-        // 不是标准 URL，尝试正则提取
-        const match = input.match(/[?&]code=([^&]+)/)
-        if (match) return match[1]
+      // 用字符串分割提取 code，避免使用 URL 类
+      const codeIdx = input.indexOf('code=')
+      if (codeIdx >= 0) {
+        let code = input.substring(codeIdx + 5)
+        const endIdx = code.indexOf('&')
+        if (endIdx >= 0) {
+          code = code.substring(0, endIdx)
+        }
+        if (code.length > 0) {
+          return decodeURIComponent(code)
+        }
       }
     }
     return input
