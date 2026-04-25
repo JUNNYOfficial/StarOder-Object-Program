@@ -28,6 +28,23 @@
         }
       }
     ],
+    "network": {
+      "securityConfig": {
+        "domainSettings": {
+          "cleartextPermitted": false,
+          "domains": [
+            {
+              "subDomains": true,
+              "name": "open.feishu.cn"
+            },
+            {
+              "subDomains": true,
+              "name": "github.io"
+            }
+          ]
+        }
+      }
+    },
     "abilities": [
       {
         "name": "EntryAbility",
