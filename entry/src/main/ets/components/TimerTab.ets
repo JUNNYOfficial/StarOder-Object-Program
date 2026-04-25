@@ -292,7 +292,12 @@ export struct TimerTab {
         .padding({ bottom: 32 })
       }
       .width('100%')
-      .padding(UiTokens.pagePadding)
+      .padding({
+        left: UiTokens.pagePadding,
+        right: UiTokens.pagePadding,
+        top: 8,
+        bottom: UiTokens.pagePadding
+      })
     }
     .width('100%')
     .layoutWeight(1)
