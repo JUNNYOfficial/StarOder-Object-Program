@@ -156,6 +156,7 @@ struct Index {
           }
         }
         .width('100%')
+        .height(40)
         .alignItems(VerticalAlign.Center)
 
       }
