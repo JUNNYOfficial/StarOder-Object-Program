@@ -1,7 +1,7 @@
 import { router, promptAction } from '@kit.ArkUI'
 import { dataStore } from '../models/DataStore'
 import { Course, TimeSlot, CourseScheduleState, WeekType, WEEKDAY_LABELS } from '../models/CourseModels'
-import { CalendarSyncService } from '../services/CalendarSyncService'
+import { CalendarSyncService, CalendarInfo } from '../services/CalendarSyncService'
 import { UiTokens } from '../design/UiTokens'
 class SlotCellData {
   slot: TimeSlot
@@ -29,6 +29,10 @@ struct CourseSchedulePage {
   @State editWeekType: WeekType = WeekType.EVERY
   @State editStartWeek: number = 1
   @State editEndWeek: number = 20
+
+  @State showCalendarPicker: boolean = false
+  @State calendarOptions: CalendarInfo[] = []
+  @State selectedCalendarId: number = -1
 
   aboutToAppear() {
     this.state = dataStore.getCourseState()
@@ -146,8 +150,24 @@ struct CourseSchedulePage {
       promptAction.showToast({ message: '没有课程可同步' })
       return
     }
+    CalendarSyncService.getCalendars(getContext(this))
+      .then((calendars: CalendarInfo[]) => {
+        if (calendars.length === 0) {
+          promptAction.showToast({ message: '未找到可用日历，请先添加日历账户' })
+          return
+        }
+        this.calendarOptions = calendars
+        this.showCalendarPicker = true
+      })
+      .catch(() => {
+        promptAction.showToast({ message: '获取日历列表失败' })
+      })
+  }
+
+  private confirmSyncToCalendar(calendarId: number) {
+    this.showCalendarPicker = false
     promptAction.showToast({ message: '正在同步到系统日历...' })
-    CalendarSyncService.syncCoursesToCalendar(this.state, getContext(this), (success, failed, msg) => {
+    CalendarSyncService.syncCoursesToCalendar(this.state, getContext(this), calendarId, (success, failed, msg) => {
       promptAction.showToast({ message: msg, duration: 3000 })
     })
   }
@@ -584,6 +604,92 @@ struct CourseSchedulePage {
                 .backgroundColor(UiTokens.brand)
                 .borderRadius(UiTokens.radiusL)
                 .onClick(() => this.saveCourse())
+            }
+            .width('100%')
+          }
+          .width('100%')
+          .padding(UiTokens.pagePadding)
+          .padding({ bottom: 32 })
+          .backgroundColor(UiTokens.bgCard)
+          .borderRadius({ topLeft: 24, topRight: 24 })
+        }
+        .width('100%')
+        .height('100%')
+        .justifyContent(FlexAlign.End)
+      }
+
+      // Calendar picker overlay
+      if (this.showCalendarPicker) {
+        Column() {
+          Column()
+            .width('100%')
+            .layoutWeight(1)
+            .backgroundColor('rgba(0,0,0,0.4)')
+            .onClick(() => { this.showCalendarPicker = false })
+
+          Column({ space: UiTokens.gapM }) {
+            Text('选择同步目标日历')
+              .fontSize(UiTokens.textXL)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(UiTokens.textPrimary)
+              .width('100%')
+
+            Column({ space: 0 }) {
+              ForEach(this.calendarOptions, (cal: CalendarInfo, index: number) => {
+                Row({ space: UiTokens.gapM }) {
+                  Column()
+                    .width(20)
+                    .height(20)
+                    .borderRadius(10)
+                    .border({ width: 2, color: this.selectedCalendarId === cal.id ? UiTokens.brand : UiTokens.divider })
+                    .backgroundColor(this.selectedCalendarId === cal.id ? UiTokens.brand : 'transparent')
+
+                  Column({ space: 2 }) {
+                    Text(cal.name)
+                      .fontSize(UiTokens.textM)
+                      .fontColor(UiTokens.textPrimary)
+                      .fontWeight(FontWeight.Medium)
+
+                    Text(cal.isCloud ? '云端日历' : '本地日历')
+                      .fontSize(UiTokens.textS)
+                      .fontColor(cal.isCloud ? UiTokens.brand : UiTokens.textTertiary)
+                  }
+                  .layoutWeight(1)
+                  .alignItems(HorizontalAlign.Start)
+                }
+                .width('100%')
+                .height(52)
+                .padding(12)
+                .backgroundColor(this.selectedCalendarId === cal.id ? UiTokens.brandSoft : 'transparent')
+                .borderRadius(UiTokens.radiusL)
+                .onClick(() => { this.selectedCalendarId = cal.id })
+
+                if (index < this.calendarOptions.length - 1) {
+                  Divider()
+                    .strokeWidth(0.5)
+                    .color(UiTokens.divider)
+                }
+              })
+            }
+            .width('100%')
+            .maxHeight(300)
+
+            Row({ space: UiTokens.gapM }) {
+              Button('取消')
+                .layoutWeight(1)
+                .height(44)
+                .fontColor(UiTokens.textSecondary)
+                .backgroundColor(UiTokens.bgHover)
+                .borderRadius(UiTokens.radiusL)
+                .onClick(() => { this.showCalendarPicker = false })
+
+              Button('确认同步')
+                .layoutWeight(1)
+                .height(44)
+                .fontColor(UiTokens.textInverse)
+                .backgroundColor(UiTokens.brand)
+                .borderRadius(UiTokens.radiusL)
+                .onClick(() => this.confirmSyncToCalendar(this.selectedCalendarId))
             }
             .width('100%')
           }

@@ -1,16 +1,8 @@
 import { router } from '@kit.ArkUI'
 import { UserPreferences } from '../models/DataModels'
 import { dataStore } from '../models/DataStore'
-import { CourseItem, parseCourseCSV, generateTasksFromCourses } from '../services/CourseParser'
+import { CourseItem, CourseAgent, generateTasksFromCourses } from '../services/CourseParser'
 import { UiTokens } from '../design/UiTokens'
-
-// 文件选择器导入
-import picker from '@ohos.file.picker'
-// 原子化服务不支持 @kit.CoreVisionKit 的 textRecognition
-// import { textRecognition } from '@kit.CoreVisionKit'
-// import image from '@ohos.multimedia.image'
-// import fileIo from '@ohos.file.fs'
-// import { BusinessError } from '@kit.BasicServicesKit'
 
 @Entry
 @Component
@@ -43,34 +35,12 @@ struct CourseImportPage {
     return `${y}-${m}-${day}`
   }
 
-  selectImage() {
-    try {
-      const options = new picker.DocumentSelectOptions()
-      options.maxSelectNumber = 1
-      const documentViewPicker = new picker.DocumentViewPicker()
-      documentViewPicker.select(options).then((result: string[]) => {
-        if (result.length > 0) {
-          this.recognizeImage(result[0])
-        }
-      }).catch((err: Error) => {
-        this.importMsg = `选择文件失败: ${err.message}`
-      })
-    } catch (e) {
-      this.importMsg = '文件选择器暂不可用'
-    }
-  }
-
-  recognizeImage(uri: string) {
-    // 原子化服务暂不支持 OCR，直接提示用户手动粘贴
-    this.importMsg = '原子化服务暂不支持图片识别，请手动粘贴课表内容'
-  }
-
   parseText() {
     if (!this.pasteText.trim()) {
       this.importMsg = '请输入课表内容'
       return
     }
-    this.courses = parseCourseCSV(this.pasteText.trim())
+    this.courses = CourseAgent.parse(this.pasteText.trim())
     this.showPreview = true
     this.importMsg = `解析到 ${this.courses.length} 门课程`
   }
@@ -113,72 +83,40 @@ struct CourseImportPage {
 
       Scroll() {
         Column({ space: UiTokens.gapXL }) {
-          // Image recognition
+          // Agent intro
           Column({ space: UiTokens.gapS }) {
-            Text('图片识别（推荐）')
+            Text('Agent 智能转换')
               .fontSize(this.sectionTitle())
               .fontWeight(FontWeight.Medium)
               .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
               .width('100%')
 
-            Text('截图或拍照课表，自动识别文字内容')
+            Text('粘贴任意格式的课表文本，本地 Agent 自动识别并转换')
               .fontSize(this.baseFont())
               .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textSecondary)
               .width('100%')
-
-            Button('选择图片识别')
-              .width('100%')
-              .height(48)
-              .fontSize(UiTokens.textL)
-              .fontWeight(FontWeight.Medium)
-              .fontColor(UiTokens.textInverse)
-              .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
-              .borderRadius(UiTokens.radiusXL)
-              .onClick(() => {
-                this.selectImage()
-              })
           }
           .width('100%')
 
-          // Divider
-          Row() {
-            Divider()
-              .strokeWidth(0.5)
-              .color(UiTokens.divider)
-              .layoutWeight(1)
+          // Format hints
+          Column({ space: UiTokens.gapS }) {
+            Text('支持格式')
+              .fontSize(this.sectionTitle())
+              .fontWeight(FontWeight.Medium)
+              .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+              .width('100%')
 
-            Text('或者手动粘贴')
+            Text('1. CSV：课程名,教师,地点,星期,开始,结束')
               .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
               .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textTertiary)
-              .margin({ left: 12, right: 12 })
-
-            Divider()
-              .strokeWidth(0.5)
-              .color(UiTokens.divider)
-              .layoutWeight(1)
-          }
-          .width('100%')
-
-          // Template info
-          Column({ space: UiTokens.gapS }) {
-            Text('CSV 格式说明')
-              .fontSize(this.sectionTitle())
-              .fontWeight(FontWeight.Medium)
-              .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
               .width('100%')
 
-            Text('每行一门课，格式如下：')
-              .fontSize(this.baseFont())
-              .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textSecondary)
-              .width('100%')
-
-            Text('课程名称,教师,地点,星期(1-7),开始时间,结束时间')
+            Text('2. 自然文本：高等数学 周一 08:00-09:35 A301 张老师 第1-16周')
               .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
-              .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
-              .fontWeight(FontWeight.Medium)
+              .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textTertiary)
               .width('100%')
 
-            Text('例如：高等数学,张老师,教学楼A301,1,08:00,09:35')
+            Text('3. 表格复制：直接从教务系统或 Excel 复制粘贴')
               .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
               .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textTertiary)
               .width('100%')
@@ -202,7 +140,7 @@ struct CourseImportPage {
               .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
               .width('100%')
 
-            TextArea({ placeholder: '从教务系统复制课表后粘贴到这里...', text: $$this.pasteText })
+            TextArea({ placeholder: '从教务系统复制课表后粘贴到这里，Agent 会自动识别格式...', text: $$this.pasteText })
               .width('100%')
               .height(180)
               .fontSize(this.baseFont())

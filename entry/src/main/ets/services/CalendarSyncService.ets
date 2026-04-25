@@ -5,6 +5,19 @@ import { Course, TimeSlot, WeekType, CourseScheduleState } from '../models/Cours
 
 const TAG = '[CalendarSync]'
 
+export class CalendarInfo {
+  id: number
+  name: string
+  accountName: string
+  isCloud: boolean
+  constructor(id: number, name: string, accountName: string, isCloud: boolean) {
+    this.id = id
+    this.name = name
+    this.accountName = accountName
+    this.isCloud = isCloud
+  }
+}
+
 class CalendarSyncServiceClass {
   private calendarMgr: calendarManager.CalendarManager | null = null
   private initialized: boolean = false
@@ -37,9 +50,47 @@ class CalendarSyncServiceClass {
       })
   }
 
+  getCalendars(context: Context): Promise<CalendarInfo[]> {
+    return new Promise((resolve) => {
+      this.init(context, (granted) => {
+        if (!granted || !this.calendarMgr) {
+          resolve([])
+          return
+        }
+        this.calendarMgr.getAllCalendars()
+          .then((calendars: calendarManager.Calendar[]) => {
+            const result: CalendarInfo[] = []
+            for (let i = 0; i < calendars.length; i++) {
+              const cal = calendars[i]
+              let accountName = ''
+              let accountType = ''
+              try {
+                const account = cal.getAccount()
+                if (account) {
+                  accountName = account.name || ''
+                  accountType = account.type || ''
+                }
+              } catch (e) {
+                console.warn(TAG, '获取日历账户信息失败:', JSON.stringify(e))
+              }
+              const isCloud = accountType !== '' && accountType !== 'LOCAL'
+              const displayName = accountName || '未命名日历'
+              result.push(new CalendarInfo(cal.id, displayName, accountName, isCloud))
+            }
+            resolve(result)
+          })
+          .catch((err: BusinessError) => {
+            console.error(TAG, '获取日历列表失败:', JSON.stringify(err))
+            resolve([])
+          })
+      })
+    })
+  }
+
   syncCoursesToCalendar(
     state: CourseScheduleState,
     context: Context,
+    calendarId: number,
     onResult: (success: number, failed: number, msg: string) => void
   ): void {
     this.init(context, (granted) => {
@@ -47,37 +98,77 @@ class CalendarSyncServiceClass {
         onResult(0, 0, '需要日历权限才能同步')
         return
       }
-      this.doSync(state, onResult)
+      if (!this.calendarMgr) {
+        onResult(0, 0, '日历管理器未初始化')
+        return
+      }
+
+      // 如果指定了日历ID，尝试从所有日历中查找
+      if (calendarId >= 0) {
+        this.calendarMgr.getAllCalendars()
+          .then((calendars: calendarManager.Calendar[]) => {
+            let targetCal: calendarManager.Calendar | null = null
+            for (let i = 0; i < calendars.length; i++) {
+              if (calendars[i].id === calendarId) {
+                targetCal = calendars[i]
+                break
+              }
+            }
+            if (targetCal) {
+              this.doSyncWithCalendar(state, targetCal, onResult)
+            } else {
+              // 未找到指定日历，回退到默认日历
+              this.fallbackToDefaultCalendar(state, onResult)
+            }
+          })
+          .catch((err: BusinessError) => {
+            console.error(TAG, '获取日历列表失败:', JSON.stringify(err))
+            this.fallbackToDefaultCalendar(state, onResult)
+          })
+      } else {
+        this.fallbackToDefaultCalendar(state, onResult)
+      }
     })
   }
 
-  private doSync(state: CourseScheduleState, onResult: (success: number, failed: number, msg: string) => void): void {
+  private fallbackToDefaultCalendar(
+    state: CourseScheduleState,
+    onResult: (success: number, failed: number, msg: string) => void
+  ): void {
     if (!this.calendarMgr) {
       onResult(0, 0, '日历管理器未初始化')
       return
     }
     this.calendarMgr.getCalendar()
       .then((calendar: calendarManager.Calendar) => {
-        let success = 0
-        let failed = 0
-        const courses = state.courses
-
-        for (let i = 0; i < courses.length; i++) {
-          const course = courses[i]
-          try {
-            this.addCourseEvents(calendar, course, state)
-            success++
-          } catch (e) {
-            console.error(TAG, `同步课程失败 ${course.name}:`, JSON.stringify(e))
-            failed++
-          }
-        }
-        onResult(success, failed, `成功 ${success} 个，失败 ${failed} 个`)
+        this.doSyncWithCalendar(state, calendar, onResult)
       })
       .catch((err: BusinessError) => {
-        console.error(TAG, '获取日历失败:', JSON.stringify(err))
+        console.error(TAG, '获取默认日历失败:', JSON.stringify(err))
         onResult(0, 0, '获取系统日历失败')
       })
+  }
+
+  private doSyncWithCalendar(
+    state: CourseScheduleState,
+    calendar: calendarManager.Calendar,
+    onResult: (success: number, failed: number, msg: string) => void
+  ): void {
+    let success = 0
+    let failed = 0
+    const courses = state.courses
+
+    for (let i = 0; i < courses.length; i++) {
+      const course = courses[i]
+      try {
+        this.addCourseEvents(calendar, course, state)
+        success++
+      } catch (e) {
+        console.error(TAG, `同步课程失败 ${course.name}:`, JSON.stringify(e))
+        failed++
+      }
+    }
+    onResult(success, failed, `成功 ${success} 个，失败 ${failed} 个`)
   }
 
   private addCourseEvents(
@@ -96,6 +187,11 @@ class CalendarSyncServiceClass {
       ? new Date(state.semesterStartDate)
       : this.getCurrentSemesterStart()
 
+    // 计算第一次上课日期
+    const firstWeekOffset = (course.startWeek - 1) * 7 + (course.dayOfWeek - 1)
+    const eventDate = new Date(baseDate)
+    eventDate.setDate(eventDate.getDate() + firstWeekOffset)
+
     const startParts = startSlot.startTime.split(':')
     const startH = parseInt(startParts[0])
     const startM = parseInt(startParts[1])
@@ -104,35 +200,41 @@ class CalendarSyncServiceClass {
     const endH = parseInt(endParts[0])
     const endM = parseInt(endParts[1])
 
-    for (let w = course.startWeek; w <= course.endWeek; w++) {
-      if (course.weekType === WeekType.ODD && w % 2 === 0) continue
-      if (course.weekType === WeekType.EVEN && w % 2 === 1) continue
+    const startTime = new Date(eventDate)
+    startTime.setHours(startH, startM, 0, 0)
+    const endTime = new Date(eventDate)
+    endTime.setHours(endH, endM, 0, 0)
 
-      const eventDate = new Date(baseDate)
-      eventDate.setDate(eventDate.getDate() + (w - 1) * 7 + (course.dayOfWeek - 1))
-
-      const startTime = new Date(eventDate)
-      startTime.setHours(startH, startM, 0, 0)
-      const endTime = new Date(eventDate)
-      endTime.setHours(endH, endM, 0, 0)
-
-      const event: calendarManager.Event = {
-        type: calendarManager.EventType.NORMAL,
-        title: course.name,
-        description: `教室: ${course.classroom || '未指定'} 教师: ${course.teacher || '未指定'} 第 ${w} 周`,
-        startTime: startTime.getTime(),
-        endTime: endTime.getTime(),
-        reminderTime: [15]
-      }
-
-      calendar.addEvent(event)
-        .then((eventId: number) => {
-          console.info(TAG, `添加日程成功: ${course.name} id=${eventId}`)
-        })
-        .catch((err: BusinessError) => {
-          console.error(TAG, `添加日程失败: ${err.code} ${err.message}`)
-        })
+    // 构建重复规则
+    const weekCount = course.endWeek - course.startWeek + 1
+    let interval = 1
+    let count = weekCount
+    if (course.weekType === WeekType.ODD || course.weekType === WeekType.EVEN) {
+      interval = 2
+      count = Math.ceil(weekCount / 2)
     }
+
+    const event: calendarManager.Event = {
+      type: calendarManager.EventType.NORMAL,
+      title: course.name,
+      description: `教室: ${course.classroom || '未指定'} 教师: ${course.teacher || '未指定'} 第${course.startWeek}-${course.endWeek}周`,
+      startTime: startTime.getTime(),
+      endTime: endTime.getTime(),
+      reminderTime: [15],
+      recurrenceRule: {
+        recurrenceFrequency: calendarManager.RecurrenceFrequency.WEEKLY,
+        interval: interval,
+        count: count
+      }
+    }
+
+    calendar.addEvent(event)
+      .then((eventId: number) => {
+        console.info(TAG, `添加重复日程成功: ${course.name} id=${eventId}`)
+      })
+      .catch((err: BusinessError) => {
+        console.error(TAG, `添加日程失败: ${err.code} ${err.message}`)
+      })
   }
 
   private getCurrentSemesterStart(): Date {
