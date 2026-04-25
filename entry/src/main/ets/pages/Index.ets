@@ -249,12 +249,14 @@ struct Index {
           .height(52)
           .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
           .borderRadius(UiTokens.radiusL)
-          .onClick(() => {
-            router.pushUrl({ url: 'pages/AddSchedule' })
-          })
         }
         .layoutWeight(1)
+        .height('100%')
+        .justifyContent(FlexAlign.Center)
         .alignItems(HorizontalAlign.Center)
+        .onClick(() => {
+          router.pushUrl({ url: 'pages/AddSchedule' })
+        })
 
         this.NavItem('专注', 2)
         this.NavItem('设置', 3)
@@ -272,21 +274,19 @@ struct Index {
   @Builder
   NavItem(label: string, tabIndex: number) {
     Column() {
-      Button() {
-        Text(label)
-          .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
-          .fontColor(this.activeTab === tabIndex
-            ? UiTokens.brand
-            : (this.settings.highContrast ? '#555555' : UiTokens.textSecondary))
-          .fontWeight(this.activeTab === tabIndex ? FontWeight.Medium : FontWeight.Regular)
-      }
-      .type(ButtonType.Circle)
-      .backgroundColor('transparent')
-      .onClick(() => {
-        this.activeTab = tabIndex
-      })
+      Text(label)
+        .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+        .fontColor(this.activeTab === tabIndex
+          ? UiTokens.brand
+          : (this.settings.highContrast ? '#555555' : UiTokens.textSecondary))
+        .fontWeight(this.activeTab === tabIndex ? FontWeight.Medium : FontWeight.Regular)
     }
     .layoutWeight(1)
+    .height('100%')
+    .justifyContent(FlexAlign.Center)
     .alignItems(HorizontalAlign.Center)
+    .onClick(() => {
+      this.activeTab = tabIndex
+    })
   }
 }
