@@ -22,6 +22,7 @@ export class UiTokens {
   static readonly active: string = '#334A75'      // Metallic Blue — 进行中
   static readonly paused: string = '#939EA4'      // Manatee — 已暂停
   static readonly todo: string = '#939EA4'        // Manatee — 待开始
+  static readonly error: string = '#E74C3C'       // 错误/删除
 
   // ===== 高对比度模式 =====
   static readonly hcText: string = '#000000'
