@@ -80,7 +80,8 @@ export struct SettingsTab {
       return
     }
     const code = this.extractCodeFromUrl(rawInput)
-    if (!code || code === rawInput && !rawInput.includes('-')) {
+    console.info(`[SettingsTab] extracted code: ${code.substring(0, 10)}...`)
+    if (!code || code.length < 5) {
       this.feishuMsg = '无法识别授权码，请检查输入'
       return
     }
