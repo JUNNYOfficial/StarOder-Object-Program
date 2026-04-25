@@ -1,7 +1,9 @@
 import { router, promptAction } from '@kit.ArkUI'
 import { dataStore } from '../models/DataStore'
 import { Course, TimeSlot, CourseScheduleState, WeekType, WEEKDAY_LABELS, DEFAULT_TIME_SLOTS } from '../models/CourseModels'
+import { CalendarSyncService } from '../services/CalendarSyncService'
 import { UiTokens } from '../design/UiTokens'
+import { common } from '@kit.AbilityKit'
 
 @Entry
 @Component
@@ -121,6 +123,18 @@ struct CourseSchedulePage {
       this.showEditPanel = false
       promptAction.showToast({ message: '已删除' })
     }
+  }
+
+  private syncToCalendar() {
+    if (this.state.courses.length === 0) {
+      promptAction.showToast({ message: '没有课程可同步' })
+      return
+    }
+    promptAction.showToast({ message: '正在同步到系统日历...' })
+    const context = getContext(this) as common.UIAbilityContext
+    CalendarSyncService.syncCoursesToCalendar(this.state, context, (success, failed, msg) => {
+      promptAction.showToast({ message: msg, duration: 3000 })
+    })
   }
 
   build() {
@@ -272,32 +286,46 @@ struct CourseSchedulePage {
         .scrollBar(BarState.Auto)
 
         // Bottom actions
-        Row({ space: UiTokens.gapM }) {
-          Button('时间段设置')
-            .layoutWeight(1)
-            .height(40)
-            .fontSize(UiTokens.textS)
-            .fontColor(UiTokens.textInverse)
-            .backgroundColor(UiTokens.brand)
-            .borderRadius(UiTokens.radiusL)
-            .onClick(() => {
-              router.pushUrl({ url: 'pages/TimeSlotSettingsPage' })
-            })
+        Column({ space: UiTokens.gapM }) {
+          Row({ space: UiTokens.gapM }) {
+            Button('时间段设置')
+              .layoutWeight(1)
+              .height(40)
+              .fontSize(UiTokens.textS)
+              .fontColor(UiTokens.textInverse)
+              .backgroundColor(UiTokens.brand)
+              .borderRadius(UiTokens.radiusL)
+              .onClick(() => {
+                router.pushUrl({ url: 'pages/TimeSlotSettingsPage' })
+              })
 
-          Button('批量导入')
-            .layoutWeight(1)
+            Button('批量导入')
+              .layoutWeight(1)
+              .height(40)
+              .fontSize(UiTokens.textS)
+              .fontColor(UiTokens.textInverse)
+              .backgroundColor(UiTokens.brand)
+              .borderRadius(UiTokens.radiusL)
+              .onClick(() => {
+                router.pushUrl({ url: 'pages/CourseImportPage' })
+              })
+          }
+          .width('100%')
+
+          Button('同步到华为日历')
+            .width('100%')
             .height(40)
             .fontSize(UiTokens.textS)
-            .fontColor(UiTokens.textInverse)
-            .backgroundColor(UiTokens.brand)
+            .fontColor(UiTokens.brand)
+            .backgroundColor(UiTokens.brandSoft)
             .borderRadius(UiTokens.radiusL)
             .onClick(() => {
-              router.pushUrl({ url: 'pages/CourseImportPage' })
+              this.syncToCalendar()
             })
         }
         .width('100%')
-        .height(56)
         .padding({ left: UiTokens.pagePadding, right: UiTokens.pagePadding })
+        .padding({ bottom: 12 })
       }
       .width('100%')
       .height('100%')

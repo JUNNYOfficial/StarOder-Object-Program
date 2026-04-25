@@ -17,6 +17,10 @@
       "value": "用于同步飞书日历数据"
     },
     {
+      "name": "calendar_permission_reason",
+      "value": "用于将课程同步到系统日历"
+    },
+    {
       "name": "mic_permission_reason",
       "value": "用于语音录入识别日程内容"
     }
