@@ -293,3 +293,23 @@ export function getFocusModeConfig(mode: FocusMode): FocusModeConfig {
     default: return new FocusModeConfig('标准专注', '常规的专注时段', 25, '#0A59F7')
   }
 }
+
+export class TaskTemplate {
+  title: string
+  type: TaskType
+  intensity: TaskIntensity
+  timeBlock: TimeBlock
+  prepareItems: string[]
+  subTasks: string[]
+  durationMinutes: number
+
+  constructor(title: string, type: TaskType, intensity: TaskIntensity, timeBlock: TimeBlock, durationMinutes: number) {
+    this.title = title
+    this.type = type
+    this.intensity = intensity
+    this.timeBlock = timeBlock
+    this.prepareItems = []
+    this.subTasks = []
+    this.durationMinutes = durationMinutes
+  }
+}

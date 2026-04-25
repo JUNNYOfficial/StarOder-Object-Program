@@ -10,6 +10,27 @@
     "deliveryWithInstall": true,
     "installationFree": true,
     "pages": "$profile:main_pages",
+    "requestPermissions": [
+      {
+        "name": "ohos.permission.MICROPHONE"
+      },
+      {
+        "name": "ohos.permission.REMINDER_AGENT"
+      }
+    ],
+    "forms": [
+      {
+        "name": "ScheduleQuickForm",
+        "displayName": "$string:form_name",
+        "description": "$string:form_desc",
+        "type": "ArkTS",
+        "colorMode": "auto",
+        "defaultDimension": "2*2",
+        "supportDimensions": ["2*2"],
+        "updateEnabled": false,
+        "src": "pages/form/ScheduleQuickForm"
+      }
+    ],
     "abilities": [
       {
         "name": "EntryAbility",

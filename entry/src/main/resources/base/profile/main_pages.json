@@ -6,6 +6,7 @@
     "pages/Settings",
     "pages/CalendarView",
     "pages/TimerPage",
-    "pages/WellnessView"
+    "pages/WellnessView",
+    "pages/VoiceInputPage"
   ]
 }

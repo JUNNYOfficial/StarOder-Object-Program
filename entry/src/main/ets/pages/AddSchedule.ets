@@ -1,6 +1,6 @@
 import { router } from '@kit.ArkUI'
 import {
-  Task, SubTask, UserPreferences,
+  Task, SubTask, UserPreferences, TaskTemplate,
   TaskType, TaskIntensity, TimeBlock, Priority, RepeatMode,
   getTypeConfig, getIntensityConfig, getTimeBlockConfig
 } from '../models/DataModels'
@@ -23,6 +23,7 @@ struct AddSchedule {
   @State startTime: string = '09:00'
   @State endTime: string = '10:00'
   @State settings: UserPreferences = new UserPreferences()
+  @State templates: TaskTemplate[] = []
 
   aboutToAppear() {
     this.settings = dataStore.getUserPrefs()
@@ -32,6 +33,67 @@ struct AddSchedule {
     else if (h < 14) this.selectedTimeBlock = TimeBlock.MORNING
     else if (h < 18) this.selectedTimeBlock = TimeBlock.AFTERNOON
     else this.selectedTimeBlock = TimeBlock.EVENING
+    this.initTemplates()
+  }
+
+  private initTemplates() {
+    const t1 = new TaskTemplate('晨间例行', TaskType.HOME, TaskIntensity.LOW, TimeBlock.MORNING, 30)
+    t1.prepareItems.push('准备早餐材料')
+    t1.prepareItems.push('打开窗户')
+    t1.subTasks.push('洗漱')
+    t1.subTasks.push('吃早餐')
+    t1.subTasks.push('整理床铺')
+
+    const t2 = new TaskTemplate('深度工作', TaskType.THINK, TaskIntensity.HIGH, TimeBlock.MORNING, 120)
+    t2.prepareItems.push('关闭通知')
+    t2.prepareItems.push('准备水杯')
+    t2.subTasks.push('明确目标')
+    t2.subTasks.push('专注执行')
+    t2.subTasks.push('简短记录')
+
+    const t3 = new TaskTemplate('运动恢复', TaskType.EXERCISE, TaskIntensity.MEDIUM, TimeBlock.AFTERNOON, 45)
+    t3.prepareItems.push('换运动服')
+    t3.prepareItems.push('准备水壶')
+    t3.subTasks.push('热身')
+    t3.subTasks.push('主训练')
+    t3.subTasks.push('拉伸放松')
+
+    const t4 = new TaskTemplate('阅读时间', TaskType.THINK, TaskIntensity.LOW, TimeBlock.EVENING, 60)
+    t4.prepareItems.push('选择一本书')
+    t4.prepareItems.push('调到舒适灯光')
+    t4.subTasks.push('找到阅读位置')
+    t4.subTasks.push('阅读 20 分钟')
+    t4.subTasks.push('做简单笔记')
+
+    const t5 = new TaskTemplate('社交时间', TaskType.SOCIAL, TaskIntensity.MEDIUM, TimeBlock.EVENING, 90)
+    t5.prepareItems.push('确认时间和地点')
+    t5.prepareItems.push('准备话题')
+    t5.subTasks.push('出门')
+    t5.subTasks.push('到达会面地点')
+    t5.subTasks.push('享受交流')
+
+    this.templates.push(t1)
+    this.templates.push(t2)
+    this.templates.push(t3)
+    this.templates.push(t4)
+    this.templates.push(t5)
+  }
+
+  private applyTemplate(tmpl: TaskTemplate) {
+    this.title = tmpl.title
+    this.selectedType = tmpl.type
+    this.selectedIntensity = tmpl.intensity
+    this.selectedTimeBlock = tmpl.timeBlock
+    this.prepareItems = tmpl.prepareItems
+    this.subTasks = tmpl.subTasks
+
+    const parts = this.startTime.split(':')
+    const h = parseInt(parts[0])
+    const m = parseInt(parts[1])
+    const endMinutes = h * 60 + m + tmpl.durationMinutes
+    const endH = Math.floor(endMinutes / 60)
+    const endM = endMinutes % 60
+    this.endTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`
   }
 
   private baseFont(): number {
@@ -117,6 +179,43 @@ struct AddSchedule {
 
       Scroll() {
         Column({ space: UiTokens.gapXL }) {
+          // Templates
+          Column({ space: UiTokens.gapS }) {
+            Text('快速模板')
+              .fontSize(this.sectionTitle())
+              .fontWeight(FontWeight.Medium)
+              .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+              .width('100%')
+
+            List({ space: 10 }) {
+              ForEach(this.templates, (tmpl: TaskTemplate) => {
+                ListItem() {
+                  Column({ space: 4 }) {
+                    Text(tmpl.title)
+                      .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                      .fontWeight(FontWeight.Medium)
+                      .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+                    Text(`${tmpl.durationMinutes}分钟`)
+                      .fontSize(UiTokens.textXS)
+                      .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textTertiary)
+                  }
+                  .width(90)
+                  .padding(12)
+                  .backgroundColor(this.settings.highContrast ? '#EEEEEE' : UiTokens.bgHover)
+                  .borderRadius(UiTokens.radiusL)
+                  .alignItems(HorizontalAlign.Center)
+                }
+                .onClick(() => {
+                  this.applyTemplate(tmpl)
+                })
+              })
+            }
+            .width('100%')
+            .listDirection(Axis.Horizontal)
+            .scrollBar(BarState.Off)
+          }
+          .width('100%')
+
           // Title input
           Column({ space: UiTokens.gapS }) {
             Text('日程名称')

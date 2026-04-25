@@ -54,7 +54,10 @@ export default class EntryAbility extends UIAbility {
     dataStore.init(this.context);
     this.seedSampleData();
 
-    windowStage.loadContent('pages/Index', (err) => {
+    const want = this.context.getWant();
+    const url = (want?.parameters?.['url'] as string) || 'pages/Index';
+
+    windowStage.loadContent(url, (err) => {
       if (err.code) {
         hilog.error(DOMAIN, 'testTag', 'Failed to load the content. Cause: %{public}s', JSON.stringify(err));
         return;

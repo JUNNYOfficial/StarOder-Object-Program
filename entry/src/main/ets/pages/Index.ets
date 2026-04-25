@@ -8,9 +8,11 @@ import { UiTokens } from '../design/UiTokens'
 @Component
 struct Index {
   @State tasks: Task[] = []
+  @State filteredTasks: Task[] = []
   @State settings: UserPreferences = new UserPreferences()
   @State currentDate: string = ''
   @State greeting: string = ''
+  @State searchQuery: string = ''
 
   aboutToAppear() {
     const now = new Date()
@@ -26,6 +28,22 @@ struct Index {
   loadData() {
     this.settings = dataStore.getUserPrefs()
     this.tasks = dataStore.getTasksByDate(this.currentDate)
+    this.applyFilter()
+  }
+
+  applyFilter() {
+    if (this.searchQuery.length === 0) {
+      this.filteredTasks = this.tasks
+    } else {
+      const q = this.searchQuery.toLowerCase()
+      const result: Task[] = []
+      for (let i = 0; i < this.tasks.length; i++) {
+        if (this.tasks[i].title.toLowerCase().includes(q)) {
+          result.push(this.tasks[i])
+        }
+      }
+      this.filteredTasks = result
+    }
   }
 
   formatDate(d: Date): string {
@@ -104,18 +122,47 @@ struct Index {
             .onClick(() => {
               router.pushUrl({ url: 'pages/TimerPage' })
             })
+
+            Button() {
+              Text('语音')
+                .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                .fontColor(UiTokens.brand)
+                .fontWeight(FontWeight.Medium)
+            }
+            .backgroundColor(UiTokens.brandSoft)
+            .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+            .borderRadius(UiTokens.radiusM)
+            .onClick(() => {
+              router.pushUrl({ url: 'pages/VoiceInputPage' })
+            })
           }
           .margin({ left: 12 })
         }
         .width('100%')
         .alignItems(VerticalAlign.Center)
+
+        Row() {
+          TextInput({ placeholder: '搜索日程', text: $$this.searchQuery })
+            .width('100%')
+            .height(40)
+            .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+            .backgroundColor(UiTokens.bgHover)
+            .placeholderColor(this.settings.highContrast ? '#999999' : UiTokens.textTertiary)
+            .borderRadius(UiTokens.radiusL)
+            .padding({ left: 14, right: 14 })
+            .onChange(() => {
+              this.applyFilter()
+            })
+        }
+        .width('100%')
+        .padding({ top: 8, bottom: 4 })
       }
       .width('100%')
       .alignItems(HorizontalAlign.Start)
       .padding({ left: UiTokens.pagePadding, right: UiTokens.pagePadding, top: 20, bottom: 4 })
 
       // Content
-      if (this.tasks.length === 0) {
+      if (this.filteredTasks.length === 0) {
         Column() {
           Text('今天还没有安排')
             .fontSize(this.settings.largeText ? UiTokens.textXL : UiTokens.textL)
@@ -132,7 +179,7 @@ struct Index {
         .padding(32)
       } else {
         List({ space: 0 }) {
-          ForEach(this.tasks, (task: Task) => {
+          ForEach(this.filteredTasks, (task: Task) => {
             ListItem() {
               ScheduleCard({
                 task: task,

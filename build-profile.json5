@@ -1,6 +1,20 @@
 {
   "app": {
-    "signingConfigs": [],
+    "signingConfigs": [
+      {
+        "name": "default",
+        "type": "HarmonyOS",
+        "material": {
+          "certpath": "/Users/junnyzhangqi/.ohos/config/default_StarOrder_Cloud_6dGd-AP00ICz2MqvJeAdmt3DHN_a1ePcndE9saxo_qM=.cer",
+          "keyAlias": "debugKey",
+          "keyPassword": "0000001B4B5368717FBB5806ED345E3FF4EC0AFE8979AA8B13EA4A50DE62BC913BE2A05B91D49EAEEB3B4E",
+          "profile": "/Users/junnyzhangqi/.ohos/config/default_StarOrder_Cloud_6dGd-AP00ICz2MqvJeAdmt3DHN_a1ePcndE9saxo_qM=.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "/Users/junnyzhangqi/.ohos/config/default_StarOrder_Cloud_6dGd-AP00ICz2MqvJeAdmt3DHN_a1ePcndE9saxo_qM=.p12",
+          "storePassword": "0000001B0E1D58ABC9230628850833C38FC66A2429538DDB29C3DFA48383A13CA2D8BA20015ADAC9957F1F"
+        }
+      }
+    ],
     "products": [
       {
         "name": "default",

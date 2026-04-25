@@ -24,6 +24,61 @@ export class FeishuToken {
   }
 }
 
+class FeishuApiResponse {
+  code: number
+  msg: string
+  data: FeishuTokenData | FeishuEventData
+  constructor() {
+    this.code = 0
+    this.msg = ''
+    this.data = new FeishuTokenData()
+  }
+}
+
+class FeishuTokenData {
+  access_token: string
+  refresh_token: string
+  expires_in: number
+  constructor() {
+    this.access_token = ''
+    this.refresh_token = ''
+    this.expires_in = 0
+  }
+}
+
+class FeishuEventData {
+  items: FeishuEventItem[]
+  constructor() {
+    this.items = []
+  }
+}
+
+class FeishuEventTime {
+  timestamp: string
+  constructor() {
+    this.timestamp = '0'
+  }
+}
+
+class FeishuEventItem {
+  summary: string
+  title: string
+  event_id: string
+  id: string
+  description: string
+  start_time: FeishuEventTime
+  end_time: FeishuEventTime
+  constructor() {
+    this.summary = ''
+    this.title = ''
+    this.event_id = ''
+    this.id = ''
+    this.description = ''
+    this.start_time = new FeishuEventTime()
+    this.end_time = new FeishuEventTime()
+  }
+}
+
 function getAppId(): string {
   return dataStore.get<string>(KEY_FEISHU_APP_ID, '')
 }
@@ -104,18 +159,14 @@ function exchangeCodeForToken(code: string, onResult: (success: boolean, msg: st
         return
       }
       try {
-        const result = JSON.parse(data.result as string) as Record<string, unknown>
-        const respCode = (result['code'] as unknown) as number
-        if (respCode !== 0) {
-          onResult(false, `飞书错误: ${(result['msg'] as unknown) as string}`)
+        const result = JSON.parse(data.result as string) as FeishuApiResponse
+        if (result.code !== 0) {
+          onResult(false, `飞书错误: ${result.msg}`)
           return
         }
-        const tokenData = (result['data'] as unknown) as Record<string, unknown>
-        const accessToken = (tokenData['access_token'] as unknown) as string
-        const refreshToken = (tokenData['refresh_token'] as unknown) as string
-        const expiresIn = (tokenData['expires_in'] as unknown) as number
-        if (accessToken) {
-          saveToken(new FeishuToken(accessToken, refreshToken, expiresIn))
+        const tokenData = result.data as FeishuTokenData
+        if (tokenData.access_token) {
+          saveToken(new FeishuToken(tokenData.access_token, tokenData.refresh_token, tokenData.expires_in))
           onResult(true, '授权成功')
         } else {
           onResult(false, '未获取到 access_token')
@@ -154,15 +205,13 @@ function fetchCalendarEvents(onResult: (tasks: Task[], msg: string) => void): vo
         return
       }
       try {
-        const result = JSON.parse(data.result as string) as Record<string, unknown>
-        const respCode = (result['code'] as unknown) as number
-        if (respCode !== 0) {
-          onResult([], `飞书错误: ${(result['msg'] as unknown) as string}`)
+        const result = JSON.parse(data.result as string) as FeishuApiResponse
+        if (result.code !== 0) {
+          onResult([], `飞书错误: ${result.msg}`)
           return
         }
-        const eventData = (result['data'] as unknown) as Record<string, unknown>
-        const items = (eventData['items'] as unknown) as Array<Record<string, unknown>>
-        const tasks = convertEventsToTasks(items)
+        const eventData = result.data as FeishuEventData
+        const tasks = convertEventsToTasks(eventData.items)
         onResult(tasks, `同步了 ${tasks.length} 个日程`)
       } catch (e) {
         onResult([], `解析响应失败`)
@@ -171,19 +220,19 @@ function fetchCalendarEvents(onResult: (tasks: Task[], msg: string) => void): vo
   )
 }
 
-function convertEventsToTasks(items: Array<Record<string, unknown>>): Task[] {
+function convertEventsToTasks(items: FeishuEventItem[]): Task[] {
   const tasks: Task[] = []
   for (let i = 0; i < items.length; i++) {
     const item = items[i]
-    const summary = ((item['summary'] || item['title'] || '飞书日程') as unknown) as string
-    const eventId = ((item['event_id'] || item['id'] || '') as unknown) as string
+    const summary = item.summary || item.title || '飞书日程'
+    const eventId = item.event_id || item.id || ''
 
-    const startObj = (item['start_time'] as unknown) as Record<string, unknown>
-    const endObj = (item['end_time'] as unknown) as Record<string, unknown>
+    const startObj = item.start_time
+    const endObj = item.end_time
     if (!startObj || !endObj) continue
 
-    const startTs = String((startObj['timestamp'] as unknown) || '0')
-    const endTs = String((endObj['timestamp'] as unknown) || '0')
+    const startTs = startObj.timestamp || '0'
+    const endTs = endObj.timestamp || '0'
     const startDate = new Date(parseInt(startTs) * 1000)
     const endDate = new Date(parseInt(endTs) * 1000)
 
@@ -192,7 +241,7 @@ function convertEventsToTasks(items: Array<Record<string, unknown>>): Task[] {
     const endTimeStr = formatTime(endDate)
 
     const task = new Task(summary, dateStr, startTimeStr, endTimeStr)
-    task.notes = ((item['description'] || '') as unknown) as string
+    task.notes = item.description || ''
     task.source = 'feishu'
     task.externalId = eventId
     task.status = TaskStatus.TODO
@@ -226,17 +275,19 @@ function inferTimeBlock(hour: number): TimeBlock {
   return TimeBlock.NIGHT
 }
 
-export const FeishuSyncService = {
-  getAuthUrl,
-  getAppId,
-  setAppId,
-  getAppSecret,
-  setAppSecret,
-  isConfigured,
-  isAuthorized,
-  getToken,
-  saveToken,
-  clearAuth,
-  exchangeCodeForToken,
-  fetchCalendarEvents
+class FeishuSyncServiceClass {
+  getAuthUrl(): string { return getAuthUrl() }
+  getAppId(): string { return getAppId() }
+  setAppId(id: string): void { setAppId(id) }
+  getAppSecret(): string { return getAppSecret() }
+  setAppSecret(secret: string): void { setAppSecret(secret) }
+  isConfigured(): boolean { return isConfigured() }
+  isAuthorized(): boolean { return isAuthorized() }
+  getToken(): FeishuToken | null { return getToken() }
+  saveToken(token: FeishuToken): void { saveToken(token) }
+  clearAuth(): void { clearAuth() }
+  exchangeCodeForToken(code: string, onResult: (success: boolean, msg: string) => void): void { exchangeCodeForToken(code, onResult) }
+  fetchCalendarEvents(onResult: (tasks: Task[], msg: string) => void): void { fetchCalendarEvents(onResult) }
 }
+
+export const FeishuSyncService = new FeishuSyncServiceClass()
