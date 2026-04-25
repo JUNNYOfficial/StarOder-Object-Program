@@ -39,12 +39,15 @@ struct Settings {
       this.feishuMsg = '请先填写 App ID 和 App Secret'
       return
     }
-    const context = getContext(this) as common.UIAbilityContext
-    const want: Want = {
-      action: 'ohos.want.action.viewData',
-      uri: FeishuSyncService.getAuthUrl()
-    }
-    context.startAbility(want)
+    this.feishuMsg = '正在连接飞书...'
+    FeishuSyncService.exchangeCodeForToken('', (success, msg) => {
+      if (success) {
+        this.feishuMsg = '连接成功！'
+        this.feishuConnected = FeishuSyncService.isAuthorized()
+      } else {
+        this.feishuMsg = `连接失败: ${msg}`
+      }
+    })
   }
 
   syncFeishu() {
