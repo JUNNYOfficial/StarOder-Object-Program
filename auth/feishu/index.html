@@ -2,302 +2,311 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>星序 - 飞书授权回调</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>星序 · 飞书授权</title>
   <style>
+    :root {
+      --bg: #f5f7fa;
+      --card: #ffffff;
+      --brand: #4f6ef7;
+      --brand-light: #eef1ff;
+      --text: #1a1a2e;
+      --text-secondary: #6b7280;
+      --border: #e5e7eb;
+      --success: #10b981;
+      --error: #ef4444;
+      --shadow: 0 4px 24px rgba(0,0,0,0.08);
+    }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans SC', sans-serif;
+      background: var(--bg);
       min-height: 100vh;
       display: flex;
       justify-content: center;
       align-items: center;
-      padding: 20px;
+      padding: 24px;
+      -webkit-font-smoothing: antialiased;
     }
     .card {
-      background: white;
-      border-radius: 20px;
-      padding: 40px;
-      max-width: 480px;
+      background: var(--card);
+      border-radius: 24px;
+      padding: 48px 36px;
+      max-width: 420px;
       width: 100%;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      box-shadow: var(--shadow);
       text-align: center;
+      animation: slideUp 0.5s ease-out;
     }
-    .logo {
-      font-size: 48px;
-      margin-bottom: 8px;
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .icon {
+      width: 64px;
+      height: 64px;
+      background: var(--brand-light);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      font-size: 28px;
     }
     h1 {
-      font-size: 24px;
-      color: #1a1a2e;
-      margin-bottom: 8px;
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 6px;
+      letter-spacing: -0.3px;
     }
     .subtitle {
-      color: #666;
+      color: var(--text-secondary);
       font-size: 14px;
       margin-bottom: 32px;
     }
-    .code-box {
-      background: #f8f9fa;
-      border: 2px dashed #667eea;
-      border-radius: 12px;
-      padding: 24px;
-      margin: 20px 0;
-      word-break: break-all;
+    .code-card {
+      background: var(--brand-light);
+      border: 1.5px dashed var(--brand);
+      border-radius: 16px;
+      padding: 24px 20px;
+      margin-bottom: 20px;
+      transition: all 0.3s ease;
+    }
+    .code-card:hover {
+      border-style: solid;
+      box-shadow: 0 0 0 4px rgba(79,110,247,0.08);
     }
     .code-label {
       font-size: 12px;
-      color: #666;
+      font-weight: 600;
+      color: var(--brand);
       text-transform: uppercase;
-      letter-spacing: 1px;
-      margin-bottom: 12px;
+      letter-spacing: 1.5px;
+      margin-bottom: 10px;
     }
     .code-value {
-      font-family: 'SF Mono', Monaco, monospace;
-      font-size: 20px;
-      color: #1a1a2e;
+      font-family: 'SF Mono', 'Menlo', 'Monaco', monospace;
+      font-size: 18px;
+      color: var(--text);
       font-weight: 600;
-      line-height: 1.6;
+      line-height: 1.5;
+      word-break: break-all;
+      letter-spacing: 0.5px;
     }
     .btn {
-      display: inline-block;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      width: 100%;
+      background: var(--brand);
       color: white;
       border: none;
-      padding: 14px 32px;
-      border-radius: 12px;
+      padding: 14px 24px;
+      border-radius: 14px;
       font-size: 16px;
       font-weight: 600;
       cursor: pointer;
-      margin-top: 16px;
-      transition: transform 0.2s, box-shadow 0.2s;
-      width: 100%;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
     }
     .btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+      background: #3d5ce5;
+      transform: translateY(-1px);
+      box-shadow: 0 8px 20px rgba(79,110,247,0.3);
     }
     .btn:active {
       transform: translateY(0);
     }
-    .btn:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-      transform: none;
+    .btn.copied {
+      background: var(--success);
     }
-    .success {
-      color: #28a745;
+    .toast {
+      margin-top: 14px;
       font-size: 14px;
-      margin-top: 12px;
       font-weight: 500;
+      color: var(--success);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      height: 20px;
     }
-    .error {
-      color: #dc3545;
-      font-size: 14px;
-      margin-top: 12px;
-    }
+    .toast.show { opacity: 1; }
     .steps {
+      margin-top: 28px;
       text-align: left;
-      background: #f8f9fa;
-      border-radius: 12px;
-      padding: 20px;
-      margin-top: 24px;
+      background: #f9fafb;
+      border-radius: 16px;
+      padding: 20px 24px;
     }
-    .steps h3 {
-      font-size: 14px;
-      color: #333;
-      margin-bottom: 12px;
+    .steps-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 14px;
     }
     .step {
       display: flex;
       align-items: flex-start;
-      margin-bottom: 10px;
+      gap: 12px;
+      margin-bottom: 12px;
       font-size: 13px;
-      color: #555;
+      color: var(--text-secondary);
+      line-height: 1.5;
     }
+    .step:last-child { margin-bottom: 0; }
     .step-num {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
       width: 22px;
       height: 22px;
       border-radius: 50%;
+      background: var(--brand);
+      color: white;
+      font-size: 11px;
+      font-weight: 700;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 12px;
-      font-weight: 600;
-      margin-right: 10px;
       flex-shrink: 0;
+      margin-top: 1px;
     }
-    .loading {
-      display: inline-block;
-      width: 20px;
-      height: 20px;
-      border: 3px solid #f3f3f3;
-      border-top: 3px solid #667eea;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin: 20px auto;
+    .error-card {
+      padding: 40px 20px;
     }
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
+    .error-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+    .error-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--error);
+      margin-bottom: 8px;
+    }
+    .error-desc {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.6;
     }
     .hidden { display: none; }
-    .manual-copy {
-      margin-top: 12px;
-      font-size: 13px;
-      color: #666;
-    }
-    .manual-copy code {
-      background: #e9ecef;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-family: monospace;
-    }
   </style>
 </head>
 <body>
-  <div class="card">
-    <div class="logo">✨</div>
-    <h1>星序 StarOrder</h1>
-    <p class="subtitle">飞书日历授权</p>
-
-    <div id="loading" class="loading"></div>
+  <div class="card" id="main-card">
+    <div id="loading-view">
+      <div class="icon">✨</div>
+      <h1>星序 StarOrder</h1>
+      <p class="subtitle">正在获取授权码…</p>
+      <div style="width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--brand);border-radius:50%;animation:spin 0.8s linear infinite;margin:20px auto;"></div>
+    </div>
 
     <div id="success-view" class="hidden">
-      <div class="code-box">
-        <div class="code-label">授权码</div>
+      <div class="icon">🔐</div>
+      <h1>授权成功</h1>
+      <p class="subtitle">飞书日历已授权，请复制下方授权码</p>
+
+      <div class="code-card">
+        <div class="code-label">Authorization Code</div>
         <div class="code-value" id="code-display">---</div>
       </div>
 
       <button class="btn" id="copy-btn" onclick="copyCode()">
-        📋 复制授权码
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+        复制授权码
       </button>
-      <div id="copy-status" class="success hidden">✅ 已复制！请回到星序应用粘贴</div>
+      <div class="toast" id="toast">✅ 已复制，请回到星序应用粘贴</div>
 
       <div class="steps">
-        <h3>下一步</h3>
+        <div class="steps-title">下一步</div>
         <div class="step">
           <span class="step-num">1</span>
-          <span>点击上方「复制授权码」按钮</span>
+          <span>点击上方按钮复制授权码</span>
         </div>
         <div class="step">
           <span class="step-num">2</span>
-          <span>切换回「星序」应用</span>
+          <span>返回「星序」应用</span>
         </div>
         <div class="step">
           <span class="step-num">3</span>
-          <span>在授权码输入框中粘贴，点击「提交授权码」</span>
+          <span>粘贴到输入框，点击提交</span>
         </div>
       </div>
     </div>
 
-    <div id="error-view" class="hidden">
-      <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
-      <h2 style="color: #dc3545; margin-bottom: 12px;">未获取到授权码</h2>
-      <p style="color: #666; font-size: 14px; line-height: 1.6;">
-        可能是授权流程未完成，或授权被拒绝。<br>
-        请返回应用重新尝试。
-      </p>
-      <div style="margin-top: 16px; font-size: 12px; color: #999;">
-        URL: <code id="error-url" style="word-break: break-all;"></code>
+    <div id="error-view" class="hidden error-card">
+      <div class="error-icon">😕</div>
+      <div class="error-title">未获取到授权码</div>
+      <div class="error-desc">
+        授权流程未完成，或用户取消了授权。<br>
+        请返回星序应用重新尝试。
       </div>
     </div>
   </div>
 
   <script>
-    // 解析 URL 参数
-    function getUrlParam(name) {
-      const params = new URLSearchParams(window.location.search);
-      return params.get(name);
+    function getParam(name) {
+      return new URLSearchParams(window.location.search).get(name);
     }
+    function $(id) { return document.getElementById(id); }
 
-    // 显示 code
-    function showCode(code) {
-      document.getElementById('loading').classList.add('hidden');
-      document.getElementById('success-view').classList.remove('hidden');
-      document.getElementById('code-display').textContent = code;
-
-      // 页面加载后尝试自动复制
-      setTimeout(() => {
-        autoCopy(code);
-      }, 500);
-    }
-
-    // 显示错误
-    function showError() {
-      document.getElementById('loading').classList.add('hidden');
-      document.getElementById('error-view').classList.remove('hidden');
-      document.getElementById('error-url').textContent = window.location.href;
-    }
-
-    // 自动复制
     async function autoCopy(text) {
       try {
         if (navigator.clipboard && navigator.clipboard.writeText) {
           await navigator.clipboard.writeText(text);
-          const status = document.getElementById('copy-status');
-          status.classList.remove('hidden');
-          status.textContent = '✅ 已自动复制！请回到星序应用粘贴';
+          showToast('✅ 已自动复制，请回到星序应用粘贴');
         }
-      } catch (err) {
-        console.log('自动复制失败，等待用户手动复制:', err);
-      }
+      } catch (e) {}
     }
 
-    // 手动复制
+    function showToast(msg) {
+      const t = $('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 3000);
+    }
+
     function copyCode() {
-      const code = document.getElementById('code-display').textContent;
-      const btn = document.getElementById('copy-btn');
-      const status = document.getElementById('copy-status');
+      const code = $('code-display').textContent;
+      const btn = $('copy-btn');
 
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(code).then(() => {
-          btn.textContent = '✅ 已复制';
-          status.classList.remove('hidden');
+          btn.classList.add('copied');
+          btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> 已复制';
+          showToast('✅ 已复制，请回到星序应用粘贴');
           setTimeout(() => {
-            btn.textContent = '📋 复制授权码';
-          }, 2000);
-        }).catch(() => {
-          fallbackCopy(code, btn, status);
-        });
+            btn.classList.remove('copied');
+            btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> 复制授权码';
+          }, 2500);
+        }).catch(() => fallbackCopy(code));
       } else {
-        fallbackCopy(code, btn, status);
+        fallbackCopy(code);
       }
     }
 
-    // 降级复制方案
-    function fallbackCopy(text, btn, status) {
-      const textArea = document.createElement('textarea');
-      textArea.value = text;
-      textArea.style.position = 'fixed';
-      textArea.style.left = '-9999px';
-      document.body.appendChild(textArea);
-      textArea.select();
+    function fallbackCopy(text) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;left:-9999px;';
+      document.body.appendChild(ta);
+      ta.select();
       try {
         document.execCommand('copy');
-        btn.textContent = '✅ 已复制';
-        status.classList.remove('hidden');
-        setTimeout(() => {
-          btn.textContent = '📋 复制授权码';
-        }, 2000);
-      } catch (err) {
-        btn.textContent = '❌ 复制失败';
-        status.textContent = '请手动选中上方授权码复制';
-        status.classList.remove('hidden');
+        showToast('✅ 已复制');
+      } catch (e) {
+        showToast('❌ 复制失败，请手动选中复制');
       }
-      document.body.removeChild(textArea);
+      document.body.removeChild(ta);
     }
 
-    // 页面加载时处理
     window.onload = function() {
-      const code = getUrlParam('code');
+      const code = getParam('code');
       if (code && code.length > 5) {
-        showCode(code);
+        $('loading-view').classList.add('hidden');
+        $('success-view').classList.remove('hidden');
+        $('code-display').textContent = code;
+        setTimeout(() => autoCopy(code), 600);
       } else {
-        showError();
+        $('loading-view').classList.add('hidden');
+        $('error-view').classList.remove('hidden');
       }
     };
   </script>
