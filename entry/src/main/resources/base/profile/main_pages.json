@@ -3,6 +3,9 @@
     "pages/Index",
     "pages/AddSchedule",
     "pages/ScheduleDetail",
-    "pages/Settings"
+    "pages/Settings",
+    "pages/CalendarView",
+    "pages/TimerPage",
+    "pages/WellnessView"
   ]
 }

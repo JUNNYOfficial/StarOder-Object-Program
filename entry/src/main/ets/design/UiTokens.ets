@@ -1,33 +1,34 @@
-// Apple Minimal Design System for Neurodiversity
+// 冷调蓝灰配色系统 — 参考 Manatee / Outer Space / Pewter Blue / Metallic Blue / Cool Black
 export class UiTokens {
-  // ===== Apple 风格颜色 =====
-  static readonly bgPage: string = '#F2F2F7'      // 页面背景 极浅灰
+  // ===== 页面层级 =====
+  static readonly bgPage: string = '#F4F6F8'      // 极浅冷灰
   static readonly bgCard: string = '#FFFFFF'      // 卡片纯白
-  static readonly bgHover: string = '#F5F5F7'     // 悬停/次级背景
+  static readonly bgHover: string = '#EDF1F5'     // 悬停/输入背景
 
-  static readonly textPrimary: string = '#1D1D1F'   // 主文字 近黑
-  static readonly textSecondary: string = '#6E6E73' // 次要文字 灰
-  static readonly textTertiary: string = '#A1A1A6'  // 三级文字 浅灰
+  // ===== 文字层级 =====
+  static readonly textPrimary: string = '#0D2A67'   // Cool Black — 标题
+  static readonly textSecondary: string = '#43484B' // Outer Space — 正文
+  static readonly textTertiary: string = '#939EA4'  // Manatee — 辅助文字
   static readonly textInverse: string = '#FFFFFF'
 
-  static readonly divider: string = '#E5E5EA'       // 极淡分割线
+  // ===== 分割线 =====
+  static readonly divider: string = '#D5D9DD'
 
-  // 品牌色 — 只用于关键操作
-  static readonly brand: string = '#007AFF'
-  static readonly brandSoft: string = '#E6F2FF'
+  // ===== 品牌与状态（全部来自配色板） =====
+  static readonly brand: string = '#334A75'       // Metallic Blue — 主按钮/选中
+  static readonly brandSoft: string = '#E8EEF5'   // Metallic Blue 极淡版 — 选中背景
 
-  // 状态色 — 只用于文字或极小元素
-  static readonly done: string = '#34C759'
-  static readonly active: string = '#007AFF'
-  static readonly paused: string = '#FF9500'
-  static readonly todo: string = '#8E8E93'
+  static readonly done: string = '#84B0C1'        // Pewter Blue — 已完成
+  static readonly active: string = '#334A75'      // Metallic Blue — 进行中
+  static readonly paused: string = '#939EA4'      // Manatee — 已暂停
+  static readonly todo: string = '#939EA4'        // Manatee — 待开始
 
   // ===== 高对比度模式 =====
   static readonly hcText: string = '#000000'
   static readonly hcBg: string = '#FFFFFF'
   static readonly hcBorder: string = '#000000'
 
-  // ===== 间距 (更大留白) =====
+  // ===== 间距 =====
   static readonly pagePadding: number = 20
   static readonly cardPadding: number = 20
   static readonly gapS: number = 8
@@ -43,18 +44,9 @@ export class UiTokens {
 
   // ===== 字号 =====
   static readonly textXS: number = 12
-  static readonly textS: number = 13   // Apple 常用小字号
-  static readonly textM: number = 15   // Apple 标准正文
-  static readonly textL: number = 17   // Apple 大正文
+  static readonly textS: number = 13
+  static readonly textM: number = 15
+  static readonly textL: number = 17
   static readonly textXL: number = 20
-  static readonly text2XL: number = 28 // 大标题
-
-  // ===== 辅助方法 =====
-  static textPrimaryColor(hc: boolean): string {
-    return hc ? UiTokens.hcText : UiTokens.textPrimary
-  }
-
-  static textSecondaryColor(hc: boolean): string {
-    return hc ? '#333333' : UiTokens.textSecondary
-  }
+  static readonly text2XL: number = 28
 }

@@ -77,6 +77,35 @@ struct Index {
             .fontSize(this.settings.largeText ? UiTokens.text2XL : UiTokens.textXL)
             .fontWeight(FontWeight.Bold)
             .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+
+          Row({ space: 8 }) {
+            Button() {
+              Text('日历')
+                .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                .fontColor(UiTokens.brand)
+                .fontWeight(FontWeight.Medium)
+            }
+            .backgroundColor(UiTokens.brandSoft)
+            .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+            .borderRadius(UiTokens.radiusM)
+            .onClick(() => {
+              router.pushUrl({ url: 'pages/CalendarView' })
+            })
+
+            Button() {
+              Text('专注')
+                .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                .fontColor(UiTokens.brand)
+                .fontWeight(FontWeight.Medium)
+            }
+            .backgroundColor(UiTokens.brandSoft)
+            .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+            .borderRadius(UiTokens.radiusM)
+            .onClick(() => {
+              router.pushUrl({ url: 'pages/TimerPage' })
+            })
+          }
+          .margin({ left: 12 })
         }
         .width('100%')
         .alignItems(VerticalAlign.Center)

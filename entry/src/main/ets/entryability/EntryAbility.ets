@@ -3,12 +3,46 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window } from '@kit.ArkUI';
 import { dataStore } from '../models/DataStore';
 import { Task, SubTask, TaskType, TaskIntensity, TimeBlock, TaskStatus } from '../models/DataModels';
+import { FeishuSyncService } from '../services/FeishuSyncService';
 
 const DOMAIN = 0x0000;
 
 export default class EntryAbility extends UIAbility {
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onCreate');
+    this.handleFeishuAuth(want);
+  }
+
+  onNewWant(want: Want, launchParam: AbilityConstant.LaunchParam): void {
+    hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onNewWant');
+    this.handleFeishuAuth(want);
+  }
+
+  private handleFeishuAuth(want: Want): void {
+    const uri = want.uri;
+    if (uri && uri.startsWith('starorder://auth/feishu')) {
+      const code = this.extractQueryParam(uri, 'code');
+      if (code) {
+        FeishuSyncService.exchangeCodeForToken(code, (success, msg) => {
+          hilog.info(DOMAIN, 'testTag', 'Feishu auth: %{public}s, %{public}s', String(success), msg);
+        });
+      }
+    }
+  }
+
+  private extractQueryParam(uri: string, key: string): string {
+    const idx = uri.indexOf('?');
+    if (idx < 0) return '';
+    const query = uri.substring(idx + 1);
+    const pairs = query.split('&');
+    for (let i = 0; i < pairs.length; i++) {
+      const pair = pairs[i];
+      const eq = pair.indexOf('=');
+      if (eq > 0 && pair.substring(0, eq) === key) {
+        return decodeURIComponent(pair.substring(eq + 1));
+      }
+    }
+    return '';
   }
 
   onDestroy(): void {
