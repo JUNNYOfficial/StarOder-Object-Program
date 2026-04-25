@@ -672,7 +672,7 @@ struct CourseSchedulePage {
               })
             }
             .width('100%')
-            .maxHeight(300)
+            .height(300)
 
             Row({ space: UiTokens.gapM }) {
               Button('取消')

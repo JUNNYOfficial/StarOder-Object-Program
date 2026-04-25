@@ -57,30 +57,14 @@ class CalendarSyncServiceClass {
           resolve([])
           return
         }
-        this.calendarMgr.getAllCalendars()
-          .then((calendars: calendarManager.Calendar[]) => {
-            const result: CalendarInfo[] = []
-            for (let i = 0; i < calendars.length; i++) {
-              const cal = calendars[i]
-              let accountName = ''
-              let accountType = ''
-              try {
-                const account = cal.getAccount()
-                if (account) {
-                  accountName = account.name || ''
-                  accountType = account.type || ''
-                }
-              } catch (e) {
-                console.warn(TAG, '获取日历账户信息失败:', JSON.stringify(e))
-              }
-              const isCloud = accountType !== '' && accountType !== 'LOCAL'
-              const displayName = accountName || '未命名日历'
-              result.push(new CalendarInfo(cal.id, displayName, accountName, isCloud))
-            }
-            resolve(result)
+        // 原子化服务仅支持 getCalendar()，不支持 getAllCalendars() 和 getAccount()
+        this.calendarMgr.getCalendar()
+          .then((cal: calendarManager.Calendar) => {
+            const displayName = '系统日历'
+            resolve([new CalendarInfo(cal.id, displayName, '', false)])
           })
           .catch((err: BusinessError) => {
-            console.error(TAG, '获取日历列表失败:', JSON.stringify(err))
+            console.error(TAG, '获取日历失败:', JSON.stringify(err))
             resolve([])
           })
       })
@@ -103,31 +87,8 @@ class CalendarSyncServiceClass {
         return
       }
 
-      // 如果指定了日历ID，尝试从所有日历中查找
-      if (calendarId >= 0) {
-        this.calendarMgr.getAllCalendars()
-          .then((calendars: calendarManager.Calendar[]) => {
-            let targetCal: calendarManager.Calendar | null = null
-            for (let i = 0; i < calendars.length; i++) {
-              if (calendars[i].id === calendarId) {
-                targetCal = calendars[i]
-                break
-              }
-            }
-            if (targetCal) {
-              this.doSyncWithCalendar(state, targetCal, onResult)
-            } else {
-              // 未找到指定日历，回退到默认日历
-              this.fallbackToDefaultCalendar(state, onResult)
-            }
-          })
-          .catch((err: BusinessError) => {
-            console.error(TAG, '获取日历列表失败:', JSON.stringify(err))
-            this.fallbackToDefaultCalendar(state, onResult)
-          })
-      } else {
-        this.fallbackToDefaultCalendar(state, onResult)
-      }
+      // 原子化服务不支持 getAllCalendars()，直接使用默认日历
+      this.fallbackToDefaultCalendar(state, onResult)
     })
   }
 
