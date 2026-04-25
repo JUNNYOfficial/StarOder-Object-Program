@@ -8,9 +8,10 @@ import { UiTokens } from '../design/UiTokens'
 @Component
 export struct SettingsTab {
   @State settings: UserPreferences = new UserPreferences()
-  @State feishuAppId: string = ''
-  @State feishuAppSecret: string = ''
+  @State feishuAppId: string = 'cli_a966274eeef8dcc8'
+  @State feishuAppSecret: string = 'A9ob9MaNUT6RsFMi0udWkfLESJIADjUW'
   @State feishuConnected: boolean = false
+  @State feishuConfigured: boolean = false
   @State feishuMsg: string = ''
   @State exportDataStr: string = ''
   @State importDataStr: string = ''
@@ -25,12 +26,14 @@ export struct SettingsTab {
     this.feishuAppId = FeishuSyncService.getAppId()
     this.feishuAppSecret = FeishuSyncService.getAppSecret()
     this.feishuConnected = FeishuSyncService.isAuthorized()
+    this.feishuConfigured = FeishuSyncService.isConfigured()
   }
 
   saveFeishuConfig() {
     FeishuSyncService.setAppId(this.feishuAppId.trim())
     FeishuSyncService.setAppSecret(this.feishuAppSecret.trim())
     this.loadFeishuStatus()
+    this.feishuMsg = '配置已保存'
   }
 
   connectFeishu() {
@@ -213,7 +216,7 @@ export struct SettingsTab {
             .width('100%')
 
           Column({ space: UiTokens.gapM }) {
-            if (!FeishuSyncService.isConfigured()) {
+            if (!this.feishuConfigured) {
               Column({ space: UiTokens.gapS }) {
                 TextInput({ placeholder: '飞书 App ID', text: $$this.feishuAppId })
                   .width('100%')
