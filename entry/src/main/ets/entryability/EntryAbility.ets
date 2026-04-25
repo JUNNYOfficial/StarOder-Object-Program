@@ -8,14 +8,27 @@ import { FeishuSyncService } from '../services/FeishuSyncService';
 const DOMAIN = 0x0000;
 
 export default class EntryAbility extends UIAbility {
+  private launchWantUri: string = 'pages/Index'
+
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onCreate');
     this.handleFeishuAuth(want);
+    this.extractLaunchUrl(want);
   }
 
   onNewWant(want: Want, launchParam: AbilityConstant.LaunchParam): void {
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onNewWant');
     this.handleFeishuAuth(want);
+    this.extractLaunchUrl(want);
+  }
+
+  private extractLaunchUrl(want: Want): void {
+    if (want.parameters) {
+      const urlValue = want.parameters['url']
+      if (urlValue) {
+        this.launchWantUri = String(urlValue)
+      }
+    }
   }
 
   private handleFeishuAuth(want: Want): void {
@@ -54,10 +67,7 @@ export default class EntryAbility extends UIAbility {
     dataStore.init(this.context);
     this.seedSampleData();
 
-    const want = this.context.getWant();
-    const url = (want?.parameters?.['url'] as string) || 'pages/Index';
-
-    windowStage.loadContent(url, (err) => {
+    windowStage.loadContent(this.launchWantUri, (err) => {
       if (err.code) {
         hilog.error(DOMAIN, 'testTag', 'Failed to load the content. Cause: %{public}s', JSON.stringify(err));
         return;
