@@ -11,7 +11,7 @@ const KEY_FEISHU_APP_SECRET = 'feishu_app_secret'
 
 const TOKEN_URL = 'https://open.feishu.cn/open-apis/authen/v1/access_token'
 const CALENDAR_URL = 'https://open.feishu.cn/open-apis/calendar/v4/calendars/primary/events'
-const REDIRECT_URI = 'starorder://auth/feishu'
+const REDIRECT_URI = 'https://www.starorder.cloud/auth/feishu'
 
 export class FeishuToken {
   accessToken: string

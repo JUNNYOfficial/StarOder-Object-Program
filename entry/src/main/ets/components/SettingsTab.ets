@@ -13,6 +13,7 @@ export struct SettingsTab {
   @State feishuConnected: boolean = false
   @State feishuConfigured: boolean = false
   @State feishuMsg: string = ''
+  @State feishuAuthCode: string = ''
   @State exportDataStr: string = ''
   @State importDataStr: string = ''
   @State dataMsg: string = ''
@@ -41,12 +42,26 @@ export struct SettingsTab {
       this.feishuMsg = '请先填写 App ID 和 App Secret'
       return
     }
-    const context = getContext(this) as common.UIAbilityContext
-    const want: Want = {
-      action: 'ohos.want.action.viewData',
-      uri: FeishuSyncService.getAuthUrl()
+    // 原子化服务无法跳转外部浏览器，提示用户手动复制 URL 授权
+    this.feishuMsg = '请复制下方授权链接到浏览器打开并完成授权'
+  }
+
+  submitAuthCode() {
+    const code = this.feishuAuthCode.trim()
+    if (!code) {
+      this.feishuMsg = '请输入授权码'
+      return
     }
-    context.startAbility(want)
+    this.feishuMsg = '正在换取令牌...'
+    FeishuSyncService.exchangeCodeForToken(code, (success, msg) => {
+      if (success) {
+        this.feishuMsg = '授权成功！可以同步日程了'
+        this.feishuAuthCode = ''
+        this.loadFeishuStatus()
+      } else {
+        this.feishuMsg = `授权失败: ${msg}`
+      }
+    })
   }
 
   syncFeishu() {
@@ -259,6 +274,43 @@ export struct SettingsTab {
                     .onClick(() => {
                       this.connectFeishu()
                     })
+
+                  // 授权链接和手动输入授权码
+                  if (this.feishuMsg.includes('授权链接')) {
+                    Column({ space: UiTokens.gapS }) {
+                      Text('授权链接（复制到浏览器打开）')
+                        .fontSize(this.baseFont())
+                        .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+                        .width('100%')
+
+                      Text(FeishuSyncService.getAuthUrl())
+                        .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                        .fontColor(UiTokens.brand)
+                        .width('100%')
+                        .maxLines(2)
+                        .textOverflow({ overflow: TextOverflow.Ellipsis })
+
+                      TextInput({ placeholder: '粘贴浏览器回调地址中的 code 参数', text: $$this.feishuAuthCode })
+                        .width('100%')
+                        .height(44)
+                        .fontSize(this.baseFont())
+                        .backgroundColor(UiTokens.bgHover)
+                        .placeholderColor(this.settings.highContrast ? '#999999' : UiTokens.textTertiary)
+                        .borderRadius(UiTokens.radiusL)
+
+                      Button('提交授权码')
+                        .width('100%')
+                        .height(44)
+                        .fontSize(this.baseFont())
+                        .fontColor(UiTokens.textInverse)
+                        .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
+                        .borderRadius(UiTokens.radiusL)
+                        .onClick(() => {
+                          this.submitAuthCode()
+                        })
+                    }
+                    .width('100%')
+                  }
                 } else {
                   Row({ space: UiTokens.gapM }) {
                     Button('同步日程')
