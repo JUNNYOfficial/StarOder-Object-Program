@@ -1,81 +1,18 @@
 import { router } from '@kit.ArkUI'
-import { common, Want } from '@kit.AbilityKit'
 import { UserPreferences } from '../models/DataModels'
 import { dataStore } from '../models/DataStore'
-import { FeishuSyncService } from '../services/FeishuSyncService'
 import { UiTokens } from '../design/UiTokens'
 
 @Entry
 @Component
 struct Settings {
   @State settings: UserPreferences = new UserPreferences()
-  @State feishuAppId: string = ''
-  @State feishuAppSecret: string = ''
-  @State feishuConnected: boolean = false
-  @State feishuMsg: string = ''
   @State exportDataStr: string = ''
   @State importDataStr: string = ''
   @State dataMsg: string = ''
 
   aboutToAppear() {
     this.settings = dataStore.getUserPrefs()
-    this.loadFeishuStatus()
-  }
-
-  loadFeishuStatus() {
-    this.feishuAppId = FeishuSyncService.getAppId()
-    this.feishuAppSecret = FeishuSyncService.getAppSecret()
-    this.feishuConnected = FeishuSyncService.isAuthorized()
-  }
-
-  saveFeishuConfig() {
-    FeishuSyncService.setAppId(this.feishuAppId.trim())
-    FeishuSyncService.setAppSecret(this.feishuAppSecret.trim())
-    this.loadFeishuStatus()
-  }
-
-  connectFeishu() {
-    if (!FeishuSyncService.isConfigured()) {
-      this.feishuMsg = '请先填写 App ID 和 App Secret'
-      return
-    }
-    this.feishuMsg = '正在连接飞书...'
-    FeishuSyncService.exchangeCodeForToken('', (success, msg) => {
-      if (success) {
-        this.feishuMsg = '连接成功！'
-        this.feishuConnected = FeishuSyncService.isAuthorized()
-      } else {
-        this.feishuMsg = `连接失败: ${msg}`
-      }
-    })
-  }
-
-  syncFeishu() {
-    this.feishuMsg = '同步中...'
-    FeishuSyncService.fetchCalendarEvents((tasks, msg) => {
-      if (tasks.length > 0) {
-        const all = dataStore.getActiveTasks()
-        const existingIds = new Set<string>()
-        for (let i = 0; i < all.length; i++) {
-          if (all[i].externalId) {
-            existingIds.add(all[i].externalId)
-          }
-        }
-        for (let i = 0; i < tasks.length; i++) {
-          if (!existingIds.has(tasks[i].externalId)) {
-            all.push(tasks[i])
-          }
-        }
-        dataStore.saveTasks(all)
-      }
-      this.feishuMsg = msg
-    })
-  }
-
-  disconnectFeishu() {
-    FeishuSyncService.clearAuth()
-    this.loadFeishuStatus()
-    this.feishuMsg = '已断开连接'
   }
 
   exportDataFn() {
@@ -238,108 +175,6 @@ struct Settings {
           }
           .width('100%')
 
-          // Feishu sync
-          Column({ space: UiTokens.gapM }) {
-            Text('飞书同步')
-              .fontSize(this.sectionTitle())
-              .fontWeight(FontWeight.Medium)
-              .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
-              .width('100%')
-
-            Column({ space: UiTokens.gapM }) {
-              if (!FeishuSyncService.isConfigured()) {
-                Column({ space: UiTokens.gapS }) {
-                  TextInput({ placeholder: '飞书 App ID', text: $$this.feishuAppId })
-                    .width('100%')
-                    .height(44)
-                    .fontSize(this.baseFont())
-                    .backgroundColor(UiTokens.bgHover)
-                    .placeholderColor(this.settings.highContrast ? '#999999' : UiTokens.textTertiary)
-                    .borderRadius(UiTokens.radiusL)
-
-                  TextInput({ placeholder: '飞书 App Secret', text: $$this.feishuAppSecret })
-                    .width('100%')
-                    .height(44)
-                    .fontSize(this.baseFont())
-                    .backgroundColor(UiTokens.bgHover)
-                    .placeholderColor(this.settings.highContrast ? '#999999' : UiTokens.textTertiary)
-                    .borderRadius(UiTokens.radiusL)
-
-                  Button('保存配置')
-                    .width('100%')
-                    .height(44)
-                    .fontSize(this.baseFont())
-                    .fontColor(UiTokens.textInverse)
-                    .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
-                    .borderRadius(UiTokens.radiusL)
-                    .onClick(() => {
-                      this.saveFeishuConfig()
-                    })
-                }
-                .width('100%')
-              } else {
-                Column({ space: UiTokens.gapM }) {
-                  if (!this.feishuConnected) {
-                    Button('连接飞书')
-                      .width('100%')
-                      .height(48)
-                      .fontSize(this.baseFont())
-                      .fontColor(UiTokens.textInverse)
-                      .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
-                      .borderRadius(UiTokens.radiusXL)
-                      .onClick(() => {
-                        this.connectFeishu()
-                      })
-                  } else {
-                    Row({ space: UiTokens.gapM }) {
-                      Button('同步日程')
-                        .layoutWeight(1)
-                        .height(48)
-                        .fontSize(this.baseFont())
-                        .fontColor(UiTokens.textInverse)
-                        .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
-                        .borderRadius(UiTokens.radiusXL)
-                        .onClick(() => {
-                          this.syncFeishu()
-                        })
-
-                      Button('断开连接')
-                        .layoutWeight(1)
-                        .height(48)
-                        .fontSize(this.baseFont())
-                        .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textSecondary)
-                        .backgroundColor(this.settings.highContrast ? UiTokens.hcBg : UiTokens.bgHover)
-                        .borderRadius(UiTokens.radiusXL)
-                        .onClick(() => {
-                          this.disconnectFeishu()
-                        })
-                    }
-                    .width('100%')
-                  }
-
-                  if (this.feishuMsg) {
-                    Text(this.feishuMsg)
-                      .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
-                      .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textSecondary)
-                      .width('100%')
-                      .textAlign(TextAlign.Center)
-                  }
-                }
-                .width('100%')
-              }
-            }
-            .width('100%')
-            .padding(UiTokens.cardPadding)
-            .backgroundColor(UiTokens.bgCard)
-            .borderRadius(UiTokens.radiusXL)
-            .shadow({
-              radius: this.settings.highContrast ? 0 : 8,
-              color: '#0A000000',
-              offsetX: 0,
-              offsetY: 2
-            })
-          }
-          .width('100%')
 
           // Course import
           Column({ space: UiTokens.gapM }) {

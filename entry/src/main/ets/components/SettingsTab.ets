@@ -3,59 +3,16 @@ import { UserPreferences } from '../models/DataModels'
 import { dataStore } from '../models/DataStore'
 import { UiTokens } from '../design/UiTokens'
 import { pasteboard } from '@kit.BasicServicesKit'
-import { parseIcsText, icsEventsToTasks } from '../utils/IcsParser'
 
 @Component
 export struct SettingsTab {
   @State settings: UserPreferences = new UserPreferences()
-  @State feishuMsg: string = ''
-  @State icsImportStr: string = ''
   @State exportDataStr: string = ''
   @State importDataStr: string = ''
   @State dataMsg: string = ''
 
   aboutToAppear() {
     this.settings = dataStore.getUserPrefs()
-  }
-
-  importIcs() {
-    const text = this.icsImportStr.trim()
-    if (!text) {
-      this.feishuMsg = '请先粘贴 ICS 内容'
-      return
-    }
-    if (!text.includes('BEGIN:VCALENDAR')) {
-      this.feishuMsg = '内容不是有效的 ICS 格式'
-      return
-    }
-    this.feishuMsg = '正在解析...'
-    const events = parseIcsText(text)
-    if (events.length === 0) {
-      this.feishuMsg = '未解析到任何日程'
-      return
-    }
-    const tasks = icsEventsToTasks(events)
-    const all = dataStore.getActiveTasks()
-    let added = 0
-    for (let i = 0; i < tasks.length; i++) {
-      const t = tasks[i]
-      // 简单去重：同一天同标题
-      let exists = false
-      for (let j = 0; j < all.length; j++) {
-        if (all[j].title === t.title && all[j].date === t.date) {
-          exists = true
-          break
-        }
-      }
-      if (!exists) {
-        all.push(t)
-        added++
-      }
-    }
-    dataStore.saveTasks(all)
-    this.feishuMsg = `成功导入 ${added} 个日程`
-    this.icsImportStr = ''
-    promptAction.showToast({ message: `导入 ${added} 个日程`, duration: 2000 })
   }
 
   toggleHighContrast() {
@@ -179,60 +136,6 @@ export struct SettingsTab {
           .backgroundColor(UiTokens.bgCard)
           .borderRadius(UiTokens.radiusXL)
           .padding({ top: 6, bottom: 6 })
-          .shadow({
-            radius: this.settings.highContrast ? 0 : 8,
-            color: '#0A000000',
-            offsetX: 0,
-            offsetY: 2
-          })
-        }
-        .width('100%')
-
-        // Feishu ICS import
-        Column({ space: UiTokens.gapM }) {
-          Text('导入飞书日程')
-            .fontSize(this.sectionTitle())
-            .fontWeight(FontWeight.Medium)
-            .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
-            .width('100%')
-
-          Column({ space: UiTokens.gapM }) {
-            Text('在飞书日历中导出 ICS 文件，打开后复制内容粘贴到下方')
-              .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
-              .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textSecondary)
-              .width('100%')
-
-            TextArea({ placeholder: '粘贴 ICS 文件内容（以 BEGIN:VCALENDAR 开头）...', text: $$this.icsImportStr })
-              .width('100%')
-              .height(120)
-              .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
-              .backgroundColor(UiTokens.bgHover)
-              .placeholderColor(this.settings.highContrast ? '#999999' : UiTokens.textTertiary)
-              .borderRadius(UiTokens.radiusL)
-
-            Button('解析并导入')
-              .width('100%')
-              .height(44)
-              .fontSize(this.baseFont())
-              .fontColor(UiTokens.textInverse)
-              .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
-              .borderRadius(UiTokens.radiusL)
-              .onClick(() => {
-                this.importIcs()
-              })
-
-            if (this.feishuMsg) {
-              Text(this.feishuMsg)
-                .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
-                .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textSecondary)
-                .width('100%')
-                .textAlign(TextAlign.Center)
-            }
-          }
-          .width('100%')
-          .padding(UiTokens.cardPadding)
-          .backgroundColor(UiTokens.bgCard)
-          .borderRadius(UiTokens.radiusXL)
           .shadow({
             radius: this.settings.highContrast ? 0 : 8,
             color: '#0A000000',
