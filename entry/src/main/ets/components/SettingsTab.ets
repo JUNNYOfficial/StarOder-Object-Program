@@ -1,84 +1,61 @@
 import { router, promptAction } from '@kit.ArkUI'
 import { UserPreferences } from '../models/DataModels'
 import { dataStore } from '../models/DataStore'
-import { FeishuSyncService } from '../services/FeishuSyncService'
 import { UiTokens } from '../design/UiTokens'
 import { pasteboard } from '@kit.BasicServicesKit'
+import { parseIcsText, icsEventsToTasks } from '../utils/IcsParser'
 
 @Component
 export struct SettingsTab {
   @State settings: UserPreferences = new UserPreferences()
-  @State feishuAppId: string = 'cli_a966274eeef8dcc8'
-  @State feishuAppSecret: string = 'A9ob9MaNUT6RsFMi0udWkfLESJIADjUW'
-  @State feishuConnected: boolean = false
-  @State feishuConfigured: boolean = false
   @State feishuMsg: string = ''
-  @State feishuAuthCode: string = ''
+  @State icsImportStr: string = ''
   @State exportDataStr: string = ''
   @State importDataStr: string = ''
   @State dataMsg: string = ''
 
   aboutToAppear() {
     this.settings = dataStore.getUserPrefs()
-    this.loadFeishuStatus()
   }
 
-  loadFeishuStatus() {
-    this.feishuAppId = FeishuSyncService.getAppId()
-    this.feishuAppSecret = FeishuSyncService.getAppSecret()
-    this.feishuConnected = FeishuSyncService.isAuthorized()
-    this.feishuConfigured = FeishuSyncService.isConfigured()
-  }
-
-  saveFeishuConfig() {
-    FeishuSyncService.setAppId(this.feishuAppId.trim())
-    FeishuSyncService.setAppSecret(this.feishuAppSecret.trim())
-    this.loadFeishuStatus()
-    this.feishuMsg = '配置已保存'
-  }
-
-  connectFeishu() {
-    if (!FeishuSyncService.isConfigured()) {
-      this.feishuMsg = '请先填写 App ID 和 App Secret'
+  importIcs() {
+    const text = this.icsImportStr.trim()
+    if (!text) {
+      this.feishuMsg = '请先粘贴 ICS 内容'
       return
     }
-    this.feishuMsg = '正在连接飞书...'
-    FeishuSyncService.exchangeCodeForToken('', (success, msg) => {
-      if (success) {
-        this.feishuMsg = '连接成功！可以同步日程了'
-        this.loadFeishuStatus()
-      } else {
-        this.feishuMsg = `连接失败: ${msg}`
-      }
-    })
-  }
-
-  syncFeishu() {
-    this.feishuMsg = '同步中...'
-    FeishuSyncService.fetchCalendarEvents((tasks, msg) => {
-      if (tasks.length > 0) {
-        const all = dataStore.getActiveTasks()
-        const existingIds = new Set<string>()
-        for (let i = 0; i < all.length; i++) {
-          if (all[i].externalId) {
-            existingIds.add(all[i].externalId)
-          }
+    if (!text.includes('BEGIN:VCALENDAR')) {
+      this.feishuMsg = '内容不是有效的 ICS 格式'
+      return
+    }
+    this.feishuMsg = '正在解析...'
+    const events = parseIcsText(text)
+    if (events.length === 0) {
+      this.feishuMsg = '未解析到任何日程'
+      return
+    }
+    const tasks = icsEventsToTasks(events)
+    const all = dataStore.getActiveTasks()
+    let added = 0
+    for (let i = 0; i < tasks.length; i++) {
+      const t = tasks[i]
+      // 简单去重：同一天同标题
+      let exists = false
+      for (let j = 0; j < all.length; j++) {
+        if (all[j].title === t.title && all[j].date === t.date) {
+          exists = true
+          break
         }
-        for (let i = 0; i < tasks.length; i++) {
-          if (!existingIds.has(tasks[i].externalId)) {
-            all.push(tasks[i])
-          }
-        }
-        dataStore.saveTasks(all)
       }
-      this.feishuMsg = msg
-    })
-  }
-
-  disconnectFeishu() {
-    FeishuSyncService.clearAuth()
-    this.loadFeishuStatus()
-    this.feishuMsg = '已断开连接'
+      if (!exists) {
+        all.push(t)
+        added++
+      }
+    }
+    dataStore.saveTasks(all)
+    this.feishuMsg = `成功导入 ${added} 个日程`
+    this.icsImportStr = ''
+    promptAction.showToast({ message: `导入 ${added} 个日程`, duration: 2000 })
   }
 
   toggleHighContrast() {
@@ -211,103 +188,45 @@ export struct SettingsTab {
         }
         .width('100%')
 
-        // Feishu sync
+        // Feishu ICS import
         Column({ space: UiTokens.gapM }) {
-          Text('飞书同步')
+          Text('导入飞书日程')
             .fontSize(this.sectionTitle())
             .fontWeight(FontWeight.Medium)
             .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
             .width('100%')
 
           Column({ space: UiTokens.gapM }) {
-            if (!this.feishuConfigured) {
-              Column({ space: UiTokens.gapS }) {
-                TextInput({ placeholder: '飞书 App ID', text: $$this.feishuAppId })
-                  .width('100%')
-                  .height(44)
-                  .fontSize(this.baseFont())
-                  .backgroundColor(UiTokens.bgHover)
-                  .placeholderColor(this.settings.highContrast ? '#999999' : UiTokens.textTertiary)
-                  .borderRadius(UiTokens.radiusL)
-
-                TextInput({ placeholder: '飞书 App Secret', text: $$this.feishuAppSecret })
-                  .width('100%')
-                  .height(44)
-                  .fontSize(this.baseFont())
-                  .backgroundColor(UiTokens.bgHover)
-                  .placeholderColor(this.settings.highContrast ? '#999999' : UiTokens.textTertiary)
-                  .borderRadius(UiTokens.radiusL)
-
-                Button('保存配置')
-                  .width('100%')
-                  .height(44)
-                  .fontSize(this.baseFont())
-                  .fontColor(UiTokens.textInverse)
-                  .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
-                  .borderRadius(UiTokens.radiusL)
-                  .onClick(() => {
-                    this.saveFeishuConfig()
-                  })
-              }
+            Text('在飞书日历中导出 ICS 文件，打开后复制内容粘贴到下方')
+              .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+              .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textSecondary)
               .width('100%')
-            } else {
-              Column({ space: UiTokens.gapM }) {
-                if (!this.feishuConnected) {
-                  Column({ space: UiTokens.gapM }) {
-                    Button('连接飞书')
-                      .width('100%')
-                      .height(48)
-                      .fontSize(this.baseFont())
-                      .fontColor(UiTokens.textInverse)
-                      .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
-                      .borderRadius(UiTokens.radiusXL)
-                      .onClick(() => {
-                        this.connectFeishu()
-                      })
 
-                    Text('应用将使用 App ID 和 Secret 直接获取访问令牌')
-                      .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
-                      .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textSecondary)
-                      .width('100%')
-                      .textAlign(TextAlign.Center)
-                  }
-                  .width('100%')
-                } else {
-                  Row({ space: UiTokens.gapM }) {
-                    Button('同步日程')
-                      .layoutWeight(1)
-                      .height(48)
-                      .fontSize(this.baseFont())
-                      .fontColor(UiTokens.textInverse)
-                      .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
-                      .borderRadius(UiTokens.radiusXL)
-                      .onClick(() => {
-                        this.syncFeishu()
-                      })
-
-                    Button('断开连接')
-                      .layoutWeight(1)
-                      .height(48)
-                      .fontSize(this.baseFont())
-                      .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textSecondary)
-                      .backgroundColor(this.settings.highContrast ? UiTokens.hcBg : UiTokens.bgHover)
-                      .borderRadius(UiTokens.radiusXL)
-                      .onClick(() => {
-                        this.disconnectFeishu()
-                      })
-                  }
-                  .width('100%')
-                }
-
-                if (this.feishuMsg) {
-                  Text(this.feishuMsg)
-                    .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
-                    .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textSecondary)
-                    .width('100%')
-                    .textAlign(TextAlign.Center)
-                }
-              }
+            TextArea({ placeholder: '粘贴 ICS 文件内容（以 BEGIN:VCALENDAR 开头）...', text: $$this.icsImportStr })
               .width('100%')
+              .height(120)
+              .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+              .backgroundColor(UiTokens.bgHover)
+              .placeholderColor(this.settings.highContrast ? '#999999' : UiTokens.textTertiary)
+              .borderRadius(UiTokens.radiusL)
+
+            Button('解析并导入')
+              .width('100%')
+              .height(44)
+              .fontSize(this.baseFont())
+              .fontColor(UiTokens.textInverse)
+              .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
+              .borderRadius(UiTokens.radiusL)
+              .onClick(() => {
+                this.importIcs()
+              })
+
+            if (this.feishuMsg) {
+              Text(this.feishuMsg)
+                .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textSecondary)
+                .width('100%')
+                .textAlign(TextAlign.Center)
             }
           }
           .width('100%')
