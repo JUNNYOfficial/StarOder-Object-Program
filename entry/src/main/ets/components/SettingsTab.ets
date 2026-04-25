@@ -145,17 +145,37 @@ export struct SettingsTab {
         }
         .width('100%')
 
-        // Course import
+        // Course schedule
         Column({ space: UiTokens.gapM }) {
-          Text('导入课表')
+          Text('课程表')
             .fontSize(this.sectionTitle())
             .fontWeight(FontWeight.Medium)
             .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
             .width('100%')
 
-          Column() {
+          Column({ space: 0 }) {
             Row() {
-              Text('从 CSV 格式导入本周课表')
+              Text('查看周课表')
+                .fontSize(this.baseFont())
+                .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+                .layoutWeight(1)
+
+              Text('>')
+                .fontSize(this.baseFont())
+                .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textTertiary)
+            }
+            .width('100%')
+            .padding(14)
+            .justifyContent(FlexAlign.SpaceBetween)
+            .alignItems(VerticalAlign.Center)
+            .onClick(() => {
+              router.pushUrl({ url: 'pages/CourseSchedulePage' })
+            })
+
+            Divider().strokeWidth(0.5).color(UiTokens.divider).margin({ left: 14 })
+
+            Row() {
+              Text('从 CSV 导入课表')
                 .fontSize(this.baseFont())
                 .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
                 .layoutWeight(1)

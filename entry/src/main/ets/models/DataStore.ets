@@ -2,12 +2,15 @@ import { preferences } from '@kit.ArkData'
 import {
   Task, SubTask, EnergyRecord, MoodSurveyRecord, FocusRecord, UserPreferences
 } from './DataModels'
+import { Course, TimeSlot, CourseScheduleState, DEFAULT_TIME_SLOTS } from './CourseModels'
 
 const KEY_TASKS = 'star_tasks'
 const KEY_ENERGY = 'star_energy_records'
 const KEY_MOOD = 'star_mood_surveys'
 const KEY_FOCUS = 'star_focus_records'
 const KEY_PREFS = 'star_user_prefs'
+const KEY_COURSES = 'star_courses'
+const KEY_COURSE_STATE = 'star_course_state'
 
 class DataStore {
   private pref: preferences.Preferences | null = null
@@ -210,6 +213,47 @@ class DataStore {
     } catch (e) {
       console.error('Import failed:', JSON.stringify(e))
     }
+  }
+
+  // ===== Course Schedule =====
+  getCourseState(): CourseScheduleState {
+    const state = this.get<CourseScheduleState>(KEY_COURSE_STATE, new CourseScheduleState())
+    if (!state.timeSlots || state.timeSlots.length === 0) {
+      state.timeSlots = DEFAULT_TIME_SLOTS.map(s => new TimeSlot(s.slotNumber, s.startTime, s.endTime))
+    }
+    return state
+  }
+
+  saveCourseState(state: CourseScheduleState): void {
+    this.put(KEY_COURSE_STATE, state)
+  }
+
+  getCourses(): Course[] {
+    return this.get<Course[]>(KEY_COURSES, [])
+  }
+
+  saveCourses(courses: Course[]): void {
+    this.put(KEY_COURSES, courses)
+  }
+
+  addCourse(course: Course): void {
+    const courses = this.getCourses()
+    courses.push(course)
+    this.saveCourses(courses)
+  }
+
+  updateCourse(course: Course): void {
+    const courses = this.getCourses()
+    const idx = courses.findIndex(c => c.id === course.id)
+    if (idx >= 0) {
+      courses[idx] = course
+      this.saveCourses(courses)
+    }
+  }
+
+  deleteCourse(id: string): void {
+    const courses = this.getCourses().filter(c => c.id !== id)
+    this.saveCourses(courses)
   }
 
   clearAll(): void {

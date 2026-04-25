@@ -9,6 +9,8 @@
     "pages/WellnessView",
     "pages/VoiceInputPage",
     "pages/CourseImportPage",
+    "pages/CourseSchedulePage",
+    "pages/TimeSlotSettingsPage",
     "pages/RecycleBin"
   ]
 }
