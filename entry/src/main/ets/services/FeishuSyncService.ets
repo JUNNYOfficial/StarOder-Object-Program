@@ -145,25 +145,33 @@ function exchangeCodeForToken(code: string, onResult: (success: boolean, msg: st
     grant_type: 'authorization_code',
     code: code,
     client_id: appId,
-    client_secret: appSecret
+    client_secret: appSecret,
+    redirect_uri: REDIRECT_URI
   })
+
+  console.info(`[Feishu] request URL: ${TOKEN_URL}`)
+  console.info(`[Feishu] request body: ${body}`)
 
   httpRequest.request(
     TOKEN_URL,
     {
       method: http.RequestMethod.POST,
       header: { 'Content-Type': 'application/json' },
-      extraData: body
+      extraData: body,
+      connectTimeout: 15000,
+      readTimeout: 15000
     },
     (err: BusinessError, data: http.HttpResponse) => {
       if (err) {
         console.error(`[Feishu] HTTP error: code=${err.code}, message=${err.message}`)
-        if (err.code === 2300006 || err.message?.includes('SSL')) {
-          onResult(false, '网络连接失败，请检查模拟器/设备是否联网')
+        if (err.code === 2300006 || err.message?.includes('SSL') || err.message?.includes('证书')) {
+          onResult(false, 'HTTPS 证书验证失败，请检查网络或时间设置')
         } else if (err.code === 2300001) {
           onResult(false, 'DNS 解析失败，请检查网络')
+        } else if (err.code === 2300002) {
+          onResult(false, '连接超时，请检查网络')
         } else {
-          onResult(false, `网络请求失败 (${err.code}): ${err.message}`)
+          onResult(false, `网络请求失败 (code=${err.code}): ${err.message}`)
         }
         return
       }
