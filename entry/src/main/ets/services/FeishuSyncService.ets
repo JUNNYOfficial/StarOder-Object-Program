@@ -138,6 +138,8 @@ function exchangeCodeForToken(code: string, onResult: (success: boolean, msg: st
     return
   }
 
+  console.info(`[Feishu] exchanging code, appId=${appId}, code=${code.substring(0, 8)}...`)
+
   const httpRequest = http.createHttp()
   const body = JSON.stringify({
     grant_type: 'authorization_code',
@@ -155,13 +157,22 @@ function exchangeCodeForToken(code: string, onResult: (success: boolean, msg: st
     },
     (err: BusinessError, data: http.HttpResponse) => {
       if (err) {
-        onResult(false, `请求失败: ${err.message}`)
+        console.error(`[Feishu] HTTP error: code=${err.code}, message=${err.message}`)
+        if (err.code === 2300006 || err.message?.includes('SSL')) {
+          onResult(false, '网络连接失败，请检查模拟器/设备是否联网')
+        } else if (err.code === 2300001) {
+          onResult(false, 'DNS 解析失败，请检查网络')
+        } else {
+          onResult(false, `网络请求失败 (${err.code}): ${err.message}`)
+        }
         return
       }
+      console.info(`[Feishu] response status: ${data.responseCode}`)
+      console.info(`[Feishu] response body: ${data.result}`)
       try {
         const result = JSON.parse(data.result as string) as FeishuApiResponse
         if (result.code !== 0) {
-          onResult(false, `飞书错误: ${result.msg}`)
+          onResult(false, `飞书返回错误: ${result.msg} (code=${result.code})`)
           return
         }
         const tokenData = result.data as FeishuTokenData
@@ -169,10 +180,11 @@ function exchangeCodeForToken(code: string, onResult: (success: boolean, msg: st
           saveToken(new FeishuToken(tokenData.access_token, tokenData.refresh_token, tokenData.expires_in))
           onResult(true, '授权成功')
         } else {
-          onResult(false, '未获取到 access_token')
+          onResult(false, '飞书响应中未包含 access_token')
         }
       } catch (e) {
-        onResult(false, `解析响应失败`)
+        console.error(`[Feishu] parse error: ${e}`)
+        onResult(false, `解析飞书响应失败: ${data.result}`)
       }
     }
   )
