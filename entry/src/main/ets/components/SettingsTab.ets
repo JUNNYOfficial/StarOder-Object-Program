@@ -42,57 +42,13 @@ export struct SettingsTab {
       this.feishuMsg = '请先填写 App ID 和 App Secret'
       return
     }
-    const authUrl = FeishuSyncService.getAuthUrl()
-    try {
-      const systemPasteboard = pasteboard.getSystemPasteboard()
-      const pasteData = pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, authUrl)
-      systemPasteboard.setDataSync(pasteData)
-      this.feishuMsg = '授权链接已复制到剪贴板，请粘贴到浏览器打开'
-      promptAction.showToast({ message: '链接已复制', duration: 2000 })
-    } catch (e) {
-      this.feishuMsg = '复制失败，请手动复制下方链接'
-    }
-  }
-
-  private extractCodeFromUrl(input: string): string {
-    // 如果输入是完整 URL，提取 code 参数
-    if (input.includes('code=')) {
-      // 用字符串分割提取 code，避免使用 URL 类
-      const codeIdx = input.indexOf('code=')
-      if (codeIdx >= 0) {
-        let code = input.substring(codeIdx + 5)
-        const endIdx = code.indexOf('&')
-        if (endIdx >= 0) {
-          code = code.substring(0, endIdx)
-        }
-        if (code.length > 0) {
-          return decodeURIComponent(code)
-        }
-      }
-    }
-    return input
-  }
-
-  submitAuthCode() {
-    const rawInput = this.feishuAuthCode.trim()
-    if (!rawInput) {
-      this.feishuMsg = '请输入授权码或回调地址'
-      return
-    }
-    const code = this.extractCodeFromUrl(rawInput)
-    console.info(`[SettingsTab] extracted code: ${code.substring(0, 10)}...`)
-    if (!code || code.length < 5) {
-      this.feishuMsg = '无法识别授权码，请检查输入'
-      return
-    }
-    this.feishuMsg = '正在换取令牌...'
-    FeishuSyncService.exchangeCodeForToken(code, (success, msg) => {
+    this.feishuMsg = '正在连接飞书...'
+    FeishuSyncService.exchangeCodeForToken('', (success, msg) => {
       if (success) {
-        this.feishuMsg = '授权成功！可以同步日程了'
-        this.feishuAuthCode = ''
+        this.feishuMsg = '连接成功！可以同步日程了'
         this.loadFeishuStatus()
       } else {
-        this.feishuMsg = `授权失败: ${msg}`
+        this.feishuMsg = `连接失败: ${msg}`
       }
     })
   }
@@ -298,7 +254,7 @@ export struct SettingsTab {
               Column({ space: UiTokens.gapM }) {
                 if (!this.feishuConnected) {
                   Column({ space: UiTokens.gapM }) {
-                    Button('1. 复制授权链接')
+                    Button('连接飞书')
                       .width('100%')
                       .height(48)
                       .fontSize(this.baseFont())
@@ -309,48 +265,11 @@ export struct SettingsTab {
                         this.connectFeishu()
                       })
 
-                    Text('去浏览器粘贴链接，完成飞书登录授权')
+                    Text('应用将使用 App ID 和 Secret 直接获取访问令牌')
                       .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
                       .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textSecondary)
                       .width('100%')
                       .textAlign(TextAlign.Center)
-
-                    // 授权链接预览
-                    Text(FeishuSyncService.getAuthUrl())
-                      .fontSize(this.settings.largeText ? UiTokens.textS : 11)
-                      .fontColor(UiTokens.brand)
-                      .width('100%')
-                      .padding(10)
-                      .backgroundColor(UiTokens.bgHover)
-                      .borderRadius(UiTokens.radiusM)
-                      .maxLines(2)
-                      .textOverflow({ overflow: TextOverflow.Ellipsis })
-
-                    Divider().strokeWidth(0.5).color(UiTokens.divider).width('100%')
-
-                    Text('2. 粘贴浏览器地址栏的链接（自动提取授权码）')
-                      .fontSize(this.baseFont())
-                      .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
-                      .width('100%')
-
-                    TextInput({ placeholder: '粘贴完整地址或只贴授权码', text: $$this.feishuAuthCode })
-                      .width('100%')
-                      .height(44)
-                      .fontSize(this.baseFont())
-                      .backgroundColor(UiTokens.bgHover)
-                      .placeholderColor(this.settings.highContrast ? '#999999' : UiTokens.textTertiary)
-                      .borderRadius(UiTokens.radiusL)
-
-                    Button('3. 提交授权码')
-                      .width('100%')
-                      .height(44)
-                      .fontSize(this.baseFont())
-                      .fontColor(UiTokens.textInverse)
-                      .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
-                      .borderRadius(UiTokens.radiusL)
-                      .onClick(() => {
-                        this.submitAuthCode()
-                      })
                   }
                   .width('100%')
                 } else {

@@ -3,80 +3,43 @@ import { BusinessError } from '@kit.BasicServicesKit'
 import { Task, TaskType, TaskIntensity, TimeBlock, TaskStatus } from '../models/DataModels'
 import { dataStore } from '../models/DataStore'
 
-const KEY_FEISHU_TOKEN = 'feishu_access_token'
-const KEY_FEISHU_REFRESH = 'feishu_refresh_token'
+const KEY_FEISHU_TOKEN = 'feishu_token'
 const KEY_FEISHU_EXPIRES = 'feishu_token_expires'
 const KEY_FEISHU_APP_ID = 'feishu_app_id'
 const KEY_FEISHU_APP_SECRET = 'feishu_app_secret'
 
-const TOKEN_URL = 'https://open.feishu.cn/open-apis/authen/v1/access_token'
+const TENANT_TOKEN_URL = 'https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal'
 const CALENDAR_URL = 'https://open.feishu.cn/open-apis/calendar/v4/calendars/primary/events'
-const REDIRECT_URI = 'https://junnyofficial.github.io/StarOder-Object-Program/auth/feishu'
 
-export class FeishuToken {
-  accessToken: string
-  refreshToken: string
-  expiresAt: number
-  constructor(accessToken: string, refreshToken: string, expiresIn: number) {
-    this.accessToken = accessToken
-    this.refreshToken = refreshToken
-    this.expiresAt = Date.now() + expiresIn * 1000
-  }
+class TenantTokenResponse {
+  code: number = 0
+  msg: string = ''
+  tenant_access_token: string = ''
+  expire: number = 0
 }
 
 class FeishuApiResponse {
-  code: number
-  msg: string
-  data: FeishuTokenData | FeishuEventData
-  constructor() {
-    this.code = 0
-    this.msg = ''
-    this.data = new FeishuTokenData()
-  }
-}
-
-class FeishuTokenData {
-  access_token: string
-  refresh_token: string
-  expires_in: number
-  constructor() {
-    this.access_token = ''
-    this.refresh_token = ''
-    this.expires_in = 0
-  }
+  code: number = 0
+  msg: string = ''
+  data: FeishuEventData = new FeishuEventData()
 }
 
 class FeishuEventData {
-  items: FeishuEventItem[]
-  constructor() {
-    this.items = []
-  }
+  items: FeishuEventItem[] = []
 }
 
 class FeishuEventTime {
-  timestamp: string
-  constructor() {
-    this.timestamp = '0'
-  }
+  timestamp: string = '0'
 }
 
 class FeishuEventItem {
-  summary: string
-  title: string
-  event_id: string
-  id: string
-  description: string
-  start_time: FeishuEventTime
-  end_time: FeishuEventTime
-  constructor() {
-    this.summary = ''
-    this.title = ''
-    this.event_id = ''
-    this.id = ''
-    this.description = ''
-    this.start_time = new FeishuEventTime()
-    this.end_time = new FeishuEventTime()
-  }
+  summary: string = ''
+  title: string = ''
+  event_id: string = ''
+  id: string = ''
+  description: string = ''
+  start_time: FeishuEventTime = new FeishuEventTime()
+  end_time: FeishuEventTime = new FeishuEventTime()
 }
 
 function getAppId(): string {
@@ -95,113 +58,109 @@ function setAppSecret(secret: string): void {
   dataStore.put(KEY_FEISHU_APP_SECRET, secret)
 }
 
-function getAuthUrl(): string {
-  const appId = getAppId()
-  return `https://open.feishu.cn/open-apis/authen/v1/index?app_id=${appId}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`
-}
-
 function isConfigured(): boolean {
   return getAppId().length > 0 && getAppSecret().length > 0
 }
 
-function getToken(): FeishuToken | null {
-  const access = dataStore.get<string>(KEY_FEISHU_TOKEN, '')
-  if (!access) return null
-  const refresh = dataStore.get<string>(KEY_FEISHU_REFRESH, '')
-  const expires = dataStore.get<number>(KEY_FEISHU_EXPIRES, 0)
-  return new FeishuToken(access, refresh, Math.floor((expires - Date.now()) / 1000))
+function getToken(): string {
+  return dataStore.get<string>(KEY_FEISHU_TOKEN, '')
+}
+
+function getTokenExpires(): number {
+  return dataStore.get<number>(KEY_FEISHU_EXPIRES, 0)
 }
 
 function isAuthorized(): boolean {
   const token = getToken()
   if (!token) return false
-  return Date.now() < token.expiresAt
+  return Date.now() < getTokenExpires()
 }
 
-function saveToken(token: FeishuToken): void {
-  dataStore.put(KEY_FEISHU_TOKEN, token.accessToken)
-  dataStore.put(KEY_FEISHU_REFRESH, token.refreshToken)
-  dataStore.put(KEY_FEISHU_EXPIRES, token.expiresAt)
+function saveToken(token: string, expiresIn: number): void {
+  dataStore.put(KEY_FEISHU_TOKEN, token)
+  dataStore.put(KEY_FEISHU_EXPIRES, Date.now() + expiresIn * 1000)
 }
 
 function clearAuth(): void {
   dataStore.put(KEY_FEISHU_TOKEN, '')
-  dataStore.put(KEY_FEISHU_REFRESH, '')
   dataStore.put(KEY_FEISHU_EXPIRES, 0)
 }
 
+function doPost(url: string, body: string, headers: Record<string, string>,
+  onResult: (statusCode: number, result: string, errMsg: string) => void): void {
+  const req = http.createHttp()
+  req.request(url, {
+    method: http.RequestMethod.POST,
+    header: headers,
+    extraData: body,
+    connectTimeout: 15000,
+    readTimeout: 15000
+  }, (err: BusinessError, data: http.HttpResponse) => {
+    if (err) {
+      const code = err.code ?? 0
+      const msg = err.message ?? '未知网络错误'
+      console.error(`[Feishu] HTTP error: code=${code}, msg=${msg}`)
+      onResult(0, '', `网络请求失败: ${msg}`)
+      return
+    }
+    const resultStr = data.result ? data.result.toString() : ''
+    console.info(`[Feishu] ${url} response: ${resultStr.substring(0, 200)}`)
+    onResult(data.responseCode ?? 200, resultStr, '')
+  })
+}
+
 function exchangeCodeForToken(code: string, onResult: (success: boolean, msg: string) => void): void {
+  // 不再使用 OAuth code 换 token，改为直接用 app_id + app_secret 获取 tenant_access_token
+  connectWithSecret(onResult)
+}
+
+function connectWithSecret(onResult: (success: boolean, msg: string) => void): void {
   const appId = getAppId()
   const appSecret = getAppSecret()
   if (!appId || !appSecret) {
-    onResult(false, '请先配置飞书应用 ID 和 Secret')
+    onResult(false, '请先配置飞书 App ID 和 App Secret')
     return
   }
 
-  console.info(`[Feishu] exchanging code, appId=${appId}, code=${code.substring(0, 8)}...`)
+  console.info(`[Feishu] getting tenant_access_token for appId=${appId}`)
 
-  const httpRequest = http.createHttp()
-  const body = JSON.stringify({
-    grant_type: 'authorization_code',
-    code: code,
-    client_id: appId,
-    client_secret: appSecret,
-    redirect_uri: REDIRECT_URI
-  })
+  const body = JSON.stringify({ app_id: appId, app_secret: appSecret })
 
-  console.info(`[Feishu] request URL: ${TOKEN_URL}`)
-  console.info(`[Feishu] request body: ${body}`)
-
-  httpRequest.request(
-    TOKEN_URL,
-    {
-      method: http.RequestMethod.POST,
-      header: { 'Content-Type': 'application/json' },
-      extraData: body,
-      connectTimeout: 15000,
-      readTimeout: 15000
-    },
-    (err: BusinessError, data: http.HttpResponse) => {
-      if (err) {
-        console.error(`[Feishu] HTTP error: code=${err.code}, message=${err.message}`)
-        if (err.code === 2300006 || err.message?.includes('SSL') || err.message?.includes('证书')) {
-          onResult(false, 'HTTPS 证书验证失败，请检查网络或时间设置')
-        } else if (err.code === 2300001) {
-          onResult(false, 'DNS 解析失败，请检查网络')
-        } else if (err.code === 2300002) {
-          onResult(false, '连接超时，请检查网络')
-        } else {
-          onResult(false, `网络请求失败 (code=${err.code}): ${err.message}`)
-        }
+  doPost(TENANT_TOKEN_URL, body, { 'Content-Type': 'application/json' },
+    (statusCode, resultStr, errMsg) => {
+      if (errMsg) {
+        onResult(false, errMsg)
         return
       }
-      console.info(`[Feishu] response status: ${data.responseCode}`)
-      console.info(`[Feishu] response body: ${data.result}`)
       try {
-        const result = JSON.parse(data.result as string) as FeishuApiResponse
-        if (result.code !== 0) {
-          onResult(false, `飞书返回错误: ${result.msg} (code=${result.code})`)
+        const resp = JSON.parse(resultStr) as TenantTokenResponse
+        if (resp.code !== 0) {
+          onResult(false, `飞书错误: ${resp.msg} (code=${resp.code})`)
           return
         }
-        const tokenData = result.data as FeishuTokenData
-        if (tokenData.access_token) {
-          saveToken(new FeishuToken(tokenData.access_token, tokenData.refresh_token, tokenData.expires_in))
-          onResult(true, '授权成功')
-        } else {
-          onResult(false, '飞书响应中未包含 access_token')
+        if (!resp.tenant_access_token) {
+          onResult(false, '飞书未返回 token，请检查 App ID/Secret 是否正确')
+          return
         }
+        saveToken(resp.tenant_access_token, resp.expire)
+        onResult(true, '连接成功')
       } catch (e) {
-        console.error(`[Feishu] parse error: ${e}`)
-        onResult(false, `解析飞书响应失败: ${data.result}`)
+        onResult(false, `解析响应失败: ${resultStr}`)
       }
-    }
-  )
+    })
 }
 
 function fetchCalendarEvents(onResult: (tasks: Task[], msg: string) => void): void {
   const token = getToken()
-  if (!token || Date.now() >= token.expiresAt) {
-    onResult([], '飞书授权已过期，请重新连接')
+  if (!token || Date.now() >= getTokenExpires()) {
+    // token 过期，自动刷新
+    connectWithSecret((success, msg) => {
+      if (success) {
+        fetchCalendarEvents(onResult)
+      } else {
+        onResult([], `Token 过期且刷新失败: ${msg}`)
+      }
+    })
     return
   }
 
@@ -212,32 +171,34 @@ function fetchCalendarEvents(onResult: (tasks: Task[], msg: string) => void): vo
   const timeMax = end.toISOString()
   const url = `${CALENDAR_URL}?time_min=${encodeURIComponent(timeMin)}&time_max=${encodeURIComponent(timeMax)}&page_size=100`
 
-  const httpRequest = http.createHttp()
-  httpRequest.request(
-    url,
-    {
-      method: http.RequestMethod.GET,
-      header: { 'Authorization': `Bearer ${token.accessToken}` }
+  const req = http.createHttp()
+  req.request(url, {
+    method: http.RequestMethod.GET,
+    header: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
     },
-    (err: BusinessError, data: http.HttpResponse) => {
-      if (err) {
-        onResult([], `请求失败: ${err.message}`)
+    connectTimeout: 15000,
+    readTimeout: 15000
+  }, (err: BusinessError, data: http.HttpResponse) => {
+    if (err) {
+      onResult([], `请求失败: ${err.message ?? '未知错误'}`)
+      return
+    }
+    try {
+      const resultStr = data.result ? data.result.toString() : '{}'
+      const result = JSON.parse(resultStr) as FeishuApiResponse
+      if (result.code !== 0) {
+        onResult([], `飞书错误: ${result.msg} (code=${result.code})`)
         return
       }
-      try {
-        const result = JSON.parse(data.result as string) as FeishuApiResponse
-        if (result.code !== 0) {
-          onResult([], `飞书错误: ${result.msg}`)
-          return
-        }
-        const eventData = result.data as FeishuEventData
-        const tasks = convertEventsToTasks(eventData.items)
-        onResult(tasks, `同步了 ${tasks.length} 个日程`)
-      } catch (e) {
-        onResult([], `解析响应失败`)
-      }
+      const eventData = result.data as FeishuEventData
+      const tasks = convertEventsToTasks(eventData.items)
+      onResult(tasks, `同步了 ${tasks.length} 个日程`)
+    } catch (e) {
+      onResult([], '解析响应失败')
     }
-  )
+  })
 }
 
 function convertEventsToTasks(items: FeishuEventItem[]): Task[] {
@@ -296,17 +257,16 @@ function inferTimeBlock(hour: number): TimeBlock {
 }
 
 class FeishuSyncServiceClass {
-  getAuthUrl(): string { return getAuthUrl() }
   getAppId(): string { return getAppId() }
   setAppId(id: string): void { setAppId(id) }
   getAppSecret(): string { return getAppSecret() }
   setAppSecret(secret: string): void { setAppSecret(secret) }
   isConfigured(): boolean { return isConfigured() }
   isAuthorized(): boolean { return isAuthorized() }
-  getToken(): FeishuToken | null { return getToken() }
-  saveToken(token: FeishuToken): void { saveToken(token) }
+  getToken(): string { return getToken() }
+  saveToken(token: string, expiresIn: number): void { saveToken(token, expiresIn) }
   clearAuth(): void { clearAuth() }
-  exchangeCodeForToken(code: string, onResult: (success: boolean, msg: string) => void): void { exchangeCodeForToken(code, onResult) }
+  exchangeCodeForToken(code: string, onResult: (success: boolean, msg: string) => void): void { connectWithSecret(onResult) }
   fetchCalendarEvents(onResult: (tasks: Task[], msg: string) => void): void { fetchCalendarEvents(onResult) }
 }
 
