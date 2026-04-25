@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>星序 - 飞书授权回调</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .card {
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      max-width: 480px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      text-align: center;
+    }
+    .logo {
+      font-size: 48px;
+      margin-bottom: 8px;
+    }
+    h1 {
+      font-size: 24px;
+      color: #1a1a2e;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      color: #666;
+      font-size: 14px;
+      margin-bottom: 32px;
+    }
+    .code-box {
+      background: #f8f9fa;
+      border: 2px dashed #667eea;
+      border-radius: 12px;
+      padding: 24px;
+      margin: 20px 0;
+      word-break: break-all;
+    }
+    .code-label {
+      font-size: 12px;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+    }
+    .code-value {
+      font-family: 'SF Mono', Monaco, monospace;
+      font-size: 20px;
+      color: #1a1a2e;
+      font-weight: 600;
+      line-height: 1.6;
+    }
+    .btn {
+      display: inline-block;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 14px 32px;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 16px;
+      transition: transform 0.2s, box-shadow 0.2s;
+      width: 100%;
+    }
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+    }
+    .btn:active {
+      transform: translateY(0);
+    }
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .success {
+      color: #28a745;
+      font-size: 14px;
+      margin-top: 12px;
+      font-weight: 500;
+    }
+    .error {
+      color: #dc3545;
+      font-size: 14px;
+      margin-top: 12px;
+    }
+    .steps {
+      text-align: left;
+      background: #f8f9fa;
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 24px;
+    }
+    .steps h3 {
+      font-size: 14px;
+      color: #333;
+      margin-bottom: 12px;
+    }
+    .step {
+      display: flex;
+      align-items: flex-start;
+      margin-bottom: 10px;
+      font-size: 13px;
+      color: #555;
+    }
+    .step-num {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+      margin-right: 10px;
+      flex-shrink: 0;
+    }
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #667eea;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .hidden { display: none; }
+    .manual-copy {
+      margin-top: 12px;
+      font-size: 13px;
+      color: #666;
+    }
+    .manual-copy code {
+      background: #e9ecef;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">✨</div>
+    <h1>星序 StarOrder</h1>
+    <p class="subtitle">飞书日历授权</p>
+
+    <div id="loading" class="loading"></div>
+
+    <div id="success-view" class="hidden">
+      <div class="code-box">
+        <div class="code-label">授权码</div>
+        <div class="code-value" id="code-display">---</div>
+      </div>
+
+      <button class="btn" id="copy-btn" onclick="copyCode()">
+        📋 复制授权码
+      </button>
+      <div id="copy-status" class="success hidden">✅ 已复制！请回到星序应用粘贴</div>
+
+      <div class="steps">
+        <h3>下一步</h3>
+        <div class="step">
+          <span class="step-num">1</span>
+          <span>点击上方「复制授权码」按钮</span>
+        </div>
+        <div class="step">
+          <span class="step-num">2</span>
+          <span>切换回「星序」应用</span>
+        </div>
+        <div class="step">
+          <span class="step-num">3</span>
+          <span>在授权码输入框中粘贴，点击「提交授权码」</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="error-view" class="hidden">
+      <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
+      <h2 style="color: #dc3545; margin-bottom: 12px;">未获取到授权码</h2>
+      <p style="color: #666; font-size: 14px; line-height: 1.6;">
+        可能是授权流程未完成，或授权被拒绝。<br>
+        请返回应用重新尝试。
+      </p>
+      <div style="margin-top: 16px; font-size: 12px; color: #999;">
+        URL: <code id="error-url" style="word-break: break-all;"></code>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 解析 URL 参数
+    function getUrlParam(name) {
+      const params = new URLSearchParams(window.location.search);
+      return params.get(name);
+    }
+
+    // 显示 code
+    function showCode(code) {
+      document.getElementById('loading').classList.add('hidden');
+      document.getElementById('success-view').classList.remove('hidden');
+      document.getElementById('code-display').textContent = code;
+
+      // 页面加载后尝试自动复制
+      setTimeout(() => {
+        autoCopy(code);
+      }, 500);
+    }
+
+    // 显示错误
+    function showError() {
+      document.getElementById('loading').classList.add('hidden');
+      document.getElementById('error-view').classList.remove('hidden');
+      document.getElementById('error-url').textContent = window.location.href;
+    }
+
+    // 自动复制
+    async function autoCopy(text) {
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(text);
+          const status = document.getElementById('copy-status');
+          status.classList.remove('hidden');
+          status.textContent = '✅ 已自动复制！请回到星序应用粘贴';
+        }
+      } catch (err) {
+        console.log('自动复制失败，等待用户手动复制:', err);
+      }
+    }
+
+    // 手动复制
+    function copyCode() {
+      const code = document.getElementById('code-display').textContent;
+      const btn = document.getElementById('copy-btn');
+      const status = document.getElementById('copy-status');
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(code).then(() => {
+          btn.textContent = '✅ 已复制';
+          status.classList.remove('hidden');
+          setTimeout(() => {
+            btn.textContent = '📋 复制授权码';
+          }, 2000);
+        }).catch(() => {
+          fallbackCopy(code, btn, status);
+        });
+      } else {
+        fallbackCopy(code, btn, status);
+      }
+    }
+
+    // 降级复制方案
+    function fallbackCopy(text, btn, status) {
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-9999px';
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        btn.textContent = '✅ 已复制';
+        status.classList.remove('hidden');
+        setTimeout(() => {
+          btn.textContent = '📋 复制授权码';
+        }, 2000);
+      } catch (err) {
+        btn.textContent = '❌ 复制失败';
+        status.textContent = '请手动选中上方授权码复制';
+        status.classList.remove('hidden');
+      }
+      document.body.removeChild(textArea);
+    }
+
+    // 页面加载时处理
+    window.onload = function() {
+      const code = getUrlParam('code');
+      if (code && code.length > 5) {
+        showCode(code);
+      } else {
+        showError();
+      }
+    };
+  </script>
+</body>
+</html>
