@@ -1,0 +1,8 @@
+{
+  "src": [
+    "pages/Index",
+    "pages/AddSchedule",
+    "pages/ScheduleDetail",
+    "pages/Settings"
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "color": [
+    {
+      "name": "start_window_background",
+      "value": "#FDFCF8"
+    },
+    {
+      "name": "primary_calm",
+      "value": "#4A8FA4"
+    },
+    {
+      "name": "bg_soft",
+      "value": "#FDFCF8"
+    },
+    {
+      "name": "text_primary",
+      "value": "#2C2C2C"
+    },
+    {
+      "name": "text_secondary",
+      "value": "#5A5A5A"
+    },
+    {
+      "name": "border_light",
+      "value": "#E8E6E1"
+    },
+    {
+      "name": "success_soft",
+      "value": "#6BA37B"
+    }
+  ]
+}
