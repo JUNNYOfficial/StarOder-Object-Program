@@ -1,11 +1,11 @@
-import { SubTask } from '../models/ScheduleModel'
-import { AppSettings } from '../models/SettingsModel'
+import { SubTask } from '../models/DataModels'
+import { UserPreferences } from '../models/DataModels'
 import { UiTokens } from '../design/UiTokens'
 
 @Component
 export struct SubTaskItem {
   @Prop subTask: SubTask
-  @Prop settings: AppSettings
+  @Prop settings: UserPreferences
   index: number = 0
   onToggle: () => void = () => {}
 
@@ -13,67 +13,46 @@ export struct SubTaskItem {
     return this.settings.largeText ? UiTokens.textL : UiTokens.textM
   }
 
-  private stepBgColor(): string {
-    if (this.subTask.isCompleted) {
-      return this.settings.highContrast ? UiTokens.hcText : UiTokens.confirm
-    }
-    return this.settings.highContrast ? UiTokens.hcBg : UiTokens.brandSoft
-  }
-
-  private stepTextColor(): string {
-    if (this.subTask.isCompleted) {
-      return UiTokens.textInverse
-    }
-    return this.settings.highContrast ? UiTokens.hcText : UiTokens.brand
-  }
-
-  private checkBtnBgColor(): string {
-    if (this.subTask.isCompleted) {
-      return this.settings.highContrast ? UiTokens.hcText : UiTokens.confirm
-    }
-    return this.settings.highContrast ? UiTokens.hcBg : UiTokens.bgTertiary
-  }
-
   build() {
     Row() {
-      Text(`${this.index + 1}`)
-        .width(this.settings.largeText ? 36 : 28)
-        .height(this.settings.largeText ? 36 : 28)
-        .fontSize(this.baseFont())
-        .fontColor(this.stepTextColor())
-        .fontWeight(FontWeight.Bold)
-        .textAlign(TextAlign.Center)
-        .backgroundColor(this.stepBgColor())
-        .border({ width: this.settings.highContrast ? 1.5 : 0, color: UiTokens.hcBorder })
-        .borderRadius(UiTokens.radiusS)
+      // Check circle
+      Stack() {
+        Circle()
+          .width(this.settings.largeText ? 28 : 22)
+          .height(this.settings.largeText ? 28 : 22)
+          .fill(this.subTask.completed
+            ? (this.settings.highContrast ? UiTokens.hcText : UiTokens.done)
+            : 'transparent')
+          .stroke(this.settings.highContrast ? UiTokens.hcBorder : UiTokens.divider)
+          .strokeWidth(this.subTask.completed ? 0 : 1.5)
+
+        if (this.subTask.completed) {
+          Text('✓')
+            .fontSize(this.settings.largeText ? 14 : 12)
+            .fontColor(UiTokens.textInverse)
+            .fontWeight(FontWeight.Bold)
+        }
+      }
+      .width(this.settings.largeText ? 32 : 26)
+      .height(this.settings.largeText ? 32 : 26)
 
       Text(this.subTask.title)
         .fontSize(this.baseFont())
         .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
         .layoutWeight(1)
         .margin({ left: 12 })
-        .decoration({ type: this.subTask.isCompleted ? TextDecorationType.LineThrough : TextDecorationType.None })
-
-      Text(this.subTask.isCompleted ? '✓' : '')
-        .fontSize(this.baseFont())
-        .fontColor('#FFFFFF')
-        .fontWeight(FontWeight.Bold)
-        .textAlign(TextAlign.Center)
-        .width(this.settings.largeText ? 44 : 36)
-        .height(this.settings.largeText ? 44 : 36)
-        .backgroundColor(this.checkBtnBgColor())
-        .border({ width: this.settings.highContrast ? 1.5 : 0, color: UiTokens.hcBorder })
-        .borderRadius(UiTokens.radiusS)
-        .onClick(() => {
-          this.onToggle()
-        })
+        .decoration({ type: this.subTask.completed ? TextDecorationType.LineThrough : TextDecorationType.None })
+        .fontColor(this.subTask.completed
+          ? (this.settings.highContrast ? '#555555' : UiTokens.textTertiary)
+          : (this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary))
     }
     .width('100%')
-    .padding(12)
-    .backgroundColor(this.settings.highContrast ? UiTokens.hcBg : UiTokens.bgPrimary)
-    .border({ width: this.settings.highContrast ? 1.5 : 1, color: this.settings.highContrast ? UiTokens.hcBorder : UiTokens.border })
-    .borderRadius(UiTokens.radiusM)
+    .padding({ top: 12, bottom: 12 })
+    .backgroundColor(UiTokens.bgCard)
+    .borderRadius(UiTokens.radiusL)
     .margin({ bottom: 8 })
-    .opacity(this.subTask.isCompleted ? 0.6 : 1)
+    .onClick(() => {
+      this.onToggle()
+    })
   }
 }

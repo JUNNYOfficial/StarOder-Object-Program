@@ -1,56 +1,80 @@
 import { router } from '@kit.ArkUI'
-import { Schedule, SubTask, getColorTag, COLOR_TAG_KEYS } from '../models/ScheduleModel'
-import { AppSettings } from '../models/SettingsModel'
-import { storage } from '../utils/StorageUtil'
+import {
+  Task, SubTask, UserPreferences,
+  TaskType, TaskIntensity, TimeBlock, Priority, RepeatMode,
+  getTypeConfig, getIntensityConfig, getTimeBlockConfig
+} from '../models/DataModels'
+import { dataStore } from '../models/DataStore'
 import { UiTokens } from '../design/UiTokens'
 
 @Entry
 @Component
 struct AddSchedule {
-  @State settings: AppSettings = new AppSettings()
   @State title: string = ''
-  @State date: string = ''
+  @State selectedType: TaskType = TaskType.THINK
+  @State selectedIntensity: TaskIntensity = TaskIntensity.LOW
+  @State selectedTimeBlock: TimeBlock = TimeBlock.MORNING
+  @State selectedPriority: Priority = Priority.MEDIUM
+  @State selectedRepeat: RepeatMode = RepeatMode.NONE
+  @State prepareInput: string = ''
+  @State subTaskInput: string = ''
+  @State prepareItems: string[] = []
+  @State subTasks: string[] = []
   @State startTime: string = '09:00'
   @State endTime: string = '10:00'
-  @State selectedTag: string = 'calm'
-  @State notes: string = ''
-  @State prepareItems: string[] = []
-  @State newPrepare: string = ''
-  @State subTasks: string[] = []
-  @State newSubTask: string = ''
+  @State settings: UserPreferences = new UserPreferences()
 
   aboutToAppear() {
-    this.settings = storage.getSettings()
+    this.settings = dataStore.getUserPrefs()
     const now = new Date()
-    const y = now.getFullYear()
-    const m = String(now.getMonth() + 1).padStart(2, '0')
-    const d = String(now.getDate()).padStart(2, '0')
-    this.date = `${y}-${m}-${d}`
+    const h = now.getHours()
+    if (h < 9) this.selectedTimeBlock = TimeBlock.MORNING
+    else if (h < 14) this.selectedTimeBlock = TimeBlock.MORNING
+    else if (h < 18) this.selectedTimeBlock = TimeBlock.AFTERNOON
+    else this.selectedTimeBlock = TimeBlock.EVENING
   }
 
   private baseFont(): number {
     return this.settings.largeText ? UiTokens.textL : UiTokens.textM
   }
 
-  private labelFont(): number {
-    return this.settings.largeText ? UiTokens.textM : UiTokens.textS
+  private sectionTitle(): number {
+    return this.settings.largeText ? UiTokens.textL : UiTokens.textM
   }
 
-  saveSchedule() {
-    if (!this.title.trim()) {
-      return
+  private todayStr(): string {
+    const d = new Date()
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${y}-${m}-${day}`
+  }
+
+  addSubTask() {
+    if (this.subTaskInput.trim()) {
+      this.subTasks.push(this.subTaskInput.trim())
+      this.subTaskInput = ''
     }
+  }
 
-    const schedule = new Schedule(this.title.trim(), this.date, this.startTime, this.endTime)
-    schedule.colorTag = this.selectedTag
-    schedule.notes = this.notes.trim()
-    schedule.prepareItems = this.prepareItems.filter(i => i.trim())
-    schedule.subTasks = this.subTasks.filter(t => t.trim()).map(t => new SubTask(t.trim()))
+  addPrepareItem() {
+    if (this.prepareInput.trim()) {
+      this.prepareItems.push(this.prepareInput.trim())
+      this.prepareInput = ''
+    }
+  }
 
-    const all = storage.getSchedules()
-    all.push(schedule)
-    storage.saveSchedules(all)
-
+  saveTask() {
+    if (!this.title.trim()) return
+    const task = new Task(this.title.trim(), this.todayStr(), this.startTime, this.endTime)
+    task.type = this.selectedType
+    task.intensity = this.selectedIntensity
+    task.timeBlock = this.selectedTimeBlock
+    task.priority = this.selectedPriority
+    task.repeatMode = this.selectedRepeat
+    task.prepareItems = [...this.prepareItems]
+    task.subTasks = this.subTasks.map((title, i) => new SubTask(title, String(i)))
+    dataStore.addTask(task)
     router.back()
   }
 
@@ -61,311 +85,351 @@ struct AddSchedule {
         Button() {
           Text('取消')
             .fontSize(this.baseFont())
-            .fontColor(this.settings.highContrast ? '#333333' : UiTokens.textSecondary)
+            .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textSecondary)
         }
         .backgroundColor('transparent')
         .onClick(() => {
           router.back()
         })
 
-        Text('新日程')
+        Text('新建日程')
           .fontSize(this.settings.largeText ? UiTokens.textXL : UiTokens.textL)
           .fontWeight(FontWeight.Bold)
           .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
 
-        Button('保存')
-          .fontSize(this.baseFont())
-          .fontColor(UiTokens.textInverse)
-          .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
-          .borderRadius(UiTokens.radiusS)
-          .padding({ left: 16, right: 16 })
-          .onClick(() => {
-            this.saveSchedule()
-          })
+        Button() {
+          Text('保存')
+            .fontSize(this.baseFont())
+            .fontWeight(FontWeight.Medium)
+            .fontColor(UiTokens.brand)
+        }
+        .backgroundColor('transparent')
+        .onClick(() => {
+          this.saveTask()
+        })
       }
       .width('100%')
       .height(56)
       .padding({ left: UiTokens.pagePadding, right: UiTokens.pagePadding })
       .justifyContent(FlexAlign.SpaceBetween)
       .alignItems(VerticalAlign.Center)
-      .backgroundColor(this.settings.highContrast ? UiTokens.hcBg : UiTokens.bgSecondary)
-      .border({ width: { bottom: this.settings.highContrast ? 2 : 1 }, color: this.settings.highContrast ? UiTokens.hcBorder : UiTokens.border })
+      .backgroundColor(UiTokens.bgCard)
 
       Scroll() {
-        Column({ space: UiTokens.gapL }) {
-          // Title
-          Column({ space: 6 }) {
-            Text('日程名称 *')
-              .fontSize(this.labelFont())
+        Column({ space: UiTokens.gapXL }) {
+          // Title input
+          Column({ space: UiTokens.gapS }) {
+            Text('日程名称')
+              .fontSize(this.sectionTitle())
               .fontWeight(FontWeight.Medium)
               .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+              .width('100%')
 
-            TextInput({ placeholder: '例如：吃早餐、看医生' })
+            TextInput({ placeholder: '例如：完成数学作业', text: $$this.title })
+              .width('100%')
+              .height(50)
               .fontSize(this.baseFont())
-              .height(this.settings.largeText ? 56 : 48)
-              .backgroundColor(this.settings.highContrast ? UiTokens.hcBg : UiTokens.bgPrimary)
-              .border({ width: this.settings.highContrast ? 1.5 : 1, color: this.settings.highContrast ? UiTokens.hcBorder : UiTokens.border })
-              .borderRadius(UiTokens.radiusM)
-              .padding({ left: 12, right: 12 })
-              .onChange((val) => {
-                this.title = val
-              })
-          }
-          .width('100%')
-          .alignItems(HorizontalAlign.Start)
-
-          // Date & Time
-          Row({ space: 12 }) {
-            Column({ space: 6 }) {
-              Text('日期')
-                .fontSize(this.labelFont())
-                .fontWeight(FontWeight.Medium)
-                .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
-              TextInput({ text: this.date })
-                .fontSize(this.baseFont())
-                .height(this.settings.largeText ? 56 : 48)
-                .backgroundColor(this.settings.highContrast ? UiTokens.hcBg : UiTokens.bgPrimary)
-                .border({ width: this.settings.highContrast ? 1.5 : 1, color: this.settings.highContrast ? UiTokens.hcBorder : UiTokens.border })
-                .borderRadius(UiTokens.radiusM)
-                .onChange((val) => {
-                  this.date = val
-                })
-            }
-            .layoutWeight(1)
-            .alignItems(HorizontalAlign.Start)
-
-            Column({ space: 6 }) {
-              Text('开始')
-                .fontSize(this.labelFont())
-                .fontWeight(FontWeight.Medium)
-                .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
-              TextInput({ text: this.startTime })
-                .fontSize(this.baseFont())
-                .height(this.settings.largeText ? 56 : 48)
-                .backgroundColor(this.settings.highContrast ? UiTokens.hcBg : UiTokens.bgPrimary)
-                .border({ width: this.settings.highContrast ? 1.5 : 1, color: this.settings.highContrast ? UiTokens.hcBorder : UiTokens.border })
-                .borderRadius(UiTokens.radiusM)
-                .onChange((val) => {
-                  this.startTime = val
-                })
-            }
-            .width(80)
-            .alignItems(HorizontalAlign.Start)
-
-            Column({ space: 6 }) {
-              Text('结束')
-                .fontSize(this.labelFont())
-                .fontWeight(FontWeight.Medium)
-                .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
-              TextInput({ text: this.endTime })
-                .fontSize(this.baseFont())
-                .height(this.settings.largeText ? 56 : 48)
-                .backgroundColor(this.settings.highContrast ? UiTokens.hcBg : UiTokens.bgPrimary)
-                .border({ width: this.settings.highContrast ? 1.5 : 1, color: this.settings.highContrast ? UiTokens.hcBorder : UiTokens.border })
-                .borderRadius(UiTokens.radiusM)
-                .onChange((val) => {
-                  this.endTime = val
-                })
-            }
-            .width(80)
-            .alignItems(HorizontalAlign.Start)
+              .backgroundColor(UiTokens.bgHover)
+              .placeholderColor(this.settings.highContrast ? '#999999' : UiTokens.textTertiary)
+              .borderRadius(UiTokens.radiusL)
+              .padding({ left: 14, right: 14 })
           }
           .width('100%')
 
-          // Color tag
-          Column({ space: 6 }) {
-            Text('感受标签')
-              .fontSize(this.labelFont())
+          // Time
+          Column({ space: UiTokens.gapS }) {
+            Text('时间')
+              .fontSize(this.sectionTitle())
               .fontWeight(FontWeight.Medium)
               .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+              .width('100%')
 
-            Row({ space: 8 }) {
-              ForEach(COLOR_TAG_KEYS, (key: string) => {
-                Button(getColorTag(key).label)
-                  .fontSize(this.labelFont())
-                  .height(this.settings.largeText ? 44 : 36)
-                  .padding({ left: 16, right: 16 })
-                  .backgroundColor(this.selectedTag === key
-                    ? (this.settings.highContrast ? UiTokens.hcText : getColorTag(key).color)
-                    : (this.settings.highContrast ? UiTokens.hcBg : getColorTag(key).bg))
-                  .fontColor(this.selectedTag === key ? '#FFFFFF' : (this.settings.highContrast ? UiTokens.hcText : getColorTag(key).color))
-                  .border({ width: this.settings.highContrast ? 1.5 : 1, color: this.settings.highContrast ? UiTokens.hcBorder : getColorTag(key).color })
-                  .borderRadius(UiTokens.radiusS)
-                  .onClick(() => {
-                    this.selectedTag = key
-                  })
+            Row({ space: UiTokens.gapM }) {
+              TextInput({ placeholder: '开始', text: $$this.startTime })
+                .layoutWeight(1)
+                .height(48)
+                .fontSize(this.baseFont())
+                .backgroundColor(UiTokens.bgHover)
+                .placeholderColor(this.settings.highContrast ? '#999999' : UiTokens.textTertiary)
+                .borderRadius(UiTokens.radiusL)
+                .textAlign(TextAlign.Center)
+
+              Text('至')
+                .fontSize(this.baseFont())
+                .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textSecondary)
+
+              TextInput({ placeholder: '结束', text: $$this.endTime })
+                .layoutWeight(1)
+                .height(48)
+                .fontSize(this.baseFont())
+                .backgroundColor(UiTokens.bgHover)
+                .placeholderColor(this.settings.highContrast ? '#999999' : UiTokens.textTertiary)
+                .borderRadius(UiTokens.radiusL)
+                .textAlign(TextAlign.Center)
+            }
+            .width('100%')
+          }
+          .width('100%')
+
+          // Type
+          Column({ space: UiTokens.gapS }) {
+            Text('类型')
+              .fontSize(this.sectionTitle())
+              .fontWeight(FontWeight.Medium)
+              .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+              .width('100%')
+
+            Row({ space: 10 }) {
+              ForEach([
+                TaskType.THINK,
+                TaskType.SOCIAL,
+                TaskType.HOME,
+                TaskType.REST,
+                TaskType.EXERCISE
+              ], (type: TaskType) => {
+                Button() {
+                  Text(getTypeConfig(type).label)
+                    .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                    .fontColor(this.selectedType === type
+                      ? (this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
+                      : (this.settings.highContrast ? '#555555' : UiTokens.textSecondary))
+                }
+                .layoutWeight(1)
+                .height(42)
+                .backgroundColor(this.selectedType === type
+                  ? (this.settings.highContrast ? UiTokens.hcBg : UiTokens.brandSoft)
+                  : (this.settings.highContrast ? '#EEEEEE' : UiTokens.bgHover))
+                .borderRadius(UiTokens.radiusL)
+                .onClick(() => {
+                  this.selectedType = type
+                })
               })
             }
             .width('100%')
           }
           .width('100%')
-          .alignItems(HorizontalAlign.Start)
 
-          // Prepare items
-          Column({ space: 6 }) {
-            Text('准备事项')
-              .fontSize(this.labelFont())
+          // Intensity
+          Column({ space: UiTokens.gapS }) {
+            Text('强度')
+              .fontSize(this.sectionTitle())
               .fontWeight(FontWeight.Medium)
               .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
-            Text('提前列出需要带的东西，减少出门焦虑')
-              .fontSize(UiTokens.textXS)
-              .fontColor(this.settings.highContrast ? '#333333' : UiTokens.textSecondary)
+              .width('100%')
+
+            Row({ space: 10 }) {
+              ForEach([
+                TaskIntensity.LOW,
+                TaskIntensity.MEDIUM,
+                TaskIntensity.HIGH
+              ], (intensity: TaskIntensity) => {
+                Button() {
+                  Text(getIntensityConfig(intensity).label)
+                    .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                    .fontColor(this.selectedIntensity === intensity
+                      ? (this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
+                      : (this.settings.highContrast ? '#555555' : UiTokens.textSecondary))
+                }
+                .layoutWeight(1)
+                .height(42)
+                .backgroundColor(this.selectedIntensity === intensity
+                  ? (this.settings.highContrast ? UiTokens.hcBg : UiTokens.brandSoft)
+                  : (this.settings.highContrast ? '#EEEEEE' : UiTokens.bgHover))
+                .borderRadius(UiTokens.radiusL)
+                .onClick(() => {
+                  this.selectedIntensity = intensity
+                })
+              })
+            }
+            .width('100%')
+          }
+          .width('100%')
+
+          // Time block
+          Column({ space: UiTokens.gapS }) {
+            Text('时间段')
+              .fontSize(this.sectionTitle())
+              .fontWeight(FontWeight.Medium)
+              .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+              .width('100%')
+
+            Row({ space: 10 }) {
+              ForEach([
+                TimeBlock.MORNING,
+                TimeBlock.MORNING,
+                TimeBlock.AFTERNOON,
+                TimeBlock.EVENING
+              ], (block: TimeBlock) => {
+                Button() {
+                  Text(getTimeBlockConfig(block).label)
+                    .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                    .fontColor(this.selectedTimeBlock === block
+                      ? (this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
+                      : (this.settings.highContrast ? '#555555' : UiTokens.textSecondary))
+                }
+                .layoutWeight(1)
+                .height(42)
+                .backgroundColor(this.selectedTimeBlock === block
+                  ? (this.settings.highContrast ? UiTokens.hcBg : UiTokens.brandSoft)
+                  : (this.settings.highContrast ? '#EEEEEE' : UiTokens.bgHover))
+                .borderRadius(UiTokens.radiusL)
+                .onClick(() => {
+                  this.selectedTimeBlock = block
+                })
+              })
+            }
+            .width('100%')
+          }
+          .width('100%')
+
+          // Prepare items
+          Column({ space: UiTokens.gapS }) {
+            Text('准备事项')
+              .fontSize(this.sectionTitle())
+              .fontWeight(FontWeight.Medium)
+              .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+              .width('100%')
+
+            Row({ space: 10 }) {
+              TextInput({ placeholder: '添加准备项，如：带上书本', text: $$this.prepareInput })
+                .layoutWeight(1)
+                .height(48)
+                .fontSize(this.baseFont())
+                .backgroundColor(UiTokens.bgHover)
+                .placeholderColor(this.settings.highContrast ? '#999999' : UiTokens.textTertiary)
+                .borderRadius(UiTokens.radiusL)
+
+              Button('+')
+                .width(48)
+                .height(48)
+                .fontSize(22)
+                .fontColor(UiTokens.brand)
+                .backgroundColor(UiTokens.bgHover)
+                .borderRadius(UiTokens.radiusL)
+                .onClick(() => {
+                  this.addPrepareItem()
+                })
+            }
+            .width('100%')
 
             if (this.prepareItems.length > 0) {
-              Column({ space: 6 }) {
-                ForEach(this.prepareItems, (item: string, index: number) => {
+              Column({ space: UiTokens.gapS }) {
+                ForEach(this.prepareItems, (item: string) => {
                   Row() {
                     Text(item)
                       .fontSize(this.baseFont())
                       .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
                       .layoutWeight(1)
-                    Text('×')
-                      .fontSize(this.baseFont())
-                      .fontColor(this.settings.highContrast ? '#555555' : UiTokens.tertiaryText)
-                      .onClick(() => {
-                        this.prepareItems.splice(index, 1)
-                        this.prepareItems = [...this.prepareItems]
-                      })
+
+                    Button() {
+                      Text('×')
+                        .fontSize(18)
+                        .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textTertiary)
+                    }
+                    .width(32)
+                    .height(32)
+                    .backgroundColor('transparent')
+                    .onClick(() => {
+                      const idx = this.prepareItems.indexOf(item)
+                      if (idx >= 0) this.prepareItems.splice(idx, 1)
+                    })
                   }
                   .width('100%')
-                  .padding(10)
-                  .backgroundColor(this.settings.highContrast ? UiTokens.hcBg : UiTokens.bgSecondary)
-                  .border({ width: this.settings.highContrast ? 1.5 : 1, color: this.settings.highContrast ? UiTokens.hcBorder : UiTokens.border })
-                  .borderRadius(UiTokens.radiusS)
+                  .padding(12)
+                  .backgroundColor(UiTokens.bgHover)
+                  .borderRadius(UiTokens.radiusM)
                 })
               }
               .width('100%')
             }
+          }
+          .width('100%')
 
-            Row({ space: 8 }) {
-              TextInput({ text: this.newPrepare, placeholder: '例如：带身份证' })
-                .fontSize(this.baseFont())
-                .height(this.settings.largeText ? 48 : 40)
-                .backgroundColor(this.settings.highContrast ? UiTokens.hcBg : UiTokens.bgPrimary)
-                .border({ width: this.settings.highContrast ? 1.5 : 1, color: this.settings.highContrast ? UiTokens.hcBorder : UiTokens.border })
-                .borderRadius(UiTokens.radiusS)
+          // Sub tasks
+          Column({ space: UiTokens.gapS }) {
+            Text('分步执行')
+              .fontSize(this.sectionTitle())
+              .fontWeight(FontWeight.Medium)
+              .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+              .width('100%')
+
+            Row({ space: 10 }) {
+              TextInput({ placeholder: '添加步骤，如：先查资料', text: $$this.subTaskInput })
                 .layoutWeight(1)
-                .onChange((val) => {
-                  this.newPrepare = val
-                })
-              Button('添加')
-                .fontSize(this.labelFont())
-                .height(this.settings.largeText ? 48 : 40)
-                .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
-                .fontColor(UiTokens.textInverse)
-                .padding({ left: 12, right: 12 })
+                .height(48)
+                .fontSize(this.baseFont())
+                .backgroundColor(UiTokens.bgHover)
+                .placeholderColor(this.settings.highContrast ? '#999999' : UiTokens.textTertiary)
+                .borderRadius(UiTokens.radiusL)
+
+              Button('+')
+                .width(48)
+                .height(48)
+                .fontSize(22)
+                .fontColor(UiTokens.brand)
+                .backgroundColor(UiTokens.bgHover)
+                .borderRadius(UiTokens.radiusL)
                 .onClick(() => {
-                  if (this.newPrepare.trim()) {
-                    this.prepareItems.push(this.newPrepare.trim())
-                    this.prepareItems = [...this.prepareItems]
-                    this.newPrepare = ''
-                  }
+                  this.addSubTask()
                 })
             }
             .width('100%')
-          }
-          .width('100%')
-          .alignItems(HorizontalAlign.Start)
-
-          // Sub tasks
-          Column({ space: 6 }) {
-            Text('分解步骤')
-              .fontSize(this.labelFont())
-              .fontWeight(FontWeight.Medium)
-              .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
-            Text('把大任务拆成小步骤，降低执行焦虑')
-              .fontSize(UiTokens.textXS)
-              .fontColor(this.settings.highContrast ? '#333333' : UiTokens.textSecondary)
 
             if (this.subTasks.length > 0) {
-              Column({ space: 6 }) {
-                ForEach(this.subTasks, (task: string, index: number) => {
+              Column({ space: UiTokens.gapS }) {
+                ForEach(this.subTasks, (item: string, index: number) => {
                   Row() {
-                    Text(`${index + 1}. ${task}`)
+                    Text(`${index + 1}`)
+                      .width(22)
+                      .height(22)
+                      .fontSize(UiTokens.textXS)
+                      .fontColor(UiTokens.textSecondary)
+                      .fontWeight(FontWeight.Medium)
+                      .textAlign(TextAlign.Center)
+                      .backgroundColor(UiTokens.bgHover)
+                      .borderRadius(6)
+                      .margin({ right: 10 })
+
+                    Text(item)
                       .fontSize(this.baseFont())
                       .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
                       .layoutWeight(1)
-                    Text('×')
-                      .fontSize(this.baseFont())
-                      .fontColor(this.settings.highContrast ? '#555555' : UiTokens.tertiaryText)
-                      .onClick(() => {
-                        this.subTasks.splice(index, 1)
-                        this.subTasks = [...this.subTasks]
-                      })
+
+                    Button() {
+                      Text('×')
+                        .fontSize(18)
+                        .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textTertiary)
+                    }
+                    .width(32)
+                    .height(32)
+                    .backgroundColor('transparent')
+                    .onClick(() => {
+                      this.subTasks.splice(index, 1)
+                    })
                   }
                   .width('100%')
-                  .padding(10)
-                  .backgroundColor(this.settings.highContrast ? UiTokens.hcBg : UiTokens.bgSecondary)
-                  .border({ width: this.settings.highContrast ? 1.5 : 1, color: this.settings.highContrast ? UiTokens.hcBorder : UiTokens.border })
-                  .borderRadius(UiTokens.radiusS)
+                  .padding(12)
+                  .backgroundColor(UiTokens.bgHover)
+                  .borderRadius(UiTokens.radiusM)
                 })
               }
               .width('100%')
             }
-
-            Row({ space: 8 }) {
-              TextInput({ text: this.newSubTask, placeholder: '例如：先找出衣服' })
-                .fontSize(this.baseFont())
-                .height(this.settings.largeText ? 48 : 40)
-                .backgroundColor(this.settings.highContrast ? UiTokens.hcBg : UiTokens.bgPrimary)
-                .border({ width: this.settings.highContrast ? 1.5 : 1, color: this.settings.highContrast ? UiTokens.hcBorder : UiTokens.border })
-                .borderRadius(UiTokens.radiusS)
-                .layoutWeight(1)
-                .onChange((val) => {
-                  this.newSubTask = val
-                })
-              Button('添加')
-                .fontSize(this.labelFont())
-                .height(this.settings.largeText ? 48 : 40)
-                .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
-                .fontColor(UiTokens.textInverse)
-                .padding({ left: 12, right: 12 })
-                .onClick(() => {
-                  if (this.newSubTask.trim()) {
-                    this.subTasks.push(this.newSubTask.trim())
-                    this.subTasks = [...this.subTasks]
-                    this.newSubTask = ''
-                  }
-                })
-            }
-            .width('100%')
           }
           .width('100%')
-          .alignItems(HorizontalAlign.Start)
-
-          // Notes
-          Column({ space: 6 }) {
-            Text('备注')
-              .fontSize(this.labelFont())
-              .fontWeight(FontWeight.Medium)
-              .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
-
-            TextArea({ placeholder: '其他需要注意的事...' })
-              .fontSize(this.baseFont())
-              .height(100)
-              .backgroundColor(this.settings.highContrast ? UiTokens.hcBg : UiTokens.bgPrimary)
-              .border({ width: this.settings.highContrast ? 1.5 : 1, color: this.settings.highContrast ? UiTokens.hcBorder : UiTokens.border })
-              .borderRadius(UiTokens.radiusM)
-              .padding(12)
-              .onChange((val) => {
-                this.notes = val
-              })
-          }
-          .width('100%')
-          .alignItems(HorizontalAlign.Start)
 
           // Save button
           Button('保存日程')
             .width('100%')
-            .height(this.settings.largeText ? 56 : 48)
-            .fontSize(this.settings.largeText ? UiTokens.textXL : UiTokens.textL)
-            .fontWeight(FontWeight.Bold)
+            .height(52)
+            .fontSize(UiTokens.textL)
+            .fontWeight(FontWeight.Medium)
             .fontColor(UiTokens.textInverse)
             .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
-            .borderRadius(UiTokens.radiusM)
-            .margin({ top: 12, bottom: 32 })
+            .borderRadius(UiTokens.radiusXL)
+            .margin({ top: 8, bottom: 40 })
             .onClick(() => {
-              this.saveSchedule()
+              this.saveTask()
             })
         }
         .width('100%')
@@ -376,6 +440,6 @@ struct AddSchedule {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(this.settings.highContrast ? UiTokens.hcBg : UiTokens.bgSecondary)
+    .backgroundColor(this.settings.highContrast ? UiTokens.hcBg : UiTokens.bgPage)
   }
 }

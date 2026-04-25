@@ -1,15 +1,14 @@
 import { router } from '@kit.ArkUI'
-import { Schedule } from '../models/ScheduleModel'
-import { AppSettings } from '../models/SettingsModel'
-import { storage } from '../utils/StorageUtil'
+import { Task, TaskStatus, UserPreferences } from '../models/DataModels'
+import { dataStore } from '../models/DataStore'
 import { ScheduleCard } from '../components/ScheduleCard'
 import { UiTokens } from '../design/UiTokens'
 
 @Entry
 @Component
 struct Index {
-  @State schedules: Schedule[] = []
-  @State settings: AppSettings = new AppSettings()
+  @State tasks: Task[] = []
+  @State settings: UserPreferences = new UserPreferences()
   @State currentDate: string = ''
   @State greeting: string = ''
 
@@ -25,11 +24,8 @@ struct Index {
   }
 
   loadData() {
-    this.settings = storage.getSettings()
-    const all = storage.getSchedules()
-    this.schedules = all
-      .filter(s => s.date === this.currentDate)
-      .sort((a, b) => a.startTime.localeCompare(b.startTime))
+    this.settings = dataStore.getUserPrefs()
+    this.tasks = dataStore.getTasksByDate(this.currentDate)
   }
 
   formatDate(d: Date): string {
@@ -49,32 +45,30 @@ struct Index {
     return '晚上好，准备结束今天吧'
   }
 
-  toggleComplete(schedule: Schedule) {
-    const all = storage.getSchedules()
-    const idx = all.findIndex(s => s.id === schedule.id)
+  advanceStatus(task: Task) {
+    const all = dataStore.getActiveTasks()
+    const idx = all.findIndex(t => t.id === task.id)
     if (idx >= 0) {
-      all[idx].isCompleted = !all[idx].isCompleted
-      storage.saveSchedules(all)
+      const statusOrder = [TaskStatus.TODO, TaskStatus.STARTED, TaskStatus.MOSTLY, TaskStatus.DONE]
+      const currentIdx = statusOrder.indexOf(all[idx].status)
+      all[idx].status = statusOrder[(currentIdx + 1) % statusOrder.length]
+      all[idx].updatedAt = Date.now()
+      dataStore.saveTasks(all)
       this.loadData()
     }
-  }
-
-  private navFont(): number {
-    return this.settings.largeText ? UiTokens.textS : UiTokens.textXS
   }
 
   build() {
     Column() {
       // Header
-      Column() {
+      Column({ space: 4 }) {
         Text(this.greeting)
           .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
-          .fontColor(this.settings.highContrast ? '#333333' : UiTokens.textSecondary)
-          .margin({ bottom: 4 })
+          .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textSecondary)
 
         Row() {
           Text('星序')
-            .fontSize(this.settings.largeText ? 28 : 22)
+            .fontSize(this.settings.largeText ? 24 : 20)
             .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
             .fontWeight(FontWeight.Bold)
             .margin({ right: 8 })
@@ -89,31 +83,19 @@ struct Index {
       }
       .width('100%')
       .alignItems(HorizontalAlign.Start)
-      .padding({ left: UiTokens.pagePadding, right: UiTokens.pagePadding, top: 16, bottom: 8 })
-
-      // Divider
-      Row()
-        .width('100%')
-        .height(this.settings.highContrast ? 2 : 1)
-        .backgroundColor(this.settings.highContrast ? UiTokens.hcBorder : UiTokens.border)
+      .padding({ left: UiTokens.pagePadding, right: UiTokens.pagePadding, top: 20, bottom: 4 })
 
       // Content
-      if (this.schedules.length === 0) {
+      if (this.tasks.length === 0) {
         Column() {
-          Text('星序')
-            .fontSize(48)
-            .fontColor(UiTokens.border)
-            .fontWeight(FontWeight.Bold)
-            .margin({ bottom: 16 })
           Text('今天还没有安排')
             .fontSize(this.settings.largeText ? UiTokens.textXL : UiTokens.textL)
             .fontWeight(FontWeight.Medium)
             .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
-            .margin({ bottom: 8 })
+            .margin({ bottom: 6 })
           Text('点击下方按钮添加第一个日程')
             .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
-            .fontColor(this.settings.highContrast ? '#333333' : UiTokens.textSecondary)
-            .textAlign(TextAlign.Center)
+            .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textSecondary)
         }
         .layoutWeight(1)
         .justifyContent(FlexAlign.Center)
@@ -121,16 +103,16 @@ struct Index {
         .padding(32)
       } else {
         List({ space: 0 }) {
-          ForEach(this.schedules, (schedule: Schedule) => {
+          ForEach(this.tasks, (task: Task) => {
             ListItem() {
               ScheduleCard({
-                schedule: schedule,
+                task: task,
                 settings: this.settings,
                 onClickCard: () => {
-                  router.pushUrl({ url: 'pages/ScheduleDetail', params: { id: schedule.id } })
+                  router.pushUrl({ url: 'pages/ScheduleDetail', params: { id: task.id } })
                 },
-                onToggleComplete: () => {
-                  this.toggleComplete(schedule)
+                onToggleStatus: () => {
+                  this.advanceStatus(task)
                 }
               })
             }
@@ -149,7 +131,7 @@ struct Index {
         Column() {
           Button() {
             Text('今日')
-              .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+              .fontSize(this.settings.largeText ? UiTokens.textL : UiTokens.textM)
               .fontColor(UiTokens.brand)
               .fontWeight(FontWeight.Medium)
           }
@@ -165,14 +147,14 @@ struct Index {
         Column() {
           Button() {
             Text('+')
-              .fontSize(28)
+              .fontSize(24)
               .fontColor('#FFFFFF')
-              .fontWeight(FontWeight.Bold)
+              .fontWeight(FontWeight.Medium)
           }
-          .width(this.settings.largeText ? 64 : 56)
-          .height(this.settings.largeText ? 64 : 56)
+          .width(52)
+          .height(52)
           .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
-          .borderRadius(UiTokens.radiusM)
+          .borderRadius(UiTokens.radiusL)
           .onClick(() => {
             router.pushUrl({ url: 'pages/AddSchedule' })
           })
@@ -183,8 +165,8 @@ struct Index {
         Column() {
           Button() {
             Text('设置')
-              .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
-              .fontColor(this.settings.highContrast ? '#333333' : UiTokens.textSecondary)
+              .fontSize(this.settings.largeText ? UiTokens.textL : UiTokens.textM)
+              .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textSecondary)
               .fontWeight(FontWeight.Medium)
           }
           .type(ButtonType.Circle)
@@ -197,13 +179,12 @@ struct Index {
         .alignItems(HorizontalAlign.Center)
       }
       .width('100%')
-      .height(this.settings.largeText ? 88 : 72)
+      .height(72)
       .padding({ left: 24, right: 24 })
-      .backgroundColor(this.settings.highContrast ? UiTokens.hcBg : UiTokens.bgSecondary)
-      .border({ width: { top: this.settings.highContrast ? 2 : 1 }, color: this.settings.highContrast ? UiTokens.hcBorder : UiTokens.border })
+      .backgroundColor(UiTokens.bgCard)
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(this.settings.highContrast ? UiTokens.hcBg : UiTokens.bgSecondary)
+    .backgroundColor(this.settings.highContrast ? UiTokens.hcBg : UiTokens.bgPage)
   }
 }

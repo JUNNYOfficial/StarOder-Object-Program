@@ -1,46 +1,50 @@
-import { Schedule, getColorTag } from '../models/ScheduleModel'
-import { AppSettings } from '../models/SettingsModel'
+import { Task, TaskStatus, getTypeConfig, getTimeBlockConfig } from '../models/DataModels'
+import { UserPreferences } from '../models/DataModels'
 import { UiTokens } from '../design/UiTokens'
 
 @Component
 export struct ScheduleCard {
-  @Prop schedule: Schedule
-  @Prop settings: AppSettings
+  @Prop task: Task
+  @Prop settings: UserPreferences
   onClickCard: () => void = () => {}
-  onToggleComplete: () => void = () => {}
-
-  private scheduleBorderColor(): string {
-    const tag = getColorTag(this.schedule.colorTag)
-    return this.settings.highContrast ? tag.hcColor : tag.color
-  }
-
-  private bgColor(): string {
-    const tag = getColorTag(this.schedule.colorTag)
-    return this.settings.highContrast ? UiTokens.hcBg : tag.bg
-  }
-
-  private cardTextPrimary(): string {
-    return this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary
-  }
-
-  private cardTextSecondary(): string {
-    return this.settings.highContrast ? '#333333' : UiTokens.textSecondary
-  }
+  onToggleStatus: () => void = () => {}
 
   private baseFont(): number {
-    return this.settings.largeText ? UiTokens.textXL : UiTokens.textM
+    return this.settings.largeText ? UiTokens.textL : UiTokens.textM
   }
 
   private smallFont(): number {
-    return this.settings.largeText ? UiTokens.textL : UiTokens.textS
+    return this.settings.largeText ? UiTokens.textM : UiTokens.textS
+  }
+
+  private statusText(): string {
+    switch (this.task.status) {
+      case TaskStatus.TODO: return '待开始'
+      case TaskStatus.STARTED: return '进行中'
+      case TaskStatus.MOSTLY: return '快完成'
+      case TaskStatus.DONE: return '已完成'
+      case TaskStatus.PAUSED: return '已暂停'
+      default: return ''
+    }
+  }
+
+  private statusTextColor(): string {
+    switch (this.task.status) {
+      case TaskStatus.TODO: return UiTokens.textTertiary
+      case TaskStatus.STARTED: return UiTokens.active
+      case TaskStatus.MOSTLY: return UiTokens.brand
+      case TaskStatus.DONE: return UiTokens.done
+      case TaskStatus.PAUSED: return UiTokens.paused
+      default: return UiTokens.textTertiary
+    }
   }
 
   private completedCount(): number {
-    return this.schedule.subTasks.filter(s => s.isCompleted).length
+    return this.task.subTasks.filter(s => s.completed).length
   }
 
   private subTaskTotal(): number {
-    return this.schedule.subTasks.length
+    return this.task.subTasks.length
   }
 
   private progressWidth(): string {
@@ -49,118 +53,102 @@ export struct ScheduleCard {
     return `${(this.completedCount() / total) * 100}%`
   }
 
-  private prepareText(): string {
-    return `准备: ${this.schedule.prepareItems.join('、')}`
-  }
-
   build() {
     Row() {
-      // Time column
+      // Time
       Column() {
-        Text(this.schedule.startTime)
-          .fontSize(this.baseFont())
-          .fontWeight(FontWeight.Bold)
-          .fontColor(this.cardTextPrimary())
-        Text(this.schedule.endTime)
+        Text(this.task.startTime)
+          .fontSize(this.settings.largeText ? UiTokens.textL : UiTokens.textM)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+        Text(this.task.endTime)
           .fontSize(this.smallFont())
-          .fontColor(this.cardTextSecondary())
-          .margin({ top: 4 })
+          .fontColor(this.settings.highContrast ? '#333333' : UiTokens.textTertiary)
+          .margin({ top: 2 })
       }
-      .width(64)
+      .width(52)
       .alignItems(HorizontalAlign.Start)
 
-      // Card body
-      Column() {
+      // Card
+      Column({ space: UiTokens.gapS }) {
+        // Title row
         Row() {
-          Text(this.schedule.title)
+          Text(this.task.title)
             .fontSize(this.baseFont())
             .fontWeight(FontWeight.Medium)
-            .fontColor(this.cardTextPrimary())
+            .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
             .layoutWeight(1)
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
-            .decoration({ type: this.schedule.isCompleted ? TextDecorationType.LineThrough : TextDecorationType.None })
 
-          Text(this.schedule.isCompleted ? '✓' : '')
-            .fontSize(this.settings.largeText ? 20 : 16)
-            .fontColor('#FFFFFF')
-            .fontWeight(FontWeight.Bold)
-            .textAlign(TextAlign.Center)
-            .width(this.settings.largeText ? 40 : 32)
-            .height(this.settings.largeText ? 40 : 32)
-            .backgroundColor(this.schedule.isCompleted ? UiTokens.confirm : UiTokens.bgTertiary)
-            .borderRadius(UiTokens.radiusS)
-            .onClick(() => {
-              this.onToggleComplete()
-            })
+          Text(this.statusText())
+            .fontSize(UiTokens.textXS)
+            .fontColor(this.settings.highContrast ? UiTokens.hcText : this.statusTextColor())
+            .fontWeight(FontWeight.Medium)
         }
         .width('100%')
-        .alignItems(VerticalAlign.Center)
 
-        // Tag pill
-        Text(getColorTag(this.schedule.colorTag).label)
-          .fontSize(UiTokens.textXS)
-          .fontColor(this.settings.highContrast ? UiTokens.hcText : getColorTag(this.schedule.colorTag).color)
-          .padding({ left: 10, right: 10, top: 3, bottom: 3 })
-          .backgroundColor(this.bgColor())
-          .border({ width: this.settings.highContrast ? 1.5 : 0, color: this.scheduleBorderColor() })
-          .borderRadius(6)
-          .margin({ top: 8 })
+        // Meta row: 类型 · 时间段
+        Row({ space: 4 }) {
+          Text(getTypeConfig(this.task.type).label)
+            .fontSize(this.smallFont())
+            .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textSecondary)
+          Text('·')
+            .fontSize(this.smallFont())
+            .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textTertiary)
+          Text(getTimeBlockConfig(this.task.timeBlock).label)
+            .fontSize(this.smallFont())
+            .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textSecondary)
+        }
+        .width('100%')
 
-        // Subtask progress
-        if (this.schedule.subTasks.length > 0) {
+        // Progress
+        if (this.task.subTasks.length > 0) {
           Row() {
             Text(`步骤 ${this.completedCount()}/${this.subTaskTotal()}`)
               .fontSize(this.smallFont())
-              .fontColor(this.cardTextSecondary())
+              .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textSecondary)
 
             Stack() {
               Row()
                 .width('100%')
-                .height(6)
-                .backgroundColor(this.settings.highContrast ? '#CCCCCC' : UiTokens.border)
-                .borderRadius(3)
-
+                .height(4)
+                .backgroundColor(this.settings.highContrast ? '#CCCCCC' : UiTokens.divider)
+                .borderRadius(2)
               Row()
                 .width(this.progressWidth())
-                .height(6)
+                .height(4)
                 .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
-                .borderRadius(3)
+                .borderRadius(2)
             }
-            .width(80)
-            .height(6)
+            .width(60)
+            .height(4)
           }
           .width('100%')
           .justifyContent(FlexAlign.SpaceBetween)
-          .margin({ top: 10 })
         }
 
-        // Prepare items hint
-        if (this.settings.showPrepareHints && this.schedule.prepareItems.length > 0) {
-          Row() {
-            Text('备')
-              .fontSize(UiTokens.textXS)
-              .fontColor(this.cardTextSecondary())
-              .padding({ left: 4, right: 4, top: 1, bottom: 1 })
-              .backgroundColor(UiTokens.bgTertiary)
-              .borderRadius(4)
-              .margin({ right: 6 })
-            Text(this.prepareText())
-              .fontSize(this.smallFont())
-              .fontColor(this.cardTextSecondary())
-              .maxLines(1)
-              .textOverflow({ overflow: TextOverflow.Ellipsis })
-          }
-          .width('100%')
-          .margin({ top: 8 })
+        // Prepare items
+        if (this.settings.showPrepareHints && this.task.prepareItems.length > 0) {
+          Text(`准备 ${this.task.prepareItems.join('、')}`)
+            .fontSize(this.smallFont())
+            .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textTertiary)
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .width('100%')
         }
       }
       .layoutWeight(1)
       .padding(UiTokens.cardPadding)
-      .backgroundColor(this.settings.highContrast ? UiTokens.hcBg : UiTokens.bgPrimary)
-      .border({ width: this.settings.highContrast ? 1.5 : 1, color: this.scheduleBorderColor() })
-      .borderRadius(UiTokens.radiusM)
-      .margin({ left: 12 })
+      .backgroundColor(UiTokens.bgCard)
+      .borderRadius(UiTokens.radiusXL)
+      .margin({ left: 16 })
+      .shadow({
+        radius: this.settings.highContrast ? 0 : 8,
+        color: '#0A000000',
+        offsetX: 0,
+        offsetY: 2
+      })
     }
     .width('100%')
     .padding({ top: 6, bottom: 6 })

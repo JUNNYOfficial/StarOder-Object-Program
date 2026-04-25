@@ -1,57 +1,43 @@
 import { router } from '@kit.ArkUI'
-import { AppSettings } from '../models/SettingsModel'
-import { storage } from '../utils/StorageUtil'
+import { UserPreferences } from '../models/DataModels'
+import { dataStore } from '../models/DataStore'
 import { UiTokens } from '../design/UiTokens'
 
 @Entry
 @Component
 struct Settings {
-  @State settings: AppSettings = new AppSettings()
+  @State settings: UserPreferences = new UserPreferences()
 
   aboutToAppear() {
-    this.settings = storage.getSettings()
+    this.settings = dataStore.getUserPrefs()
   }
 
-  saveSettings() {
-    storage.saveSettings(this.settings)
+  toggleHighContrast() {
+    this.settings.highContrast = !this.settings.highContrast
+    dataStore.saveUserPrefs(this.settings)
+  }
+
+  toggleLargeText() {
+    this.settings.largeText = !this.settings.largeText
+    dataStore.saveUserPrefs(this.settings)
+  }
+
+  toggleReduceMotion() {
+    this.settings.reduceAnimations = !this.settings.reduceAnimations
+    dataStore.saveUserPrefs(this.settings)
+  }
+
+  togglePrepareHints() {
+    this.settings.showPrepareHints = !this.settings.showPrepareHints
+    dataStore.saveUserPrefs(this.settings)
   }
 
   private baseFont(): number {
     return this.settings.largeText ? UiTokens.textL : UiTokens.textM
   }
 
-  private labelFont(): number {
-    return this.settings.largeText ? UiTokens.textM : UiTokens.textS
-  }
-
-  @Builder
-  SettingItem(title: string, desc: string, isOn: boolean, onChange: (val: boolean) => void) {
-    Row() {
-      Column({ space: 4 }) {
-        Text(title)
-          .fontSize(this.labelFont())
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
-        Text(desc)
-          .fontSize(this.settings.largeText ? UiTokens.textS : UiTokens.textXS)
-          .fontColor(this.settings.highContrast ? '#333333' : UiTokens.textSecondary)
-      }
-      .layoutWeight(1)
-      .alignItems(HorizontalAlign.Start)
-
-      Toggle({ type: ToggleType.Switch, isOn: isOn })
-        .selectedColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
-        .onChange((val) => {
-          onChange(val)
-          this.saveSettings()
-        })
-    }
-    .width('100%')
-    .padding(UiTokens.cardPadding)
-    .backgroundColor(this.settings.highContrast ? UiTokens.hcBg : UiTokens.bgPrimary)
-    .border({ width: this.settings.highContrast ? 1.5 : 1, color: this.settings.highContrast ? UiTokens.hcBorder : UiTokens.border })
-    .borderRadius(UiTokens.radiusM)
-    .alignItems(VerticalAlign.Center)
+  private sectionTitle(): number {
+    return this.settings.largeText ? UiTokens.textL : UiTokens.textM
   }
 
   build() {
@@ -61,7 +47,7 @@ struct Settings {
         Button() {
           Text('返回')
             .fontSize(this.baseFont())
-            .fontColor(this.settings.highContrast ? '#333333' : UiTokens.textSecondary)
+            .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textSecondary)
         }
         .backgroundColor('transparent')
         .onClick(() => {
@@ -73,88 +59,140 @@ struct Settings {
           .fontWeight(FontWeight.Bold)
           .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
 
-        Blank().width(60)
+        Row().width(40)
       }
       .width('100%')
       .height(56)
       .padding({ left: UiTokens.pagePadding, right: UiTokens.pagePadding })
       .justifyContent(FlexAlign.SpaceBetween)
       .alignItems(VerticalAlign.Center)
-      .backgroundColor(this.settings.highContrast ? UiTokens.hcBg : UiTokens.bgSecondary)
-      .border({ width: { bottom: this.settings.highContrast ? 2 : 1 }, color: this.settings.highContrast ? UiTokens.hcBorder : UiTokens.border })
+      .backgroundColor(UiTokens.bgCard)
 
       Scroll() {
-        Column({ space: UiTokens.gapL }) {
-          Text('无障碍')
-            .fontSize(UiTokens.textXS)
-            .fontColor(this.settings.highContrast ? '#555555' : UiTokens.tertiaryText)
-            .width('100%')
-            .margin({ top: 4 })
+        Column({ space: UiTokens.gapXL }) {
+          // Accessibility section
+          Column({ space: UiTokens.gapM }) {
+            Text('无障碍辅助')
+              .fontSize(this.sectionTitle())
+              .fontWeight(FontWeight.Medium)
+              .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+              .width('100%')
 
-          this.SettingItem(
-            '高对比度模式',
-            '使用黑白高对比，方便视觉敏感用户',
-            this.settings.highContrast,
-            (val) => { this.settings.highContrast = val }
-          )
+            Column({ space: 0 }) {
+              // High contrast
+              this.SettingRow(
+                '高对比度',
+                '提高文字和背景的对比',
+                this.settings.highContrast,
+                () => { this.toggleHighContrast() }
+              )
 
-          this.SettingItem(
-            '大字体模式',
-            '增大所有文字和按钮尺寸',
-            this.settings.largeText,
-            (val) => { this.settings.largeText = val }
-          )
+              if (!this.settings.highContrast) {
+                Divider().strokeWidth(0.5).color(UiTokens.divider).margin({ left: 14 })
+              }
 
-          this.SettingItem(
-            '减少动画',
-            '关闭不必要的动效，保持界面稳定',
-            this.settings.reduceAnimations,
-            (val) => { this.settings.reduceAnimations = val }
-          )
+              // Large text
+              this.SettingRow(
+                '大字体',
+                '增大所有文字显示',
+                this.settings.largeText,
+                () => { this.toggleLargeText() }
+              )
 
-          this.SettingItem(
-            '显示准备提示',
-            '在日程卡片上显示需要准备的事项',
-            this.settings.showPrepareHints,
-            (val) => { this.settings.showPrepareHints = val }
-          )
+              if (!this.settings.highContrast) {
+                Divider().strokeWidth(0.5).color(UiTokens.divider).margin({ left: 14 })
+              }
 
-          // About
-          Column({ space: 6 }) {
-            Row({ space: 8 }) {
-              Text('星')
-                .fontSize(this.settings.largeText ? 22 : 18)
-                .fontColor(UiTokens.brand)
-                .fontWeight(FontWeight.Bold)
-                .padding({ left: 6, right: 6, top: 2, bottom: 2 })
-                .backgroundColor(UiTokens.brandSoft)
-                .borderRadius(4)
-              Text('关于星序')
-                .fontSize(this.labelFont())
-                .fontWeight(FontWeight.Medium)
-                .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
-                .width('100%')
+              // Reduce motion
+              this.SettingRow(
+                '减少动态效果',
+                '减弱过渡动画和动效',
+                this.settings.reduceAnimations,
+                () => { this.toggleReduceMotion() }
+              )
             }
             .width('100%')
-
-            Text('星序是一款为神经多样性人群（自闭症谱系、ADHD 等）设计的友好日程工具。我们相信每个人都值得按自己的节奏生活。')
-              .fontSize(this.baseFont())
-              .fontColor(this.settings.highContrast ? '#333333' : UiTokens.textSecondary)
-              .width('100%')
-              .lineHeight(this.settings.largeText ? 28 : 22)
-
-            Text('把大任务拆成小步骤，可以减少执行焦虑哦')
-              .fontSize(this.baseFont())
-              .fontColor(UiTokens.brand)
-              .width('100%')
-              .margin({ top: 8 })
+            .backgroundColor(UiTokens.bgCard)
+            .borderRadius(UiTokens.radiusXL)
+            .padding({ top: 6, bottom: 6 })
+            .shadow({
+              radius: this.settings.highContrast ? 0 : 8,
+              color: '#0A000000',
+              offsetX: 0,
+              offsetY: 2
+            })
           }
           .width('100%')
-          .padding(UiTokens.cardPadding)
-          .backgroundColor(this.settings.highContrast ? UiTokens.hcBg : UiTokens.bgPrimary)
-          .border({ width: this.settings.highContrast ? 1.5 : 1, color: this.settings.highContrast ? UiTokens.hcBorder : UiTokens.border })
-          .borderRadius(UiTokens.radiusM)
-          .margin({ top: 8 })
+
+          // Display section
+          Column({ space: UiTokens.gapM }) {
+            Text('显示选项')
+              .fontSize(this.sectionTitle())
+              .fontWeight(FontWeight.Medium)
+              .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+              .width('100%')
+
+            Column({ space: 0 }) {
+              this.SettingRow(
+                '显示准备提示',
+                '在日程列表中显示准备事项',
+                this.settings.showPrepareHints,
+                () => { this.togglePrepareHints() }
+              )
+            }
+            .width('100%')
+            .backgroundColor(UiTokens.bgCard)
+            .borderRadius(UiTokens.radiusXL)
+            .padding({ top: 6, bottom: 6 })
+            .shadow({
+              radius: this.settings.highContrast ? 0 : 8,
+              color: '#0A000000',
+              offsetX: 0,
+              offsetY: 2
+            })
+          }
+          .width('100%')
+
+          // About
+          Column({ space: UiTokens.gapM }) {
+            Text('关于')
+              .fontSize(this.sectionTitle())
+              .fontWeight(FontWeight.Medium)
+              .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+              .width('100%')
+
+            Column() {
+              Row() {
+                Text('星序')
+                  .fontSize(this.baseFont())
+                  .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+                Text('v1.0.0')
+                  .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                  .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textTertiary)
+              }
+              .width('100%')
+              .padding(14)
+              .justifyContent(FlexAlign.SpaceBetween)
+            }
+            .width('100%')
+            .backgroundColor(UiTokens.bgCard)
+            .borderRadius(UiTokens.radiusXL)
+            .shadow({
+              radius: this.settings.highContrast ? 0 : 8,
+              color: '#0A000000',
+              offsetX: 0,
+              offsetY: 2
+            })
+          }
+          .width('100%')
+
+          // Description
+          Text('星序 是一款为神经多样性人士设计的时间管理工具，采用认知友好、非惩罚式的设计理念。')
+            .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+            .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textTertiary)
+            .width('100%')
+            .textAlign(TextAlign.Center)
+            .padding({ top: 8, bottom: 32 })
         }
         .width('100%')
         .padding(UiTokens.pagePadding)
@@ -164,6 +202,32 @@ struct Settings {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(this.settings.highContrast ? UiTokens.hcBg : UiTokens.bgSecondary)
+    .backgroundColor(this.settings.highContrast ? UiTokens.hcBg : UiTokens.bgPage)
+  }
+
+  @Builder
+  SettingRow(title: string, desc: string, value: boolean, onToggle: () => void) {
+    Row() {
+      Column({ space: 2 }) {
+        Text(title)
+          .fontSize(this.settings.largeText ? UiTokens.textL : UiTokens.textM)
+          .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+        Text(desc)
+          .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+          .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textTertiary)
+      }
+      .alignItems(HorizontalAlign.Start)
+      .layoutWeight(1)
+
+      Toggle({ type: ToggleType.Switch, isOn: value })
+        .selectedColor(UiTokens.brand)
+        .onChange(() => {
+          onToggle()
+        })
+    }
+    .width('100%')
+    .padding(14)
+    .justifyContent(FlexAlign.SpaceBetween)
+    .alignItems(VerticalAlign.Center)
   }
 }
