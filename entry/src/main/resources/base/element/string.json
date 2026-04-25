@@ -11,6 +11,10 @@
     {
       "name": "EntryAbility_label",
       "value": "星序日程"
+    },
+    {
+      "name": "mic_permission_reason",
+      "value": "用于语音录入识别日程内容"
     }
   ]
 }

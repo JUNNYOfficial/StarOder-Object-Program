@@ -316,6 +316,45 @@ struct Settings {
           }
           .width('100%')
 
+          // Course import
+          Column({ space: UiTokens.gapM }) {
+            Text('导入课表')
+              .fontSize(this.sectionTitle())
+              .fontWeight(FontWeight.Medium)
+              .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+              .width('100%')
+
+            Column() {
+              Row() {
+                Text('从 CSV 格式导入本周课表')
+                  .fontSize(this.baseFont())
+                  .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+                  .layoutWeight(1)
+
+                Text('>')
+                  .fontSize(this.baseFont())
+                  .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textTertiary)
+              }
+              .width('100%')
+              .padding(14)
+              .justifyContent(FlexAlign.SpaceBetween)
+              .alignItems(VerticalAlign.Center)
+              .onClick(() => {
+                router.pushUrl({ url: 'pages/CourseImportPage' })
+              })
+            }
+            .width('100%')
+            .backgroundColor(UiTokens.bgCard)
+            .borderRadius(UiTokens.radiusXL)
+            .shadow({
+              radius: this.settings.highContrast ? 0 : 8,
+              color: '#0A000000',
+              offsetX: 0,
+              offsetY: 2
+            })
+          }
+          .width('100%')
+
           // Data review
           Column({ space: UiTokens.gapM }) {
             Text('数据回顾')

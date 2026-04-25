@@ -12,10 +12,12 @@
     "pages": "$profile:main_pages",
     "requestPermissions": [
       {
-        "name": "ohos.permission.MICROPHONE"
-      },
-      {
-        "name": "ohos.permission.REMINDER_AGENT"
+        "name": "ohos.permission.MICROPHONE",
+        "reason": "$string:mic_permission_reason",
+        "usedScene": {
+          "abilities": ["EntryAbility"],
+          "when": "inuse"
+        }
       }
     ],
     "abilities": [
@@ -28,19 +30,6 @@
         "startWindowIcon": "$media:startIcon",
         "startWindowBackground": "$color:start_window_background",
         "exported": true,
-        "forms": [
-          {
-            "name": "ScheduleQuickForm",
-            "displayName": "$string:form_name",
-            "description": "$string:form_desc",
-            "type": "ArkTS",
-            "colorMode": "auto",
-            "defaultDimension": "2*2",
-            "supportDimensions": ["2*2"],
-            "updateEnabled": false,
-            "src": "pages/form/ScheduleQuickForm"
-          }
-        ],
         "skills": [
           {
             "entities": [
