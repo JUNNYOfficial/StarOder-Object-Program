@@ -54,10 +54,31 @@ export struct SettingsTab {
     }
   }
 
+  private extractCodeFromUrl(input: string): string {
+    // 如果输入是完整 URL，提取 code 参数
+    if (input.includes('code=')) {
+      try {
+        const url = new URL(input)
+        const code = url.searchParams.get('code')
+        if (code) return code
+      } catch (e) {
+        // 不是标准 URL，尝试正则提取
+        const match = input.match(/[?&]code=([^&]+)/)
+        if (match) return match[1]
+      }
+    }
+    return input
+  }
+
   submitAuthCode() {
-    const code = this.feishuAuthCode.trim()
-    if (!code) {
-      this.feishuMsg = '请输入授权码'
+    const rawInput = this.feishuAuthCode.trim()
+    if (!rawInput) {
+      this.feishuMsg = '请输入授权码或回调地址'
+      return
+    }
+    const code = this.extractCodeFromUrl(rawInput)
+    if (!code || code === rawInput && !rawInput.includes('-')) {
+      this.feishuMsg = '无法识别授权码，请检查输入'
       return
     }
     this.feishuMsg = '正在换取令牌...'
@@ -284,7 +305,7 @@ export struct SettingsTab {
                         this.connectFeishu()
                       })
 
-                    Text('点击上方按钮复制链接，粘贴到浏览器完成授权')
+                    Text('去浏览器粘贴链接，完成飞书登录授权')
                       .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
                       .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textSecondary)
                       .width('100%')
@@ -303,12 +324,12 @@ export struct SettingsTab {
 
                     Divider().strokeWidth(0.5).color(UiTokens.divider).width('100%')
 
-                    Text('2. 粘贴回调页面显示的授权码')
+                    Text('2. 粘贴浏览器地址栏的链接（自动提取授权码）')
                       .fontSize(this.baseFont())
                       .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
                       .width('100%')
 
-                    TextInput({ placeholder: '授权码（如 xxx-xxx-xxx）', text: $$this.feishuAuthCode })
+                    TextInput({ placeholder: '粘贴完整地址或只贴授权码', text: $$this.feishuAuthCode })
                       .width('100%')
                       .height(44)
                       .fontSize(this.baseFont())
