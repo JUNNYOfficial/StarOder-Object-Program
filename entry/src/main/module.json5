@@ -12,6 +12,14 @@
     "pages": "$profile:main_pages",
     "requestPermissions": [
       {
+        "name": "ohos.permission.INTERNET",
+        "reason": "$string:network_permission_reason",
+        "usedScene": {
+          "abilities": ["EntryAbility"],
+          "when": "inuse"
+        }
+      },
+      {
         "name": "ohos.permission.MICROPHONE",
         "reason": "$string:mic_permission_reason",
         "usedScene": {
