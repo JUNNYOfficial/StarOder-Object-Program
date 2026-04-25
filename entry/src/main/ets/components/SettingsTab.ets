@@ -1,9 +1,9 @@
-import { router } from '@kit.ArkUI'
-import { common, Want } from '@kit.AbilityKit'
+import { router, promptAction } from '@kit.ArkUI'
 import { UserPreferences } from '../models/DataModels'
 import { dataStore } from '../models/DataStore'
 import { FeishuSyncService } from '../services/FeishuSyncService'
 import { UiTokens } from '../design/UiTokens'
+import { pasteboard } from '@kit.BasicServicesKit'
 
 @Component
 export struct SettingsTab {
@@ -42,18 +42,15 @@ export struct SettingsTab {
       this.feishuMsg = '请先填写 App ID 和 App Secret'
       return
     }
-    // 尝试跳转系统浏览器打开授权页
+    const authUrl = FeishuSyncService.getAuthUrl()
     try {
-      const context = getContext(this) as common.UIAbilityContext
-      const want: Want = {
-        action: 'ohos.want.action.viewData',
-        uri: FeishuSyncService.getAuthUrl()
-      }
-      context.startAbility(want)
-      this.feishuMsg = '已唤起浏览器，请完成授权后复制 code 回来'
+      const systemPasteboard = pasteboard.getSystemPasteboard()
+      const pasteData = pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, authUrl)
+      systemPasteboard.setDataSync(pasteData)
+      this.feishuMsg = '授权链接已复制到剪贴板，请粘贴到浏览器打开'
+      promptAction.showToast({ message: '链接已复制', duration: 2000 })
     } catch (e) {
-      // 如果跳转失败，提示用户手动复制链接
-      this.feishuMsg = '自动跳转失败，请复制下方链接到浏览器打开'
+      this.feishuMsg = '复制失败，请手动复制下方链接'
     }
   }
 
@@ -275,54 +272,62 @@ export struct SettingsTab {
             } else {
               Column({ space: UiTokens.gapM }) {
                 if (!this.feishuConnected) {
-                  Button('连接飞书')
-                    .width('100%')
-                    .height(48)
-                    .fontSize(this.baseFont())
-                    .fontColor(UiTokens.textInverse)
-                    .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
-                    .borderRadius(UiTokens.radiusXL)
-                    .onClick(() => {
-                      this.connectFeishu()
-                    })
+                  Column({ space: UiTokens.gapM }) {
+                    Button('1. 复制授权链接')
+                      .width('100%')
+                      .height(48)
+                      .fontSize(this.baseFont())
+                      .fontColor(UiTokens.textInverse)
+                      .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
+                      .borderRadius(UiTokens.radiusXL)
+                      .onClick(() => {
+                        this.connectFeishu()
+                      })
 
-                  // 授权链接和手动输入授权码
-                  if (this.feishuMsg.includes('授权链接')) {
-                    Column({ space: UiTokens.gapS }) {
-                      Text('授权链接（复制到浏览器打开）')
-                        .fontSize(this.baseFont())
-                        .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
-                        .width('100%')
+                    Text('点击上方按钮复制链接，粘贴到浏览器完成授权')
+                      .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                      .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textSecondary)
+                      .width('100%')
+                      .textAlign(TextAlign.Center)
 
-                      Text(FeishuSyncService.getAuthUrl())
-                        .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
-                        .fontColor(UiTokens.brand)
-                        .width('100%')
-                        .padding(12)
-                        .backgroundColor(UiTokens.bgHover)
-                        .borderRadius(UiTokens.radiusM)
+                    // 授权链接预览
+                    Text(FeishuSyncService.getAuthUrl())
+                      .fontSize(this.settings.largeText ? UiTokens.textS : 11)
+                      .fontColor(UiTokens.brand)
+                      .width('100%')
+                      .padding(10)
+                      .backgroundColor(UiTokens.bgHover)
+                      .borderRadius(UiTokens.radiusM)
+                      .maxLines(2)
+                      .textOverflow({ overflow: TextOverflow.Ellipsis })
 
-                      TextInput({ placeholder: '粘贴浏览器回调地址中的 code 参数', text: $$this.feishuAuthCode })
-                        .width('100%')
-                        .height(44)
-                        .fontSize(this.baseFont())
-                        .backgroundColor(UiTokens.bgHover)
-                        .placeholderColor(this.settings.highContrast ? '#999999' : UiTokens.textTertiary)
-                        .borderRadius(UiTokens.radiusL)
+                    Divider().strokeWidth(0.5).color(UiTokens.divider).width('100%')
 
-                      Button('提交授权码')
-                        .width('100%')
-                        .height(44)
-                        .fontSize(this.baseFont())
-                        .fontColor(UiTokens.textInverse)
-                        .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
-                        .borderRadius(UiTokens.radiusL)
-                        .onClick(() => {
-                          this.submitAuthCode()
-                        })
-                    }
-                    .width('100%')
+                    Text('2. 粘贴回调页面显示的授权码')
+                      .fontSize(this.baseFont())
+                      .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+                      .width('100%')
+
+                    TextInput({ placeholder: '授权码（如 xxx-xxx-xxx）', text: $$this.feishuAuthCode })
+                      .width('100%')
+                      .height(44)
+                      .fontSize(this.baseFont())
+                      .backgroundColor(UiTokens.bgHover)
+                      .placeholderColor(this.settings.highContrast ? '#999999' : UiTokens.textTertiary)
+                      .borderRadius(UiTokens.radiusL)
+
+                    Button('3. 提交授权码')
+                      .width('100%')
+                      .height(44)
+                      .fontSize(this.baseFont())
+                      .fontColor(UiTokens.textInverse)
+                      .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
+                      .borderRadius(UiTokens.radiusL)
+                      .onClick(() => {
+                        this.submitAuthCode()
+                      })
                   }
+                  .width('100%')
                 } else {
                   Row({ space: UiTokens.gapM }) {
                     Button('同步日程')
