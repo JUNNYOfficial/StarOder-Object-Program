@@ -158,23 +158,6 @@ struct Index {
         .width('100%')
         .alignItems(VerticalAlign.Center)
 
-        if (this.activeTab === 0) {
-          Row() {
-            TextInput({ placeholder: '搜索日程', text: $$this.searchQuery })
-              .width('100%')
-              .height(40)
-              .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
-              .backgroundColor(UiTokens.bgHover)
-              .placeholderColor(this.settings.highContrast ? '#999999' : UiTokens.textTertiary)
-              .borderRadius(UiTokens.radiusL)
-              .padding({ left: 14, right: 14 })
-              .onChange(() => {
-                this.applyFilter()
-              })
-          }
-          .width('100%')
-          .padding({ top: 8, bottom: 4 })
-        }
       }
       .width('100%')
       .alignItems(HorizontalAlign.Start)
@@ -184,21 +167,58 @@ struct Index {
       if (this.activeTab === 0) {
         if (this.filteredTasks.length === 0) {
           Column() {
-            Text(this.currentDate === todayStr() ? '今天还没有安排' : '这天还没有安排')
-              .fontSize(this.settings.largeText ? UiTokens.textXL : UiTokens.textL)
-              .fontWeight(FontWeight.Medium)
-              .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
-              .margin({ bottom: 6 })
-            Text('点击下方按钮添加第一个日程')
-              .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
-              .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textSecondary)
+            Row() {
+              TextInput({ placeholder: '搜索日程', text: $$this.searchQuery })
+                .width('100%')
+                .height(40)
+                .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                .backgroundColor(UiTokens.bgHover)
+                .placeholderColor(this.settings.highContrast ? '#999999' : UiTokens.textTertiary)
+                .borderRadius(UiTokens.radiusL)
+                .padding({ left: 14, right: 14 })
+                .onChange(() => {
+                  this.applyFilter()
+                })
+            }
+            .width('100%')
+            .padding({ left: UiTokens.pagePadding, right: UiTokens.pagePadding, top: 8, bottom: 4 })
+
+            Column() {
+              Text(this.currentDate === todayStr() ? '今天还没有安排' : '这天还没有安排')
+                .fontSize(this.settings.largeText ? UiTokens.textXL : UiTokens.textL)
+                .fontWeight(FontWeight.Medium)
+                .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+                .margin({ bottom: 6 })
+              Text('点击下方按钮添加第一个日程')
+                .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textSecondary)
+            }
+            .layoutWeight(1)
+            .justifyContent(FlexAlign.Center)
+            .alignItems(HorizontalAlign.Center)
+            .padding(32)
           }
           .layoutWeight(1)
-          .justifyContent(FlexAlign.Center)
-          .alignItems(HorizontalAlign.Center)
-          .padding(32)
         } else {
           List({ space: 0 }) {
+            ListItem() {
+              Row() {
+                TextInput({ placeholder: '搜索日程', text: $$this.searchQuery })
+                  .width('100%')
+                  .height(40)
+                  .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                  .backgroundColor(UiTokens.bgHover)
+                  .placeholderColor(this.settings.highContrast ? '#999999' : UiTokens.textTertiary)
+                  .borderRadius(UiTokens.radiusL)
+                  .padding({ left: 14, right: 14 })
+                  .onChange(() => {
+                    this.applyFilter()
+                  })
+              }
+              .width('100%')
+              .padding({ top: 8, bottom: 4 })
+            }
+
             ForEach(this.filteredTasks, (task: Task) => {
               ListItem() {
                 ScheduleCard({
@@ -219,7 +239,7 @@ struct Index {
           .layoutWeight(1)
           .edgeEffect(EdgeEffect.Spring)
           .scrollBar(BarState.Auto)
-          .padding({ top: 8, bottom: 8 })
+          .padding({ top: 0, bottom: 8 })
         }
       } else if (this.activeTab === 1) {
         CalendarTab()
