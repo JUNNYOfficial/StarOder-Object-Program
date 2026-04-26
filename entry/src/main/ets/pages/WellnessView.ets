@@ -1,5 +1,5 @@
 import { router } from '@kit.ArkUI'
-import { UserPreferences, MoodSurveyRecord, EnergyRecord } from '../models/DataModels'
+import { UserPreferences, MoodSurveyRecord, EnergyRecord, Task, TaskStatus } from '../models/DataModels'
 import { dataStore } from '../models/DataStore'
 import { UiTokens } from '../design/UiTokens'
 import { todayStr } from '../utils/DateUtils'
@@ -35,6 +35,15 @@ struct WellnessView {
   @State moodTrigger: string = ''
   @State moodContext: string = ''
 
+  // Focus stats enhancement
+  @State dailyFocusData: Array<{ label: string, minutes: number }> = []
+  @State weeklyFocusData: Array<{ label: string, totalMinutes: number, sessions: number }> = []
+  @State maxDailyMinutes: number = 1
+  @State maxWeeklyMinutes: number = 1
+  @State taskCompletionRate: number = 0
+  @State totalTasksThisWeek: number = 0
+  @State completedTasksThisWeek: number = 0
+
   aboutToAppear() {
     this.settings = dataStore.getUserPrefs()
     this.loadData()
@@ -59,8 +68,11 @@ struct WellnessView {
     this.loadEnergyData()
     this.loadFocusStats()
     this.loadMoodData()
+    this.loadFocusTrends()
+    this.loadTaskCompletion()
     this.hasAnyData = this.totalFocusMinutes > 0 || this.moodRecords.length > 0 ||
-      this.dayEnergies.filter(d => d.hasData).length > 0
+      this.dayEnergies.filter(d => d.hasData).length > 0 ||
+      this.dailyFocusData.some(d => d.minutes > 0)
   }
 
   private loadEnergyData() {
@@ -107,6 +119,38 @@ struct WellnessView {
       recent.push(all[i])
     }
     this.moodRecords = recent
+  }
+
+  private loadFocusTrends() {
+    this.dailyFocusData = dataStore.getFocusDailyStats(7)
+    this.weeklyFocusData = dataStore.getFocusWeeklyStats(4)
+    this.maxDailyMinutes = Math.max(1, ...this.dailyFocusData.map(d => d.minutes))
+    this.maxWeeklyMinutes = Math.max(1, ...this.weeklyFocusData.map(d => d.totalMinutes))
+  }
+
+  private loadTaskCompletion() {
+    const now = new Date()
+    const startOfWeek = new Date(now)
+    const dayOfWeek = now.getDay() === 0 ? 7 : now.getDay()
+    startOfWeek.setDate(now.getDate() - dayOfWeek + 1)
+    const startStr = this.formatDate(startOfWeek)
+    const endStr = this.formatDate(now)
+
+    let total = 0
+    let completed = 0
+    const allTasks = dataStore.getActiveTasks()
+    for (let i = 0; i < allTasks.length; i++) {
+      const t = allTasks[i]
+      if (t.date >= startStr && t.date <= endStr) {
+        total++
+        if (t.status === TaskStatus.DONE) {
+          completed++
+        }
+      }
+    }
+    this.totalTasksThisWeek = total
+    this.completedTasksThisWeek = completed
+    this.taskCompletionRate = total > 0 ? Math.round((completed / total) * 100) : 0
   }
 
   saveEnergyRecord() {
@@ -181,6 +225,58 @@ struct WellnessView {
             .justifyContent(FlexAlign.Center)
             .alignItems(HorizontalAlign.Center)
           } else {
+            // Task completion rate
+            if (this.totalTasksThisWeek > 0) {
+              Column({ space: UiTokens.gapM }) {
+                Text('本周完成率')
+                  .fontSize(this.sectionTitle())
+                  .fontWeight(FontWeight.Medium)
+                  .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+                  .width('100%')
+
+                Row({ space: UiTokens.gapM }) {
+                  Column({ space: 4 }) {
+                    Text(`${this.taskCompletionRate}%`)
+                      .fontSize(this.largeFont())
+                      .fontWeight(FontWeight.Bold)
+                      .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+                    Text(`${this.completedTasksThisWeek}/${this.totalTasksThisWeek} 日程`)
+                      .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                      .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textSecondary)
+                  }
+                  .layoutWeight(1)
+                  .padding(16)
+                  .backgroundColor(UiTokens.bgCard)
+                  .borderRadius(UiTokens.radiusXL)
+                  .alignItems(HorizontalAlign.Start)
+                  .shadow({
+                    radius: this.settings.highContrast ? 0 : 8,
+                    color: '#0A000000',
+                    offsetX: 0,
+                    offsetY: 2
+                  })
+
+                  Stack() {
+                    Column()
+                      .width('100%')
+                      .height(8)
+                      .backgroundColor(UiTokens.divider)
+                      .borderRadius(4)
+                    Column()
+                      .width(`${this.taskCompletionRate}%`)
+                      .height(8)
+                      .backgroundColor(UiTokens.brand)
+                      .borderRadius(4)
+                  }
+                  .layoutWeight(2)
+                  .height(8)
+                }
+                .width('100%')
+                .alignItems(VerticalAlign.Center)
+              }
+              .width('100%')
+            }
+
             // Focus stats
             Column({ space: UiTokens.gapM }) {
               Text('专注统计')
@@ -235,6 +331,124 @@ struct WellnessView {
               .width('100%')
             }
             .width('100%')
+
+            // Daily focus chart
+            if (this.dailyFocusData.some(d => d.minutes > 0)) {
+              Column({ space: UiTokens.gapM }) {
+                Text('最近7天专注时长')
+                  .fontSize(this.sectionTitle())
+                  .fontWeight(FontWeight.Medium)
+                  .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+                  .width('100%')
+
+                Row({ space: 6 }) {
+                  ForEach(this.dailyFocusData, (day: { label: string, minutes: number }) => {
+                    Column({ space: 4 }) {
+                      Stack({ alignContent: Alignment.Bottom }) {
+                        Column()
+                          .width('100%')
+                          .height(100)
+                          .backgroundColor(UiTokens.divider)
+                          .borderRadius(UiTokens.radiusS)
+
+                        if (day.minutes > 0) {
+                          Column()
+                            .width('100%')
+                            .height(`${(day.minutes / this.maxDailyMinutes) * 100}%`)
+                            .backgroundColor(UiTokens.brand)
+                            .borderRadius(UiTokens.radiusS)
+                        }
+                      }
+                      .width('100%')
+                      .height(100)
+
+                      Text(day.label)
+                        .fontSize(UiTokens.textXS)
+                        .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textTertiary)
+                        .textAlign(TextAlign.Center)
+
+                      if (day.minutes > 0) {
+                        Text(`${day.minutes}`)
+                          .fontSize(UiTokens.textXS)
+                          .fontColor(UiTokens.brand)
+                          .fontWeight(FontWeight.Medium)
+                          .textAlign(TextAlign.Center)
+                      }
+                    }
+                    .layoutWeight(1)
+                  })
+                }
+                .width('100%')
+                .padding(UiTokens.cardPadding)
+                .backgroundColor(UiTokens.bgCard)
+                .borderRadius(UiTokens.radiusXL)
+                .shadow({
+                  radius: this.settings.highContrast ? 0 : 8,
+                  color: '#0A000000',
+                  offsetX: 0,
+                  offsetY: 2
+                })
+              }
+              .width('100%')
+            }
+
+            // Weekly focus trend
+            if (this.weeklyFocusData.some(w => w.totalMinutes > 0)) {
+              Column({ space: UiTokens.gapM }) {
+                Text('周专注趋势')
+                  .fontSize(this.sectionTitle())
+                  .fontWeight(FontWeight.Medium)
+                  .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+                  .width('100%')
+
+                Column({ space: UiTokens.gapS }) {
+                  ForEach(this.weeklyFocusData, (week: { label: string, totalMinutes: number, sessions: number }) => {
+                    Row({ space: 10 }) {
+                      Text(week.label)
+                        .width(70)
+                        .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                        .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textSecondary)
+
+                      Stack() {
+                        Row()
+                          .width('100%')
+                          .height(8)
+                          .backgroundColor(UiTokens.divider)
+                          .borderRadius(4)
+                        if (week.totalMinutes > 0) {
+                          Row()
+                            .width(`${(week.totalMinutes / this.maxWeeklyMinutes) * 100}%`)
+                            .height(8)
+                            .backgroundColor(UiTokens.brand)
+                            .borderRadius(4)
+                        }
+                      }
+                      .layoutWeight(1)
+                      .height(8)
+
+                      Text(`${week.totalMinutes}分`)
+                        .width(50)
+                        .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                        .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textSecondary)
+                        .textAlign(TextAlign.End)
+                    }
+                    .width('100%')
+                    .padding({ top: 8, bottom: 8 })
+                  })
+                }
+                .width('100%')
+                .padding(UiTokens.cardPadding)
+                .backgroundColor(UiTokens.bgCard)
+                .borderRadius(UiTokens.radiusXL)
+                .shadow({
+                  radius: this.settings.highContrast ? 0 : 8,
+                  color: '#0A000000',
+                  offsetX: 0,
+                  offsetY: 2
+                })
+              }
+              .width('100%')
+            }
 
             // Energy chart
             if (this.dayEnergies.filter(d => d.hasData).length > 0) {

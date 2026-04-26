@@ -1,7 +1,8 @@
-import { router } from '@kit.ArkUI'
-import { UserPreferences, FocusMode, FocusRecord, getFocusModeConfig } from '../models/DataModels'
+import { router, promptAction } from '@kit.ArkUI'
+import { UserPreferences, FocusMode, FocusRecord, getFocusModeConfig, Task } from '../models/DataModels'
 import { dataStore } from '../models/DataStore'
 import { UiTokens } from '../design/UiTokens'
+import { todayStr } from '../utils/DateUtils'
 
 @Entry
 @Component
@@ -17,9 +18,14 @@ struct TimerPage {
   @State completeMsg: string = ''
   private timerId: number = -1
 
+  @State todayTasks: Task[] = []
+  @State selectedTaskId: string = ''
+  @State showTaskPicker: boolean = false
+
   aboutToAppear() {
     this.settings = dataStore.getUserPrefs()
     this.resetTimer()
+    this.loadTodayTasks()
   }
 
   aboutToDisappear() {
@@ -27,6 +33,14 @@ struct TimerPage {
       clearInterval(this.timerId)
       this.timerId = -1
     }
+  }
+
+  private loadTodayTasks() {
+    const today = todayStr()
+    const tasks = dataStore.getTasksByDate(today)
+      .filter(t => t.status !== 'DONE')
+      .sort((a, b) => a.startTime.localeCompare(b.startTime))
+    this.todayTasks = tasks
   }
 
   private baseFont(): number {
@@ -111,13 +125,19 @@ struct TimerPage {
 
   private saveRecord(completed: boolean) {
     const config = getFocusModeConfig(this.selectedMode)
-    const record = new FocusRecord('', this.selectedMode, config.defaultMinutes)
+    const record = new FocusRecord(this.selectedTaskId, this.selectedMode, config.defaultMinutes)
     record.actualMinutes = Math.floor((this.totalSeconds - this.remainingSeconds) / 60)
     record.startTime = this.startTimeStr
     record.endTime = new Date().toISOString()
     record.completed = completed
     record.interrupted = !completed
     dataStore.saveFocusRecord(record)
+  }
+
+  private selectedTaskTitle(): string {
+    if (!this.selectedTaskId) return '未关联任务'
+    const task = this.todayTasks.find(t => t.id === this.selectedTaskId)
+    return task ? task.title : '未关联任务'
   }
 
   build() {
@@ -188,6 +208,42 @@ struct TimerPage {
           .width('100%')
           .padding({ top: 32, bottom: 16 })
           .alignItems(HorizontalAlign.Center)
+
+          // Task association
+          Column({ space: UiTokens.gapS }) {
+            Text('关联日程')
+              .fontSize(this.sectionTitle())
+              .fontWeight(FontWeight.Medium)
+              .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+              .width('100%')
+
+            Button() {
+              Row() {
+                Text(this.selectedTaskTitle())
+                  .fontSize(this.baseFont())
+                  .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+                  .layoutWeight(1)
+                  .maxLines(1)
+                  .textOverflow({ overflow: TextOverflow.Ellipsis })
+
+                Text('选择')
+                  .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                  .fontColor(UiTokens.brand)
+              }
+              .width('100%')
+            }
+            .width('100%')
+            .height(48)
+            .padding({ left: 14, right: 14 })
+            .backgroundColor(UiTokens.bgHover)
+            .borderRadius(UiTokens.radiusL)
+            .enabled(!this.isRunning)
+            .onClick(() => {
+              this.loadTodayTasks()
+              this.showTaskPicker = true
+            })
+          }
+          .width('100%')
 
           // Mode selector
           Column({ space: UiTokens.gapS }) {
@@ -325,6 +381,111 @@ struct TimerPage {
       }
       .layoutWeight(1)
       .scrollBar(BarState.Auto)
+
+      // Task picker overlay
+      if (this.showTaskPicker) {
+        Column() {
+          Column()
+            .width('100%')
+            .layoutWeight(1)
+            .backgroundColor('rgba(0,0,0,0.4)')
+            .onClick(() => { this.showTaskPicker = false })
+
+          Column({ space: UiTokens.gapM }) {
+            Text('选择要专注的日程')
+              .fontSize(UiTokens.textXL)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(UiTokens.textPrimary)
+              .width('100%')
+
+            if (this.todayTasks.length === 0) {
+              Text('今天没有待完成的日程')
+                .fontSize(this.baseFont())
+                .fontColor(UiTokens.textSecondary)
+                .width('100%')
+                .textAlign(TextAlign.Center)
+                .padding(24)
+            } else {
+              Column({ space: 0 }) {
+                ForEach(this.todayTasks, (task: Task, index: number) => {
+                  Row({ space: UiTokens.gapM }) {
+                    Column() {
+                      Text(task.title)
+                        .fontSize(this.baseFont())
+                        .fontColor(this.selectedTaskId === task.id ? UiTokens.brand : UiTokens.textPrimary)
+                        .fontWeight(this.selectedTaskId === task.id ? FontWeight.Medium : FontWeight.Regular)
+                        .maxLines(1)
+                        .textOverflow({ overflow: TextOverflow.Ellipsis })
+
+                      if (task.startTime && task.endTime) {
+                        Text(`${task.startTime} - ${task.endTime}`)
+                          .fontSize(UiTokens.textXS)
+                          .fontColor(UiTokens.textTertiary)
+                      }
+                    }
+                    .layoutWeight(1)
+                    .alignItems(HorizontalAlign.Start)
+
+                    if (this.selectedTaskId === task.id) {
+                      Text('✓')
+                        .fontSize(UiTokens.textM)
+                        .fontColor(UiTokens.brand)
+                        .fontWeight(FontWeight.Bold)
+                    }
+                  }
+                  .width('100%')
+                  .padding(14)
+                  .backgroundColor(this.selectedTaskId === task.id ? UiTokens.brandSoft : 'transparent')
+                  .borderRadius(UiTokens.radiusL)
+                  .onClick(() => {
+                    this.selectedTaskId = task.id
+                    this.showTaskPicker = false
+                  })
+
+                  if (index < this.todayTasks.length - 1) {
+                    Divider()
+                      .strokeWidth(0.5)
+                      .color(UiTokens.divider)
+                      .margin({ left: 14 })
+                  }
+                })
+              }
+              .width('100%')
+            }
+
+            Button('不关联任何日程')
+              .width('100%')
+              .height(44)
+              .fontSize(this.baseFont())
+              .fontColor(UiTokens.textSecondary)
+              .backgroundColor(UiTokens.bgHover)
+              .borderRadius(UiTokens.radiusL)
+              .onClick(() => {
+                this.selectedTaskId = ''
+                this.showTaskPicker = false
+              })
+
+            Row({ space: UiTokens.gapM }) {
+              Button('取消')
+                .layoutWeight(1)
+                .height(44)
+                .fontColor(UiTokens.textSecondary)
+                .backgroundColor(UiTokens.bgHover)
+                .borderRadius(UiTokens.radiusL)
+                .onClick(() => { this.showTaskPicker = false })
+            }
+            .width('100%')
+          }
+          .width('100%')
+          .padding(UiTokens.pagePadding)
+          .padding({ bottom: 32 })
+          .backgroundColor(UiTokens.bgCard)
+          .borderRadius({ topLeft: 24, topRight: 24 })
+        }
+        .width('100%')
+        .height('100%')
+        .justifyContent(FlexAlign.End)
+      }
     }
     .width('100%')
     .height('100%')

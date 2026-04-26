@@ -1,0 +1,24 @@
+{
+  "forms": [
+    {
+      "name": "ScheduleQuickForm",
+      "displayName": "$string:form_name",
+      "description": "$string:form_desc",
+      "src": "./ets/pages/form/ScheduleQuickForm.ets",
+      "uiSyntax": "arkts",
+      "window": {
+        "designWidth": 720,
+        "autoDesignWidth": true
+      },
+      "colorMode": "auto",
+      "isDefault": true,
+      "updateEnabled": true,
+      "scheduledUpdateTime": "06:00",
+      "updateDuration": 1,
+      "defaultDimension": "2*2",
+      "supportDimensions": ["2*2"],
+      "formConfigAbility": "EntryAbility",
+      "data": {}
+    }
+  ]
+}

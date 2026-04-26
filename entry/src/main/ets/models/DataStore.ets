@@ -2,7 +2,7 @@ import { preferences } from '@kit.ArkData'
 import {
   Task, SubTask, EnergyRecord, MoodSurveyRecord, FocusRecord, UserPreferences, TaskStatus, RepeatMode
 } from './DataModels'
-import { Course, TimeSlot, CourseScheduleState, DEFAULT_TIME_SLOTS } from './CourseModels'
+import { Course, TimeSlot, CourseScheduleState, DEFAULT_TIME_SLOTS, WeekType } from './CourseModels'
 
 const KEY_TASKS = 'star_tasks'
 const KEY_ENERGY = 'star_energy_records'
@@ -324,6 +324,114 @@ class DataStore {
     } catch (e) {
       console.error('Clear all failed:', JSON.stringify(e))
     }
+  }
+
+  // ===== Conflict Detection =====
+  checkTaskConflict(date: string, startTime: string, endTime: string, excludeId?: string): { hasConflict: boolean, conflictWith: string } {
+    if (!startTime || !endTime) return { hasConflict: false, conflictWith: '' }
+    const tasks = this.getTasksByDate(date)
+    const startMin = this.timeToMinutes(startTime)
+    const endMin = this.timeToMinutes(endTime)
+
+    for (let i = 0; i < tasks.length; i++) {
+      const t = tasks[i]
+      if (excludeId && t.id === excludeId) continue
+      if (!t.startTime || !t.endTime) continue
+      const tStart = this.timeToMinutes(t.startTime)
+      const tEnd = this.timeToMinutes(t.endTime)
+      // 有重叠即冲突
+      if (startMin < tEnd && endMin > tStart) {
+        return { hasConflict: true, conflictWith: t.title }
+      }
+    }
+    return { hasConflict: false, conflictWith: '' }
+  }
+
+  checkCourseConflict(state: CourseScheduleState, newCourse: Course, excludeId?: string): { hasConflict: boolean, conflictWith: string } {
+    const courses = this.getCourses()
+    for (let i = 0; i < courses.length; i++) {
+      const c = courses[i]
+      if (excludeId && c.id === excludeId) continue
+      if (c.dayOfWeek !== newCourse.dayOfWeek) continue
+      // 周次范围有交集
+      if (newCourse.endWeek < c.startWeek || newCourse.startWeek > c.endWeek) continue
+      // 单双周过滤：单周课程与双周课程不冲突
+      if (newCourse.weekType === WeekType.ODD && c.weekType === WeekType.EVEN) continue
+      if (newCourse.weekType === WeekType.EVEN && c.weekType === WeekType.ODD) continue
+      // 节次有重叠
+      const newEnd = newCourse.startSlot + newCourse.slotCount - 1
+      const cEnd = c.startSlot + c.slotCount - 1
+      if (newCourse.startSlot <= cEnd && newEnd >= c.startSlot) {
+        return { hasConflict: true, conflictWith: c.name }
+      }
+    }
+    return { hasConflict: false, conflictWith: '' }
+  }
+
+  private timeToMinutes(time: string): number {
+    const parts = time.split(':').map(Number)
+    return parts[0] * 60 + parts[1]
+  }
+
+  // ===== Focus Stats Aggregation =====
+  getFocusStatsByRange(startDate: string, endDate: string): { totalMinutes: number, sessions: number, completedSessions: number, dailyData: Record<string, number> } {
+    const all = this.getFocusRecords()
+    const start = this.parseLocalDate(startDate).getTime()
+    const end = this.parseLocalDate(endDate).getTime() + 24 * 60 * 60 * 1000
+    let totalMinutes = 0
+    let sessions = 0
+    let completedSessions = 0
+    const dailyData: Record<string, number> = {}
+
+    for (let i = 0; i < all.length; i++) {
+      const r = all[i]
+      if (!r.startTime) continue
+      const rTime = new Date(r.startTime).getTime()
+      if (rTime >= start && rTime < end) {
+        totalMinutes += r.actualMinutes
+        sessions++
+        if (r.completed) completedSessions++
+        const dateStr = this.formatDate(new Date(r.startTime))
+        dailyData[dateStr] = (dailyData[dateStr] || 0) + r.actualMinutes
+      }
+    }
+    return { totalMinutes, sessions, completedSessions, dailyData }
+  }
+
+  getFocusWeeklyStats(weeks: number = 4): Array<{ label: string, totalMinutes: number, sessions: number }> {
+    const result: Array<{ label: string, totalMinutes: number, sessions: number }> = []
+    const now = new Date()
+    for (let w = weeks - 1; w >= 0; w--) {
+      const weekEnd = new Date(now)
+      weekEnd.setDate(weekEnd.getDate() - w * 7)
+      const weekStart = new Date(weekEnd)
+      weekStart.setDate(weekStart.getDate() - 6)
+      const startStr = this.formatDate(weekStart)
+      const endStr = this.formatDate(weekEnd)
+      const stats = this.getFocusStatsByRange(startStr, endStr)
+      result.push({
+        label: `${weekStart.getMonth() + 1}/${weekStart.getDate()}-${weekEnd.getMonth() + 1}/${weekEnd.getDate()}`,
+        totalMinutes: stats.totalMinutes,
+        sessions: stats.sessions
+      })
+    }
+    return result
+  }
+
+  getFocusDailyStats(days: number = 7): Array<{ label: string, minutes: number }> {
+    const result: Array<{ label: string, minutes: number }> = []
+    const now = new Date()
+    for (let d = days - 1; d >= 0; d--) {
+      const date = new Date(now)
+      date.setDate(date.getDate() - d)
+      const dateStr = this.formatDate(date)
+      const stats = this.getFocusStatsByRange(dateStr, dateStr)
+      result.push({
+        label: `${date.getMonth() + 1}/${date.getDate()}`,
+        minutes: stats.totalMinutes
+      })
+    }
+    return result
   }
 
   // ===== Utils =====

@@ -40,3 +40,26 @@ export function addDays(dateStr: string, days: number): string {
   d.setDate(d.getDate() + days)
   return formatDate(d)
 }
+
+export function getWeekdayName(day: number): string {
+  const names = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+  return names[day % 7]
+}
+
+export function getWeekdayOffset(targetWeekday: number): number {
+  const today = new Date().getDay()
+  const current = today === 0 ? 7 : today
+  let offset = targetWeekday - current
+  if (offset <= 0) offset += 7
+  return offset
+}
+
+export function daysLaterStr(days: number): string {
+  const d = new Date()
+  d.setDate(d.getDate() + days)
+  return formatDate(d)
+}
+
+export function nextWeekdayStr(targetWeekday: number): string {
+  return daysLaterStr(getWeekdayOffset(targetWeekday))
+}

@@ -23,6 +23,14 @@
     {
       "name": "mic_permission_reason",
       "value": "用于语音录入识别日程内容"
+    },
+    {
+      "name": "form_name",
+      "value": "星序速览"
+    },
+    {
+      "name": "form_desc",
+      "value": "显示今日日程和快捷操作"
     }
   ]
 }

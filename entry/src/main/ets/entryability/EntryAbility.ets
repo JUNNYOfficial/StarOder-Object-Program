@@ -1,6 +1,7 @@
 import { AbilityConstant, UIAbility, Want } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window } from '@kit.ArkUI';
+import { formBindingData, formProvider } from '@kit.FormKit';
 import { dataStore } from '../models/DataStore';
 import { Task, SubTask, TaskType, TaskIntensity, TimeBlock, TaskStatus } from '../models/DataModels';
 
@@ -11,20 +12,72 @@ export default class EntryAbility extends UIAbility {
 
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onCreate');
-    this.extractLaunchUrl(want);
+    dataStore.init(this.context);
+    this.handleWant(want);
   }
 
   onNewWant(want: Want, launchParam: AbilityConstant.LaunchParam): void {
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onNewWant');
-    this.extractLaunchUrl(want);
+    this.handleWant(want);
   }
 
-  private extractLaunchUrl(want: Want): void {
+  private handleWant(want: Want): void {
     if (want.parameters) {
       const urlValue = want.parameters['url']
       if (urlValue) {
         this.launchWantUri = String(urlValue)
       }
+    }
+    // Handle form lifecycle
+    const formId = want.parameters?.['formId'] as string
+    const formConfig = want.parameters?.['formConfig'] as string
+    if (formId && formConfig) {
+      this.updateFormData(formId)
+    }
+  }
+
+  private updateFormData(formId: string): void {
+    try {
+      const today = this.formatDate(new Date())
+      const tasks = dataStore.getTasksByDate(today)
+      const todoCount = tasks.filter(t => t.status !== TaskStatus.DONE).length
+
+      let nextTask = ''
+      let nextTime = ''
+      const now = new Date()
+      const nowMinutes = now.getHours() * 60 + now.getMinutes()
+      const upcoming = tasks
+        .filter(t => t.startTime)
+        .map(t => {
+          const parts = (t.startTime as string).split(':').map(Number)
+          return { task: t, minutes: parts[0] * 60 + parts[1] }
+        })
+        .filter(t => t.minutes > nowMinutes)
+        .sort((a, b) => a.minutes - b.minutes)
+
+      if (upcoming.length > 0) {
+        nextTask = upcoming[0].task.title
+        nextTime = upcoming[0].task.startTime || ''
+      } else if (tasks.length > 0) {
+        nextTask = tasks[0].title
+        nextTime = tasks[0].startTime || ''
+      }
+
+      const formData = {
+        todayCount: todoCount,
+        nextTask: nextTask,
+        nextTime: nextTime
+      }
+      const bindingData = formBindingData.createFormBindingData(formData)
+      formProvider.updateForm(formId, bindingData)
+        .then(() => {
+          hilog.info(DOMAIN, 'testTag', 'Form updated successfully')
+        })
+        .catch((err: Error) => {
+          hilog.error(DOMAIN, 'testTag', 'Form update failed: %{public}s', JSON.stringify(err))
+        })
+    } catch (e) {
+      hilog.error(DOMAIN, 'testTag', 'Update form data failed: %{public}s', JSON.stringify(e))
     }
   }
 
@@ -34,7 +87,6 @@ export default class EntryAbility extends UIAbility {
 
   onWindowStageCreate(windowStage: window.WindowStage): void {
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onWindowStageCreate');
-    dataStore.init(this.context);
     this.seedSampleData();
 
     windowStage.loadContent(this.launchWantUri, (err) => {

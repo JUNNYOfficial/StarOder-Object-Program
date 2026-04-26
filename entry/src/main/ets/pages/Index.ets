@@ -399,6 +399,9 @@ struct Index {
                 })
               }
               .padding({ left: UiTokens.pagePadding, right: UiTokens.pagePadding })
+              .swipeAction({
+                end: this.SwipeActionBuilder(task)
+              })
             }, (task: Task) => task.id)
           }
           .width('100%')
@@ -530,6 +533,47 @@ struct Index {
   }
   .width('100%')
   .height('100%')
+  }
+
+  @Builder
+  SwipeActionBuilder(task: Task) {
+    Row({ space: 8 }) {
+      Button() {
+        Text('完成')
+          .fontSize(UiTokens.textS)
+          .fontColor('#FFFFFF')
+      }
+      .width(60)
+      .height('100%')
+      .backgroundColor(UiTokens.done)
+      .borderRadius(UiTokens.radiusM)
+      .onClick(() => {
+        const all = dataStore.getActiveTasks()
+        const idx = all.findIndex(t => t.id === task.id)
+        if (idx >= 0) {
+          all[idx].status = TaskStatus.DONE
+          all[idx].updatedAt = Date.now()
+          dataStore.saveTasks(all)
+          this.loadData()
+        }
+      })
+
+      Button() {
+        Text('删除')
+          .fontSize(UiTokens.textS)
+          .fontColor('#FFFFFF')
+      }
+      .width(60)
+      .height('100%')
+      .backgroundColor(UiTokens.error)
+      .borderRadius(UiTokens.radiusM)
+      .onClick(() => {
+        dataStore.softDeleteTask(task.id)
+        this.loadData()
+      })
+    }
+    .padding({ left: 4, right: UiTokens.pagePadding })
+    .height(72)
   }
 
   @Builder

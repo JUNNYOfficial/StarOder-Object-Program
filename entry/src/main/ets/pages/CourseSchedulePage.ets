@@ -119,6 +119,28 @@ struct CourseSchedulePage {
       promptAction.showToast({ message: '请输入课程名称' })
       return
     }
+    const newCourse = new Course(
+      this.editName.trim(),
+      this.editClassroom.trim(),
+      this.editTeacher.trim(),
+      this.editDay,
+      this.editStartSlot,
+      this.editSlotCount,
+      this.editWeekType,
+      this.editStartWeek,
+      this.editEndWeek
+    )
+    newCourse.color = this.editColor
+    if (this.editingCourse) {
+      newCourse.id = this.editingCourse.id
+    }
+
+    const conflict = dataStore.checkCourseConflict(this.state, newCourse, this.editingCourse ? this.editingCourse.id : undefined)
+    if (conflict.hasConflict) {
+      promptAction.showToast({ message: `与「${conflict.conflictWith}」时间冲突` })
+      return
+    }
+
     if (this.editingCourse) {
       const c = this.editingCourse
       c.name = this.editName.trim()
@@ -133,19 +155,7 @@ struct CourseSchedulePage {
       c.color = this.editColor
       dataStore.updateCourse(c)
     } else {
-      const c = new Course(
-        this.editName.trim(),
-        this.editClassroom.trim(),
-        this.editTeacher.trim(),
-        this.editDay,
-        this.editStartSlot,
-        this.editSlotCount,
-        this.editWeekType,
-        this.editStartWeek,
-        this.editEndWeek
-      )
-      c.color = this.editColor
-      dataStore.addCourse(c)
+      dataStore.addCourse(newCourse)
     }
     this.state.courses = dataStore.getCourses()
     this.showEditPanel = false

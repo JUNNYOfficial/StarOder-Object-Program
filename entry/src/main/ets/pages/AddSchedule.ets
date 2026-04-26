@@ -8,6 +8,7 @@ import { dataStore } from '../models/DataStore'
 import { UiTokens } from '../design/UiTokens'
 import { todayStr, tomorrowStr, dayAfterTomorrowStr } from '../utils/DateUtils'
 import { setSystemReminder } from '../services/VoiceScheduleService'
+import { getRepeatModeLabel } from '../utils/UiHelper'
 
 @Entry
 @Component
@@ -196,6 +197,12 @@ struct AddSchedule {
       const endParts = end.split(':').map(Number)
       if (endParts[0] * 60 + endParts[1] <= startParts[0] * 60 + startParts[1]) {
         promptAction.showToast({ message: '结束时间必须晚于开始时间' })
+        return
+      }
+      // 冲突检测
+      const conflict = dataStore.checkTaskConflict(normalizedDate, start, end, this.isEditMode ? this.editTaskId : undefined)
+      if (conflict.hasConflict) {
+        promptAction.showToast({ message: `与「${conflict.conflictWith}」时间冲突` })
         return
       }
     }
@@ -664,6 +671,45 @@ struct AddSchedule {
               }
               .width('100%')
             }
+          }
+          .width('100%')
+
+          // Repeat mode
+          Column({ space: UiTokens.gapS }) {
+            Text('重复')
+              .fontSize(this.sectionTitle())
+              .fontWeight(FontWeight.Medium)
+              .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+              .width('100%')
+
+            Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
+              ForEach([
+                RepeatMode.NONE,
+                RepeatMode.DAILY,
+                RepeatMode.WEEKLY,
+                RepeatMode.MONTHLY,
+                RepeatMode.YEARLY
+              ], (mode: RepeatMode) => {
+                Button() {
+                  Text(getRepeatModeLabel(mode))
+                    .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                    .fontColor(this.selectedRepeat === mode
+                      ? (this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
+                      : (this.settings.highContrast ? '#555555' : UiTokens.textSecondary))
+                }
+                .width(64)
+                .height(36)
+                .margin({ right: 8, bottom: 8 })
+                .backgroundColor(this.selectedRepeat === mode
+                  ? (this.settings.highContrast ? UiTokens.hcBg : UiTokens.brandSoft)
+                  : (this.settings.highContrast ? '#EEEEEE' : UiTokens.bgHover))
+                .borderRadius(UiTokens.radiusL)
+                .onClick(() => {
+                  this.selectedRepeat = mode
+                })
+              })
+            }
+            .width('100%')
           }
           .width('100%')
 
