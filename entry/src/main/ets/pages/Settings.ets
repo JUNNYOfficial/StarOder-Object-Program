@@ -3,6 +3,7 @@ import { UserPreferences } from '../models/DataModels'
 import { dataStore } from '../models/DataStore'
 import { UiTokens } from '../design/UiTokens'
 import { CalDAVService, CalDAVConfig } from '../services/CalDAVService'
+import { FeishuSyncService } from '../services/FeishuSyncService'
 
 @Entry
 @Component
@@ -14,10 +15,15 @@ struct Settings {
 
   @State caldavConfig: CalDAVConfig = { serverUrl: '', username: '', password: '', calendarPath: '' }
   @State caldavMsg: string = ''
+  @State feishuAppId: string = ''
+  @State feishuAppSecret: string = ''
+  @State feishuMsg: string = ''
 
   aboutToAppear() {
     this.settings = dataStore.getUserPrefs()
     this.caldavConfig = CalDAVService.getConfig()
+    this.feishuAppId = FeishuSyncService.getAppId()
+    this.feishuAppSecret = FeishuSyncService.getAppSecret()
   }
 
   exportDataFn() {
@@ -392,6 +398,82 @@ struct Settings {
           }
           .width('100%')
 
+          // Feishu sync
+          Column({ space: UiTokens.gapM }) {
+            Text('飞书日历同步')
+              .fontSize(this.sectionTitle())
+              .fontWeight(FontWeight.Medium)
+              .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+              .width('100%')
+
+            Column({ space: UiTokens.gapM }) {
+              Text('App ID')
+                .fontSize(this.baseFont())
+                .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+                .width('100%')
+              TextInput({ placeholder: 'cli_xxxxxxxxxxxxxxxx', text: $$this.feishuAppId })
+                .width('100%')
+                .height(40)
+                .fontSize(this.baseFont())
+                .backgroundColor(UiTokens.bgHover)
+                .placeholderColor(this.settings.highContrast ? '#999999' : UiTokens.textTertiary)
+                .borderRadius(UiTokens.radiusL)
+
+              Text('App Secret')
+                .fontSize(this.baseFont())
+                .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+                .width('100%')
+              TextInput({ placeholder: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', text: $$this.feishuAppSecret })
+                .width('100%')
+                .height(40)
+                .fontSize(this.baseFont())
+                .backgroundColor(UiTokens.bgHover)
+                .placeholderColor(this.settings.highContrast ? '#999999' : UiTokens.textTertiary)
+                .borderRadius(UiTokens.radiusL)
+                .type(InputType.Password)
+
+              Row({ space: UiTokens.gapM }) {
+                Button('保存配置')
+                  .layoutWeight(1)
+                  .height(40)
+                  .fontSize(this.baseFont())
+                  .fontColor(UiTokens.textInverse)
+                  .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
+                  .borderRadius(UiTokens.radiusXL)
+                  .onClick(() => { this.saveFeishuConfig() })
+
+                Button('获取授权')
+                  .layoutWeight(1)
+                  .height(40)
+                  .fontSize(this.baseFont())
+                  .fontColor(UiTokens.textInverse)
+                  .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
+                  .borderRadius(UiTokens.radiusXL)
+                  .onClick(() => { this.testFeishuConnection() })
+              }
+              .width('100%')
+
+              if (this.feishuMsg) {
+                Text(this.feishuMsg)
+                  .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                  .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textSecondary)
+                  .width('100%')
+                  .textAlign(TextAlign.Center)
+              }
+            }
+            .width('100%')
+            .padding(UiTokens.cardPadding)
+            .backgroundColor(UiTokens.bgCard)
+            .borderRadius(UiTokens.radiusXL)
+            .shadow({
+              radius: this.settings.highContrast ? 0 : 8,
+              color: '#0A000000',
+              offsetX: 0,
+              offsetY: 2
+            })
+          }
+          .width('100%')
+
           // Data management
           Column({ space: UiTokens.gapM }) {
             Text('数据管理')
@@ -519,6 +601,27 @@ struct Settings {
               }
               .width('100%')
               .padding(14)
+              .justifyContent(FlexAlign.SpaceBetween)
+
+              Row() {
+                Text('《用户协议》')
+                  .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                  .fontColor(UiTokens.brand)
+                  .layoutWeight(1)
+                  .onClick(() => {
+                    router.pushUrl({ url: 'pages/UserAgreementPage' })
+                  })
+                Text('《隐私政策》')
+                  .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                  .fontColor(UiTokens.brand)
+                  .layoutWeight(1)
+                  .textAlign(TextAlign.End)
+                  .onClick(() => {
+                    router.pushUrl({ url: 'pages/PrivacyPolicyPage' })
+                  })
+              }
+              .width('100%')
+              .padding({ left: 14, right: 14, bottom: 14 })
               .justifyContent(FlexAlign.SpaceBetween)
             }
             .width('100%')

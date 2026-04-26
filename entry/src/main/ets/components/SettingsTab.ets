@@ -371,6 +371,27 @@ export struct SettingsTab {
             .width('100%')
             .padding(14)
             .justifyContent(FlexAlign.SpaceBetween)
+
+            Row() {
+              Text('《用户协议》')
+                .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                .fontColor(UiTokens.brand)
+                .layoutWeight(1)
+                .onClick(() => {
+                  router.pushUrl({ url: 'pages/UserAgreementPage' })
+                })
+              Text('《隐私政策》')
+                .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                .fontColor(UiTokens.brand)
+                .layoutWeight(1)
+                .textAlign(TextAlign.End)
+                .onClick(() => {
+                  router.pushUrl({ url: 'pages/PrivacyPolicyPage' })
+                })
+            }
+            .width('100%')
+            .padding({ left: 14, right: 14, bottom: 14 })
+            .justifyContent(FlexAlign.SpaceBetween)
           }
           .width('100%')
           .backgroundColor(UiTokens.bgCard)

@@ -11,6 +11,8 @@
     "pages/CourseImportPage",
     "pages/CourseSchedulePage",
     "pages/TimeSlotSettingsPage",
-    "pages/RecycleBin"
+    "pages/RecycleBin",
+    "pages/PrivacyPolicyPage",
+    "pages/UserAgreementPage"
   ]
 }

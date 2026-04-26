@@ -11,6 +11,7 @@ const KEY_FOCUS = 'star_focus_records'
 const KEY_PREFS = 'star_user_prefs'
 const KEY_COURSES = 'star_courses'
 const KEY_COURSE_STATE = 'star_course_state'
+const KEY_AGREED_TERMS = 'star_agreed_terms'
 
 class DataStore {
   private pref: preferences.Preferences | null = null
@@ -109,9 +110,50 @@ class DataStore {
   }
 
   getTasksByDate(date: string): Task[] {
-    return this.getActiveTasks()
-      .filter(t => t.date === date)
+    const direct = this.getActiveTasks().filter(t => t.date === date)
+    const recurring = this.expandRecurringTasks(date)
+    return [...direct, ...recurring]
       .sort((a, b) => a.startTime.localeCompare(b.startTime))
+  }
+
+  private expandRecurringTasks(targetDate: string): Task[] {
+    const result: Task[] = []
+    const all = this.getActiveTasks()
+    const target = new Date(targetDate + 'T00:00:00')
+
+    for (let i = 0; i < all.length; i++) {
+      const t = all[i]
+      if (t.repeatMode === RepeatMode.NONE) continue
+
+      const origin = new Date(t.date + 'T00:00:00')
+      if (target.getTime() < origin.getTime()) continue
+      if (target.getTime() === origin.getTime()) continue // already included as direct task
+
+      let match = false
+      if (t.repeatMode === RepeatMode.DAILY) {
+        match = true
+      } else if (t.repeatMode === RepeatMode.WEEKLY) {
+        match = origin.getDay() === target.getDay()
+      } else if (t.repeatMode === RepeatMode.MONTHLY) {
+        match = origin.getDate() === target.getDate()
+      }
+
+      if (match) {
+        const clone = new Task(t.title, targetDate, t.startTime, t.endTime)
+        clone.id = t.id + '_' + targetDate
+        clone.type = t.type
+        clone.intensity = t.intensity
+        clone.timeBlock = t.timeBlock
+        clone.status = TaskStatus.TODO
+        clone.notes = t.notes
+        clone.prepareItems = t.prepareItems ? [...t.prepareItems] : []
+        clone.subTasks = t.subTasks ? t.subTasks.map(s => new SubTask(s.title, clone.id)) : []
+        clone.repeatMode = RepeatMode.NONE
+        clone.date = targetDate
+        result.push(clone)
+      }
+    }
+    return result
   }
 
   cleanExpiredDeletedTasks(days: number = 3): void {
@@ -254,6 +296,15 @@ class DataStore {
   deleteCourse(id: string): void {
     const courses = this.getCourses().filter(c => c.id !== id)
     this.saveCourses(courses)
+  }
+
+  // ===== Terms agreement =====
+  hasAgreedToTerms(): boolean {
+    return this.get<boolean>(KEY_AGREED_TERMS, false)
+  }
+
+  setAgreedToTerms(agreed: boolean): void {
+    this.put(KEY_AGREED_TERMS, agreed)
   }
 
   clearAll(): void {

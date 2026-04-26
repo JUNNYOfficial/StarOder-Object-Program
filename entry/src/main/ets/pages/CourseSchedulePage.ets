@@ -37,6 +37,8 @@ struct CourseSchedulePage {
   @State selectedCalendarId: number = -1
 
   @State calDAVSyncText: string = ''
+  @State showSemesterPicker: boolean = false
+  @State pickerDate: Date = new Date()
 
   aboutToAppear() {
     this.state = dataStore.getCourseState()
@@ -186,6 +188,27 @@ struct CourseSchedulePage {
     })
   }
 
+  private saveSemesterStartDate() {
+    const d = this.pickerDate
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    this.state.semesterStartDate = `${y}-${m}-${day}`
+    dataStore.saveCourseState(this.state)
+    // Recalculate current week based on new start date
+    const today = new Date()
+    const start = new Date(this.state.semesterStartDate + 'T00:00:00')
+    const diffDays = Math.floor((today.getTime() - start.getTime()) / (24 * 60 * 60 * 1000))
+    let week = Math.floor(diffDays / 7) + 1
+    if (week < 1) week = 1
+    if (week > this.state.totalWeeks) week = this.state.totalWeeks
+    this.state.currentWeek = week
+    this.selectedWeek = week
+    dataStore.saveCourseState(this.state)
+    this.showSemesterPicker = false
+    promptAction.showToast({ message: '学期开始日期已保存' })
+  }
+
   private syncToCalDAV() {
     if (this.state.courses.length === 0) {
       promptAction.showToast({ message: '没有课程可同步' })
@@ -304,42 +327,43 @@ struct CourseSchedulePage {
             ForEach([1, 2, 3, 4, 5, 6, 7], (day: number) => {
               Column({ space: 0 }) {
                 ForEach(this.buildSlotCells(day), (cell: SlotCellData) => {
-                  Stack() {
+                  Column() {
                     if (cell.course && cell.slot.slotNumber === cell.course.startSlot) {
-                      Stack({ alignContent: Alignment.TopStart }) {
-                        Column() {
-                          Text(cell.course.name)
-                            .fontSize(12)
-                            .fontColor('#FFFFFF')
-                            .fontWeight(FontWeight.Medium)
-                            .maxLines(2)
+                      Column() {
+                        Text(cell.course.name)
+                          .fontSize(12)
+                          .fontColor('#FFFFFF')
+                          .fontWeight(FontWeight.Medium)
+                          .maxLines(2)
+                          .textOverflow({ overflow: TextOverflow.Ellipsis })
+                          .minFontSize(9)
+                          .maxFontSize(12)
+                        if (cell.course.classroom) {
+                          Text(cell.course.classroom)
+                            .fontSize(10)
+                            .fontColor('rgba(255,255,255,0.9)')
+                            .maxLines(1)
                             .textOverflow({ overflow: TextOverflow.Ellipsis })
-                            .width('100%')
-                          if (cell.course.classroom) {
-                            Text(cell.course.classroom)
-                              .fontSize(10)
-                              .fontColor('rgba(255,255,255,0.9)')
-                              .maxLines(1)
-                              .width('100%')
-                          }
-                          if (cell.course.teacher) {
-                            Text(cell.course.teacher)
-                              .fontSize(10)
-                              .fontColor('rgba(255,255,255,0.85)')
-                              .maxLines(1)
-                              .width('100%')
-                          }
+                            .minFontSize(7)
+                            .maxFontSize(10)
                         }
-                        .width('100%')
-                        .height('100%')
-                        .padding({ left: 4, right: 4, top: 4, bottom: 4 })
-                        .justifyContent(FlexAlign.Start)
-                        .alignItems(HorizontalAlign.Center)
+                        if (cell.course.teacher) {
+                          Text(cell.course.teacher)
+                            .fontSize(10)
+                            .fontColor('rgba(255,255,255,0.85)')
+                            .maxLines(1)
+                            .textOverflow({ overflow: TextOverflow.Ellipsis })
+                            .minFontSize(7)
+                            .maxFontSize(10)
+                        }
                       }
-                      .width('100%')
+                      .layoutWeight(1)
                       .height(`${cell.course.slotCount * 80}px`)
+                      .padding({ left: 4, right: 4, top: 4, bottom: 4 })
                       .backgroundColor(cell.course.color)
                       .borderRadius(UiTokens.radiusS)
+                      .justifyContent(FlexAlign.Start)
+                      .alignItems(HorizontalAlign.Center)
                       .onClick(() => {
                         if (cell.course) this.openEdit(cell.course)
                       })
@@ -377,7 +401,8 @@ struct CourseSchedulePage {
                 router.pushUrl({ url: 'pages/TimeSlotSettingsPage' })
               })
 
-            Button('批量导入')
+          Row({ space: UiTokens.gapM }) {
+            Button('学期设置')
               .layoutWeight(1)
               .height(40)
               .fontSize(UiTokens.textS)
@@ -385,10 +410,14 @@ struct CourseSchedulePage {
               .backgroundColor(UiTokens.brand)
               .borderRadius(UiTokens.radiusL)
               .onClick(() => {
-                router.pushUrl({ url: 'pages/CourseImportPage' })
+                const sd = this.state.semesterStartDate
+                if (sd) {
+                  this.pickerDate = new Date(sd + 'T00:00:00')
+                } else {
+                  this.pickerDate = new Date()
+                }
+                this.showSemesterPicker = true
               })
-          }
-          .width('100%')
 
           Row({ space: UiTokens.gapM }) {
             Button('同步到华为日历')
@@ -826,6 +855,67 @@ struct CourseSchedulePage {
                 .backgroundColor(UiTokens.brand)
                 .borderRadius(UiTokens.radiusL)
                 .onClick(() => this.confirmSyncToCalendar(this.selectedCalendarId))
+            }
+            .width('100%')
+          }
+          .width('100%')
+          .padding(UiTokens.pagePadding)
+          .padding({ bottom: 32 })
+          .backgroundColor(UiTokens.bgCard)
+          .borderRadius({ topLeft: 24, topRight: 24 })
+        }
+        .width('100%')
+        .height('100%')
+        .justifyContent(FlexAlign.End)
+      }
+
+      // Semester start date picker
+      if (this.showSemesterPicker) {
+        Column() {
+          Column()
+            .width('100%')
+            .layoutWeight(1)
+            .backgroundColor('rgba(0,0,0,0.4)')
+            .onClick(() => { this.showSemesterPicker = false })
+
+          Column({ space: UiTokens.gapM }) {
+            Text('设置学期开始日期')
+              .fontSize(UiTokens.textXL)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(UiTokens.textPrimary)
+              .width('100%')
+
+            DatePicker({ selected: this.pickerDate })
+              .width('100%')
+              .height(200)
+              .onDateChange((value: Date) => {
+                this.pickerDate = value
+              })
+
+            if (this.state.semesterStartDate) {
+              Text(`当前设置：${this.state.semesterStartDate}`)
+                .fontSize(UiTokens.textS)
+                .fontColor(UiTokens.textTertiary)
+                .width('100%')
+                .textAlign(TextAlign.Center)
+            }
+
+            Row({ space: UiTokens.gapM }) {
+              Button('取消')
+                .layoutWeight(1)
+                .height(44)
+                .fontColor(UiTokens.textSecondary)
+                .backgroundColor(UiTokens.bgHover)
+                .borderRadius(UiTokens.radiusL)
+                .onClick(() => { this.showSemesterPicker = false })
+
+              Button('保存')
+                .layoutWeight(1)
+                .height(44)
+                .fontColor('#FFFFFF')
+                .backgroundColor(UiTokens.brand)
+                .borderRadius(UiTokens.radiusL)
+                .onClick(() => this.saveSemesterStartDate())
             }
             .width('100%')
           }

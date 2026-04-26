@@ -22,12 +22,16 @@ struct Index {
 
   @State courseState: CourseScheduleState = new CourseScheduleState()
   @State todayCourses: Course[] = []
+  @State showTermsDialog: boolean = false
 
   aboutToAppear() {
     const now = new Date()
     this.currentDate = this.formatDate(now)
     this.greeting = this.getGreeting(now)
     this.loadData()
+    if (!dataStore.hasAgreedToTerms()) {
+      this.showTermsDialog = true
+    }
   }
 
   onPageShow() {
@@ -450,6 +454,81 @@ struct Index {
     .width('100%')
     .height('100%')
     .backgroundColor(this.settings.highContrast ? UiTokens.hcBg : UiTokens.bgPage)
+
+    if (this.showTermsDialog) {
+      Column() {
+        Column()
+          .width('100%')
+          .layoutWeight(1)
+          .backgroundColor('rgba(0,0,0,0.4)')
+
+        Column({ space: UiTokens.gapM }) {
+          Text('欢迎使用星序')
+            .fontSize(UiTokens.textXL)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(UiTokens.textPrimary)
+            .width('100%')
+            .textAlign(TextAlign.Center)
+
+          Text('在使用本应用前，请您阅读并同意以下协议：')
+            .fontSize(UiTokens.textS)
+            .fontColor(UiTokens.textSecondary)
+            .width('100%')
+            .textAlign(TextAlign.Center)
+
+          Row({ space: UiTokens.gapS }) {
+            Text('《用户协议》')
+              .fontSize(UiTokens.textS)
+              .fontColor(UiTokens.brand)
+              .onClick(() => {
+                router.pushUrl({ url: 'pages/UserAgreementPage' })
+              })
+            Text('《隐私政策》')
+              .fontSize(UiTokens.textS)
+              .fontColor(UiTokens.brand)
+              .onClick(() => {
+                router.pushUrl({ url: 'pages/PrivacyPolicyPage' })
+              })
+          }
+          .width('100%')
+          .justifyContent(FlexAlign.Center)
+
+          Row({ space: UiTokens.gapS }) {
+            Button('不同意')
+              .layoutWeight(1)
+              .height(44)
+              .fontColor(UiTokens.textSecondary)
+              .backgroundColor(UiTokens.bgHover)
+              .borderRadius(UiTokens.radiusL)
+              .onClick(() => {
+                const ctx = getContext(this)
+                if (ctx.terminateSelf) {
+                  ctx.terminateSelf()
+                }
+              })
+
+            Button('同意并继续')
+              .layoutWeight(1)
+              .height(44)
+              .fontColor('#FFFFFF')
+              .backgroundColor(UiTokens.brand)
+              .borderRadius(UiTokens.radiusL)
+              .onClick(() => {
+                dataStore.setAgreedToTerms(true)
+                this.showTermsDialog = false
+              })
+          }
+          .width('100%')
+        }
+        .width('100%')
+        .padding(UiTokens.pagePadding)
+        .backgroundColor(UiTokens.bgCard)
+        .borderRadius({ topLeft: 24, topRight: 24 })
+      }
+      .width('100%')
+      .height('100%')
+      .justifyContent(FlexAlign.End)
+    }
   }
 
   @Builder
