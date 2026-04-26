@@ -326,7 +326,7 @@ struct Index {
                     })
                 }
                 .width('100%')
-                .padding({ top: 8, bottom: 4 })
+                .padding({ left: UiTokens.pagePadding, right: UiTokens.pagePadding, top: 8, bottom: 4 })
 
                 if (this.todayCourses.length > 0) {
                   Column({ space: UiTokens.gapS }) {
