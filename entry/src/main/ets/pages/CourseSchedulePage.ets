@@ -2,6 +2,7 @@ import { router, promptAction } from '@kit.ArkUI'
 import { dataStore } from '../models/DataStore'
 import { Course, TimeSlot, CourseScheduleState, WeekType, WEEKDAY_LABELS } from '../models/CourseModels'
 import { CalendarSyncService, CalendarInfo } from '../services/CalendarSyncService'
+import { CalDAVService } from '../services/CalDAVService'
 import { UiTokens } from '../design/UiTokens'
 class SlotCellData {
   slot: TimeSlot
@@ -34,9 +35,16 @@ struct CourseSchedulePage {
   @State calendarOptions: CalendarInfo[] = []
   @State selectedCalendarId: number = -1
 
+  @State calDAVSyncText: string = ''
+
   aboutToAppear() {
     this.state = dataStore.getCourseState()
     this.selectedWeek = this.state.currentWeek
+    this.calDAVSyncText = CalDAVService.getLastSyncText()
+  }
+
+  onPageShow() {
+    this.calDAVSyncText = CalDAVService.getLastSyncText()
   }
 
   private coursesForCell(day: number, slot: number): Course[] {
@@ -168,6 +176,22 @@ struct CourseSchedulePage {
     this.showCalendarPicker = false
     promptAction.showToast({ message: '正在同步到系统日历...' })
     CalendarSyncService.syncCoursesToCalendar(this.state, getContext(this), calendarId, (success, failed, msg) => {
+      promptAction.showToast({ message: msg, duration: 3000 })
+    })
+  }
+
+  private syncToCalDAV() {
+    if (this.state.courses.length === 0) {
+      promptAction.showToast({ message: '没有课程可同步' })
+      return
+    }
+    if (!CalDAVService.isConfigured()) {
+      promptAction.showToast({ message: 'CalDAV 未配置，请先在设置中配置' })
+      return
+    }
+    promptAction.showToast({ message: '正在同步到 CalDAV...' })
+    CalDAVService.syncCoursesToCalDAV(this.state, (success, failed, msg) => {
+      this.calDAVSyncText = CalDAVService.getLastSyncText()
       promptAction.showToast({ message: msg, duration: 3000 })
     })
   }
@@ -347,16 +371,52 @@ struct CourseSchedulePage {
           }
           .width('100%')
 
-          Button('同步到华为日历')
+          Row({ space: UiTokens.gapM }) {
+            Button('同步到华为日历')
+              .layoutWeight(1)
+              .height(40)
+              .fontSize(UiTokens.textS)
+              .fontColor(UiTokens.brand)
+              .backgroundColor(UiTokens.brandSoft)
+              .borderRadius(UiTokens.radiusL)
+              .onClick(() => {
+                this.syncToCalendar()
+              })
+
+            Button('同步到 CalDAV')
+              .layoutWeight(1)
+              .height(40)
+              .fontSize(UiTokens.textS)
+              .fontColor(UiTokens.brand)
+              .backgroundColor(UiTokens.brandSoft)
+              .borderRadius(UiTokens.radiusL)
+              .onClick(() => {
+                this.syncToCalDAV()
+              })
+          }
+          .width('100%')
+
+          if (CalDAVService.isConfigured()) {
+            Row() {
+              Text(this.calDAVSyncText)
+                .fontSize(UiTokens.textS)
+                .fontColor(UiTokens.textTertiary)
+                .layoutWeight(1)
+
+              Text('清除记录')
+                .fontSize(UiTokens.textS)
+                .fontColor(UiTokens.brand)
+                .onClick(() => {
+                  CalDAVService.clearSyncState()
+                  this.calDAVSyncText = CalDAVService.getLastSyncText()
+                  promptAction.showToast({ message: '同步记录已清除' })
+                })
+            }
             .width('100%')
-            .height(40)
-            .fontSize(UiTokens.textS)
-            .fontColor(UiTokens.brand)
-            .backgroundColor(UiTokens.brandSoft)
-            .borderRadius(UiTokens.radiusL)
-            .onClick(() => {
-              this.syncToCalendar()
-            })
+            .height(28)
+            .padding({ left: 4, right: 4 })
+            .justifyContent(FlexAlign.SpaceBetween)
+          }
         }
         .width('100%')
         .padding({ left: UiTokens.pagePadding, right: UiTokens.pagePadding })

@@ -1,7 +1,8 @@
-import { router } from '@kit.ArkUI'
+import { router, promptAction } from '@kit.ArkUI'
 import { UserPreferences } from '../models/DataModels'
 import { dataStore } from '../models/DataStore'
 import { UiTokens } from '../design/UiTokens'
+import { CalDAVService, CalDAVConfig } from '../services/CalDAVService'
 
 @Entry
 @Component
@@ -11,8 +12,12 @@ struct Settings {
   @State importDataStr: string = ''
   @State dataMsg: string = ''
 
+  @State caldavConfig: CalDAVConfig = { serverUrl: '', username: '', password: '', calendarPath: '' }
+  @State caldavMsg: string = ''
+
   aboutToAppear() {
     this.settings = dataStore.getUserPrefs()
+    this.caldavConfig = CalDAVService.getConfig()
   }
 
   exportDataFn() {
@@ -52,6 +57,19 @@ struct Settings {
   togglePrepareHints() {
     this.settings.showPrepareHints = !this.settings.showPrepareHints
     dataStore.saveUserPrefs(this.settings)
+  }
+
+  saveCalDAVConfig() {
+    CalDAVService.setConfig(this.caldavConfig)
+    this.caldavMsg = '配置已保存'
+  }
+
+  testCalDAVConnection() {
+    this.caldavMsg = '正在测试连接...'
+    CalDAVService.testConnection(this.caldavConfig, (success, msg) => {
+      this.caldavMsg = msg
+      promptAction.showToast({ message: msg })
+    })
   }
 
   private baseFont(): number {
@@ -224,6 +242,106 @@ struct Settings {
               })
             }
             .width('100%')
+            .backgroundColor(UiTokens.bgCard)
+            .borderRadius(UiTokens.radiusXL)
+            .shadow({
+              radius: this.settings.highContrast ? 0 : 8,
+              color: '#0A000000',
+              offsetX: 0,
+              offsetY: 2
+            })
+          }
+          .width('100%')
+
+          // CalDAV sync
+          Column({ space: UiTokens.gapM }) {
+            Text('CalDAV 同步')
+              .fontSize(this.sectionTitle())
+              .fontWeight(FontWeight.Medium)
+              .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+              .width('100%')
+
+            Column({ space: UiTokens.gapM }) {
+              Text('服务器地址')
+                .fontSize(this.baseFont())
+                .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+                .width('100%')
+              TextInput({ placeholder: 'https://dav.example.com/calendars/', text: $$this.caldavConfig.serverUrl })
+                .width('100%')
+                .height(40)
+                .fontSize(this.baseFont())
+                .backgroundColor(UiTokens.bgHover)
+                .placeholderColor(this.settings.highContrast ? '#999999' : UiTokens.textTertiary)
+                .borderRadius(UiTokens.radiusL)
+
+              Text('用户名')
+                .fontSize(this.baseFont())
+                .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+                .width('100%')
+              TextInput({ placeholder: 'user@example.com', text: $$this.caldavConfig.username })
+                .width('100%')
+                .height(40)
+                .fontSize(this.baseFont())
+                .backgroundColor(UiTokens.bgHover)
+                .placeholderColor(this.settings.highContrast ? '#999999' : UiTokens.textTertiary)
+                .borderRadius(UiTokens.radiusL)
+
+              Text('密码')
+                .fontSize(this.baseFont())
+                .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+                .width('100%')
+              TextInput({ placeholder: '应用专用密码或账户密码', text: $$this.caldavConfig.password })
+                .width('100%')
+                .height(40)
+                .fontSize(this.baseFont())
+                .backgroundColor(UiTokens.bgHover)
+                .placeholderColor(this.settings.highContrast ? '#999999' : UiTokens.textTertiary)
+                .borderRadius(UiTokens.radiusL)
+                .type(InputType.Password)
+
+              Text('日历路径')
+                .fontSize(this.baseFont())
+                .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+                .width('100%')
+              TextInput({ placeholder: 'https://dav.example.com/calendars/user/calendar/', text: $$this.caldavConfig.calendarPath })
+                .width('100%')
+                .height(40)
+                .fontSize(this.baseFont())
+                .backgroundColor(UiTokens.bgHover)
+                .placeholderColor(this.settings.highContrast ? '#999999' : UiTokens.textTertiary)
+                .borderRadius(UiTokens.radiusL)
+
+              Row({ space: UiTokens.gapM }) {
+                Button('保存配置')
+                  .layoutWeight(1)
+                  .height(40)
+                  .fontSize(this.baseFont())
+                  .fontColor(UiTokens.textInverse)
+                  .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
+                  .borderRadius(UiTokens.radiusXL)
+                  .onClick(() => { this.saveCalDAVConfig() })
+
+                Button('测试连接')
+                  .layoutWeight(1)
+                  .height(40)
+                  .fontSize(this.baseFont())
+                  .fontColor(UiTokens.textInverse)
+                  .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
+                  .borderRadius(UiTokens.radiusXL)
+                  .onClick(() => { this.testCalDAVConnection() })
+              }
+              .width('100%')
+
+              if (this.caldavMsg) {
+                Text(this.caldavMsg)
+                  .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                  .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textSecondary)
+                  .width('100%')
+                  .textAlign(TextAlign.Center)
+              }
+            }
+            .width('100%')
+            .padding(UiTokens.cardPadding)
             .backgroundColor(UiTokens.bgCard)
             .borderRadius(UiTokens.radiusXL)
             .shadow({

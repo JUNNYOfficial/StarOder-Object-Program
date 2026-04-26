@@ -7,6 +7,7 @@ import { TimerTab } from '../components/TimerTab'
 import { SettingsTab } from '../components/SettingsTab'
 import { UiTokens } from '../design/UiTokens'
 import { addDays, todayStr } from '../utils/DateUtils'
+import { CourseScheduleState, Course, WeekType } from '../models/CourseModels'
 
 @Entry
 @Component
@@ -18,6 +19,9 @@ struct Index {
   @State greeting: string = ''
   @State searchQuery: string = ''
   @State activeTab: number = 0
+
+  @State courseState: CourseScheduleState = new CourseScheduleState()
+  @State todayCourses: Course[] = []
 
   aboutToAppear() {
     const now = new Date()
@@ -34,6 +38,50 @@ struct Index {
     this.settings = dataStore.getUserPrefs()
     this.tasks = dataStore.getTasksByDate(this.currentDate)
     this.applyFilter()
+    this.courseState = dataStore.getCourseState()
+    this.todayCourses = this.getTodayCourses()
+  }
+
+  private getCurrentWeek(state: CourseScheduleState): number {
+    if (state.semesterStartDate) {
+      const start = new Date(state.semesterStartDate)
+      const now = new Date()
+      const diffDays = Math.floor((now.getTime() - start.getTime()) / (24 * 60 * 60 * 1000))
+      const week = Math.floor(diffDays / 7) + 1
+      if (week < 1) return 1
+      if (week > state.totalWeeks) return state.totalWeeks
+      return week
+    }
+    return state.currentWeek
+  }
+
+  private getTodayCourses(): Course[] {
+    const state = this.courseState
+    if (state.courses.length === 0) return []
+    const currentWeek = this.getCurrentWeek(state)
+    const now = new Date()
+    const dayOfWeek = now.getDay() === 0 ? 7 : now.getDay()
+    const result: Course[] = []
+    for (let i = 0; i < state.courses.length; i++) {
+      const c = state.courses[i]
+      if (c.dayOfWeek !== dayOfWeek) continue
+      if (currentWeek < c.startWeek || currentWeek > c.endWeek) continue
+      if (c.weekType === WeekType.ODD && currentWeek % 2 === 0) continue
+      if (c.weekType === WeekType.EVEN && currentWeek % 2 === 1) continue
+      result.push(c)
+    }
+    result.sort((a, b) => a.startSlot - b.startSlot)
+    return result
+  }
+
+  private getCourseTimeText(course: Course): string {
+    const startSlot = this.courseState.timeSlots.find(s => s.slotNumber === course.startSlot)
+    const endSlotNum = course.startSlot + course.slotCount - 1
+    const endSlot = this.courseState.timeSlots.find(s => s.slotNumber === endSlotNum)
+    if (startSlot && endSlot) {
+      return `${startSlot.startTime}-${endSlot.endTime}`
+    }
+    return `第${course.startSlot}-${endSlotNum}节`
   }
 
   prevDay() {
@@ -184,6 +232,61 @@ struct Index {
             .width('100%')
             .padding({ left: UiTokens.pagePadding, right: UiTokens.pagePadding, top: 8, bottom: 4 })
 
+            if (this.todayCourses.length > 0) {
+              Column({ space: UiTokens.gapS }) {
+                Text('今日课程')
+                  .fontSize(this.settings.largeText ? UiTokens.textL : UiTokens.textM)
+                  .fontWeight(FontWeight.Medium)
+                  .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+                  .width('100%')
+                  .padding({ left: UiTokens.pagePadding, right: UiTokens.pagePadding })
+
+                ForEach(this.todayCourses, (course: Course) => {
+                  Row({ space: UiTokens.gapM }) {
+                    Column() {
+                      Text(this.getCourseTimeText(course))
+                        .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                        .fontWeight(FontWeight.Medium)
+                        .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+                    }
+                    .width(72)
+                    .alignItems(HorizontalAlign.Start)
+
+                    Column({ space: 2 }) {
+                      Text(course.name)
+                        .fontSize(this.settings.largeText ? UiTokens.textL : UiTokens.textM)
+                        .fontWeight(FontWeight.Medium)
+                        .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+                        .maxLines(1)
+                        .textOverflow({ overflow: TextOverflow.Ellipsis })
+                        .width('100%')
+
+                      if (course.classroom || course.teacher) {
+                        Text(`${course.classroom || ''}${course.teacher ? ' | ' + course.teacher : ''}`)
+                          .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                          .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textSecondary)
+                          .maxLines(1)
+                          .textOverflow({ overflow: TextOverflow.Ellipsis })
+                          .width('100%')
+                      }
+                    }
+                    .layoutWeight(1)
+                    .alignItems(HorizontalAlign.Start)
+                  }
+                  .width('100%')
+                  .padding(12)
+                  .backgroundColor(course.color + '18')
+                  .borderRadius(UiTokens.radiusL)
+                  .border({ width: 1, color: course.color + '40' })
+                  .onClick(() => {
+                    router.pushUrl({ url: 'pages/CourseSchedulePage' })
+                  })
+                })
+              }
+              .width('100%')
+              .padding({ top: 4, bottom: 4 })
+            }
+
             Column() {
               Text(this.currentDate === todayStr() ? '今天还没有安排' : '这天还没有安排')
                 .fontSize(this.settings.largeText ? UiTokens.textXL : UiTokens.textL)
@@ -203,21 +306,78 @@ struct Index {
         } else {
           List({ space: 0 }) {
             ListItem() {
-              Row() {
-                TextInput({ placeholder: '搜索日程', text: $$this.searchQuery })
+              Column({ space: 0 }) {
+                Row() {
+                  TextInput({ placeholder: '搜索日程', text: $$this.searchQuery })
+                    .width('100%')
+                    .height(40)
+                    .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                    .backgroundColor(UiTokens.bgHover)
+                    .placeholderColor(this.settings.highContrast ? '#999999' : UiTokens.textTertiary)
+                    .borderRadius(UiTokens.radiusL)
+                    .padding({ left: 14, right: 14 })
+                    .onChange(() => {
+                      this.applyFilter()
+                    })
+                }
+                .width('100%')
+                .padding({ top: 8, bottom: 4 })
+
+                if (this.todayCourses.length > 0) {
+                  Column({ space: UiTokens.gapS }) {
+                    Text('今日课程')
+                      .fontSize(this.settings.largeText ? UiTokens.textL : UiTokens.textM)
+                      .fontWeight(FontWeight.Medium)
+                      .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+                      .width('100%')
+
+                    ForEach(this.todayCourses, (course: Course) => {
+                      Row({ space: UiTokens.gapM }) {
+                                                        Column() {
+                                                          Text(this.getCourseTimeText(course))
+                                                            .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                                                            .fontWeight(FontWeight.Medium)
+                                                            .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+                                                        }
+                                                        .width(72)
+                                                        .alignItems(HorizontalAlign.Start)
+
+                                                        Column({ space: 2 }) {
+                                                          Text(course.name)
+                                                            .fontSize(this.settings.largeText ? UiTokens.textL : UiTokens.textM)
+                                                            .fontWeight(FontWeight.Medium)
+                                                            .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+                                                            .maxLines(1)
+                                                            .textOverflow({ overflow: TextOverflow.Ellipsis })
+                                                            .width('100%')
+
+                                                          if (course.classroom || course.teacher) {
+                                                            Text(`${course.classroom || ''}${course.teacher ? ' | ' + course.teacher : ''}`)
+                                                              .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                                                              .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textSecondary)
+                                                              .maxLines(1)
+                                                              .textOverflow({ overflow: TextOverflow.Ellipsis })
+                                                              .width('100%')
+                                                          }
+                                                        }
+                                                        .layoutWeight(1)
+                                                        .alignItems(HorizontalAlign.Start)
+                                                      }
+                                                      .width('100%')
+                                                      .padding(12)
+                                                      .backgroundColor(course.color + '18')
+                                                      .borderRadius(UiTokens.radiusL)
+                                                      .border({ width: 1, color: course.color + '40' })
+                                                      .onClick(() => {
+                                                        router.pushUrl({ url: 'pages/CourseSchedulePage' })
+                                                      })
+                    })
+                  }
                   .width('100%')
-                  .height(40)
-                  .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
-                  .backgroundColor(UiTokens.bgHover)
-                  .placeholderColor(this.settings.highContrast ? '#999999' : UiTokens.textTertiary)
-                  .borderRadius(UiTokens.radiusL)
-                  .padding({ left: 14, right: 14 })
-                  .onChange(() => {
-                    this.applyFilter()
-                  })
+                  .padding({ top: 4, bottom: 4 })
+                }
               }
               .width('100%')
-              .padding({ top: 8, bottom: 4 })
             }
 
             ForEach(this.filteredTasks, (task: Task) => {
