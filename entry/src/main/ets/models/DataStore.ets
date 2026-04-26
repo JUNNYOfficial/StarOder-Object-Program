@@ -335,8 +335,8 @@ class DataStore {
   }
 
   private parseLocalDate(dateStr: string): Date {
-    const [y, m, d] = dateStr.split('-').map(Number)
-    return new Date(y, m - 1, d)
+    const parts = dateStr.split('-').map(Number)
+    return new Date(parts[0], parts[1] - 1, parts[2])
   }
 }
 

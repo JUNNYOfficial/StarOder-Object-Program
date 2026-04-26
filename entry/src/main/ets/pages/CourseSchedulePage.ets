@@ -197,8 +197,8 @@ struct CourseSchedulePage {
     dataStore.saveCourseState(this.state)
     // Recalculate current week based on new start date
     const today = new Date()
-    const [sy, sm, sd_] = this.state.semesterStartDate.split('-').map(Number)
-    const start = new Date(sy, sm - 1, sd_)
+    const parts = this.state.semesterStartDate.split('-').map(Number)
+    const start = new Date(parts[0], parts[1] - 1, parts[2])
     const diffDays = Math.floor((today.getTime() - start.getTime()) / (24 * 60 * 60 * 1000))
     let week = Math.floor(diffDays / 7) + 1
     if (week < 1) week = 1
@@ -415,8 +415,8 @@ struct CourseSchedulePage {
               .onClick(() => {
                 const sd = this.state.semesterStartDate
                 if (sd) {
-                  const [py, pm, pd] = sd.split('-').map(Number)
-                  this.pickerDate = new Date(py, pm - 1, pd)
+                  const parts = sd.split('-').map(Number)
+                  this.pickerDate = new Date(parts[0], parts[1] - 1, parts[2])
                 } else {
                   this.pickerDate = new Date()
                 }

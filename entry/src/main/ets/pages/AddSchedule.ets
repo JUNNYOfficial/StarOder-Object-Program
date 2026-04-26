@@ -160,13 +160,13 @@ struct AddSchedule {
   }
 
   private normalizeDate(date: string): string {
-    const [y, m, d] = date.split('-').map(Number)
-    return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+    const parts = date.split('-').map(Number)
+    return `${parts[0]}-${String(parts[1]).padStart(2, '0')}-${String(parts[2]).padStart(2, '0')}`
   }
 
   private normalizeTime(time: string): string {
-    const [h, m] = time.split(':').map(Number)
-    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+    const parts = time.split(':').map(Number)
+    return `${String(parts[0]).padStart(2, '0')}:${String(parts[1]).padStart(2, '0')}`
   }
 
   saveTask() {
@@ -192,9 +192,9 @@ struct AddSchedule {
       return
     }
     if (start && end) {
-      const [sh, sm] = start.split(':').map(Number)
-      const [eh, em] = end.split(':').map(Number)
-      if (eh * 60 + em <= sh * 60 + sm) {
+      const startParts = start.split(':').map(Number)
+      const endParts = end.split(':').map(Number)
+      if (endParts[0] * 60 + endParts[1] <= startParts[0] * 60 + startParts[1]) {
         promptAction.showToast({ message: '结束时间必须晚于开始时间' })
         return
       }
@@ -660,7 +660,7 @@ struct AddSchedule {
                   .padding(12)
                   .backgroundColor(UiTokens.bgHover)
                   .borderRadius(UiTokens.radiusM)
-                }, (item: string, index: number) => String(index)
+                }, (item: string, index: number) => String(index))
               }
               .width('100%')
             }

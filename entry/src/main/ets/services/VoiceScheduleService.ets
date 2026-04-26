@@ -101,8 +101,8 @@ export function parseScheduleText(text: string): ParsedSchedule {
   // 处理跨天
   if (endMinutes >= 1440) {
     const daysToAdd = Math.floor(endMinutes / 1440)
-    const [y, m, d] = result.date.split('-').map(Number)
-    const newDate = new Date(y, m - 1, d)
+    const parts = result.date.split('-').map(Number)
+    const newDate = new Date(parts[0], parts[1] - 1, parts[2])
     newDate.setDate(newDate.getDate() + daysToAdd)
     result.date = `${newDate.getFullYear()}-${String(newDate.getMonth() + 1).padStart(2, '0')}-${String(newDate.getDate()).padStart(2, '0')}`
   }
