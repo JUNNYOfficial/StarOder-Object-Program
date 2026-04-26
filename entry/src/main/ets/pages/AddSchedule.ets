@@ -152,26 +152,42 @@ struct AddSchedule {
   }
 
   private validateDateFormat(date: string): boolean {
-    return /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(date)
+    return /^\d{4}-(0?[1-9]|1[0-2])-(0?[1-9]|[12]\d|3[01])$/.test(date)
   }
 
   private validateTimeFormat(time: string): boolean {
-    return /^([01]\d|2[0-3]):([0-5]\d)$/.test(time)
+    return /^([01]?\d|2[0-3]):([0-5]\d)$/.test(time)
+  }
+
+  private normalizeDate(date: string): string {
+    const [y, m, d] = date.split('-').map(Number)
+    return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+  }
+
+  private normalizeTime(time: string): string {
+    const [h, m] = time.split(':').map(Number)
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
   }
 
   saveTask() {
-    if (!this.title.trim()) return
+    if (!this.title.trim()) {
+      promptAction.showToast({ message: '请输入日程标题' })
+      return
+    }
+    const normalizedDate = this.normalizeDate(this.selectedDate)
     if (!this.validateDateFormat(this.selectedDate)) {
       promptAction.showToast({ message: '日期格式不正确，应为 YYYY-MM-DD' })
       return
     }
-    const start = this.startTime.trim() || ''
-    const end = this.endTime.trim() || ''
-    if (start && !this.validateTimeFormat(start)) {
+    const startRaw = this.startTime.trim()
+    const endRaw = this.endTime.trim()
+    const start = startRaw ? this.normalizeTime(startRaw) : ''
+    const end = endRaw ? this.normalizeTime(endRaw) : ''
+    if (startRaw && !this.validateTimeFormat(startRaw)) {
       promptAction.showToast({ message: '开始时间格式不正确，应为 HH:mm' })
       return
     }
-    if (end && !this.validateTimeFormat(end)) {
+    if (endRaw && !this.validateTimeFormat(endRaw)) {
       promptAction.showToast({ message: '结束时间格式不正确，应为 HH:mm' })
       return
     }
@@ -195,14 +211,14 @@ struct AddSchedule {
         all[idx].repeatMode = this.selectedRepeat
         all[idx].startTime = start
         all[idx].endTime = end
-        all[idx].date = this.selectedDate
+        all[idx].date = normalizedDate
         all[idx].prepareItems = [...this.prepareItems]
         all[idx].subTasks = this.subTasks.map((title) => new SubTask(title, this.editTaskId))
         all[idx].updatedAt = Date.now()
         dataStore.saveTasks(all)
       }
     } else {
-      const task = new Task(this.title.trim(), this.selectedDate, start, end)
+      const task = new Task(this.title.trim(), normalizedDate, start, end)
       task.type = this.selectedType
       task.intensity = this.selectedIntensity
       task.timeBlock = this.selectedTimeBlock
