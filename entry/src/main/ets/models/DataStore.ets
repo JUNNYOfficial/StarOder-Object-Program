@@ -136,6 +136,8 @@ class DataStore {
         match = origin.getDay() === target.getDay()
       } else if (t.repeatMode === RepeatMode.MONTHLY) {
         match = origin.getDate() === target.getDate()
+      } else if (t.repeatMode === RepeatMode.YEARLY) {
+        match = origin.getMonth() === target.getMonth() && origin.getDate() === target.getDate()
       }
 
       if (match) {
@@ -147,7 +149,11 @@ class DataStore {
         clone.status = TaskStatus.TODO
         clone.notes = t.notes
         clone.prepareItems = t.prepareItems ? [...t.prepareItems] : []
-        clone.subTasks = t.subTasks ? t.subTasks.map(s => new SubTask(s.title, clone.id)) : []
+        clone.subTasks = t.subTasks ? t.subTasks.map(s => {
+          const st = new SubTask(s.title, clone.id)
+          st.completed = s.completed
+          return st
+        }) : []
         clone.repeatMode = RepeatMode.NONE
         clone.date = targetDate
         result.push(clone)
@@ -209,7 +215,10 @@ class DataStore {
   getTodayFocusMinutes(): number {
     const today = this.formatDate(new Date())
     return this.getFocusRecords()
-      .filter(r => r.startTime.startsWith(today))
+      .filter(r => {
+        const localDate = this.formatDate(new Date(r.startTime))
+        return localDate === today
+      })
       .reduce((sum, r) => sum + r.actualMinutes, 0)
   }
 

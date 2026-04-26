@@ -181,7 +181,7 @@ struct AddSchedule {
       task.priority = this.selectedPriority
       task.repeatMode = this.selectedRepeat
       task.prepareItems = [...this.prepareItems]
-      task.subTasks = this.subTasks.map((title, i) => new SubTask(title, String(i)))
+      task.subTasks = this.subTasks.map((title) => new SubTask(title, task.id))
       dataStore.addTask(task)
       if (start && end) {
         setSystemReminder(task)
