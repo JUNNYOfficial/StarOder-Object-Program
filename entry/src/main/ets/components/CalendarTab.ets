@@ -3,6 +3,7 @@ import { dataStore } from '../models/DataStore'
 import { ScheduleCard } from './ScheduleCard'
 import { UiTokens } from '../design/UiTokens'
 import { router } from '@kit.ArkUI'
+import { CourseScheduleState, Course, WeekType } from '../models/CourseModels'
 
 class CalendarDay {
   date: string
@@ -31,11 +32,14 @@ export struct CalendarTab {
   @State todayStr: string = ''
   @State calendarDays: CalendarDay[] = []
   @State dayTasks: Task[] = []
+  @State dayCourses: Course[] = []
+  @State courseState: CourseScheduleState = new CourseScheduleState()
   @State monthNames: string[] = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月']
   @State weekdayLabels: string[] = ['一', '二', '三', '四', '五', '六', '日']
 
   aboutToAppear() {
     this.settings = dataStore.getUserPrefs()
+    this.courseState = dataStore.getCourseState()
     const now = new Date()
     this.currentYear = now.getFullYear()
     this.currentMonth = now.getMonth() + 1
@@ -80,6 +84,33 @@ export struct CalendarTab {
       taskCountByDate[d] = prev ? prev + 1 : 1
     }
 
+    // 合并课程统计
+    if (this.courseState.courses.length > 0 && this.courseState.semesterStartDate) {
+      const start = new Date(this.courseState.semesterStartDate)
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = this.formatYMD(this.currentYear, this.currentMonth, d)
+        const date = new Date(dateStr)
+        const diffDays = Math.floor((date.getTime() - start.getTime()) / (24 * 60 * 60 * 1000))
+        const week = Math.floor(diffDays / 7) + 1
+        if (week >= 1 && week <= this.courseState.totalWeeks) {
+          const dayOfWeek = date.getDay() === 0 ? 7 : date.getDay()
+          let courseCount = 0
+          for (let i = 0; i < this.courseState.courses.length; i++) {
+            const c = this.courseState.courses[i]
+            if (c.dayOfWeek !== dayOfWeek) continue
+            if (week < c.startWeek || week > c.endWeek) continue
+            if (c.weekType === WeekType.ODD && week % 2 === 0) continue
+            if (c.weekType === WeekType.EVEN && week % 2 === 1) continue
+            courseCount++
+          }
+          if (courseCount > 0) {
+            const prev = taskCountByDate[dateStr]
+            taskCountByDate[dateStr] = prev ? prev + courseCount : courseCount
+          }
+        }
+      }
+    }
+
     const days: CalendarDay[] = []
     for (let i = 0; i < offset; i++) {
       days.push(new CalendarDay('', 0, false, false, 0))
@@ -97,6 +128,39 @@ export struct CalendarTab {
 
   loadDayTasks() {
     this.dayTasks = dataStore.getTasksByDate(this.selectedDate)
+    this.dayCourses = this.getCoursesForDate(this.selectedDate)
+  }
+
+  private getCoursesForDate(dateStr: string): Course[] {
+    const state = this.courseState
+    if (state.courses.length === 0 || !state.semesterStartDate) return []
+    const date = new Date(dateStr)
+    const start = new Date(state.semesterStartDate)
+    const diffDays = Math.floor((date.getTime() - start.getTime()) / (24 * 60 * 60 * 1000))
+    const week = Math.floor(diffDays / 7) + 1
+    if (week < 1 || week > state.totalWeeks) return []
+    const dayOfWeek = date.getDay() === 0 ? 7 : date.getDay()
+    const result: Course[] = []
+    for (let i = 0; i < state.courses.length; i++) {
+      const c = state.courses[i]
+      if (c.dayOfWeek !== dayOfWeek) continue
+      if (week < c.startWeek || week > c.endWeek) continue
+      if (c.weekType === WeekType.ODD && week % 2 === 0) continue
+      if (c.weekType === WeekType.EVEN && week % 2 === 1) continue
+      result.push(c)
+    }
+    result.sort((a, b) => a.startSlot - b.startSlot)
+    return result
+  }
+
+  private getCourseTimeText(course: Course): string {
+    const startSlot = this.courseState.timeSlots.find(s => s.slotNumber === course.startSlot)
+    const endSlotNum = course.startSlot + course.slotCount - 1
+    const endSlot = this.courseState.timeSlots.find(s => s.slotNumber === endSlotNum)
+    if (startSlot && endSlot) {
+      return `${startSlot.startTime}-${endSlot.endTime}`
+    }
+    return `第${course.startSlot}-${endSlotNum}节`
   }
 
   prevMonth() {
@@ -261,17 +325,18 @@ export struct CalendarTab {
               .fontWeight(FontWeight.Medium)
               .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
 
-            Text(`${this.dayTasks.length} 个日程`)
+            Text(`${this.dayTasks.length + this.dayCourses.length} 个日程`)
               .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
               .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textSecondary)
           }
           .width('100%')
           .justifyContent(FlexAlign.SpaceBetween)
 
-          if (this.dayTasks.length === 0) {
+          if (this.dayTasks.length === 0 && this.dayCourses.length === 0) {
             Column() {
               Text('这天没有安排')
-                .fontSize(this.settings.largeText ? UiTokens.textL : UiTokens.textM)
+                .fontSize(this.settings.largeText ? UiTokens.textXL : UiTokens.textL)
+                .fontWeight(FontWeight.Medium)
                 .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textTertiary)
                 .textAlign(TextAlign.Center)
             }
@@ -281,6 +346,51 @@ export struct CalendarTab {
             .borderRadius(UiTokens.radiusXL)
           } else {
             Column({ space: 0 }) {
+              if (this.dayCourses.length > 0) {
+                ForEach(this.dayCourses, (course: Course) => {
+                  Row({ space: UiTokens.gapM }) {
+                    Column() {
+                      Text(this.getCourseTimeText(course))
+                        .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                        .fontWeight(FontWeight.Medium)
+                        .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+                    }
+                    .width(72)
+                    .alignItems(HorizontalAlign.Start)
+
+                    Column({ space: 2 }) {
+                      Text(course.name)
+                        .fontSize(this.settings.largeText ? UiTokens.textL : UiTokens.textM)
+                        .fontWeight(FontWeight.Medium)
+                        .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+                        .maxLines(1)
+                        .textOverflow({ overflow: TextOverflow.Ellipsis })
+                        .width('100%')
+
+                      if (course.classroom || course.teacher) {
+                        Text(`${course.classroom || ''}${course.teacher ? ' | ' + course.teacher : ''}`)
+                          .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                          .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textSecondary)
+                          .maxLines(1)
+                          .textOverflow({ overflow: TextOverflow.Ellipsis })
+                          .width('100%')
+                      }
+                    }
+                    .layoutWeight(1)
+                    .alignItems(HorizontalAlign.Start)
+                  }
+                  .width('100%')
+                  .padding(12)
+                  .backgroundColor(course.color + '18')
+                  .borderRadius(UiTokens.radiusL)
+                  .border({ width: 1, color: course.color + '40' })
+                  .margin({ bottom: 8 })
+                  .onClick(() => {
+                    router.pushUrl({ url: 'pages/CourseSchedulePage' })
+                  })
+                })
+              }
+
               ForEach(this.dayTasks, (task: Task) => {
                 ScheduleCard({
                   task: task,

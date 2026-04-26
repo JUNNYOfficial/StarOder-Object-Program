@@ -377,7 +377,7 @@ struct AddSchedule {
               .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
               .width('100%')
 
-            Row({ space: 10 }) {
+            Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
               ForEach([
                 TaskType.THINK,
                 TaskType.SOCIAL,
@@ -392,8 +392,9 @@ struct AddSchedule {
                       ? (this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
                       : (this.settings.highContrast ? '#555555' : UiTokens.textSecondary))
                 }
-                .layoutWeight(1)
-                .height(42)
+                .width(64)
+                .height(36)
+                .margin({ right: 8, bottom: 8 })
                 .backgroundColor(this.selectedType === type
                   ? (this.settings.highContrast ? UiTokens.hcBg : UiTokens.brandSoft)
                   : (this.settings.highContrast ? '#EEEEEE' : UiTokens.bgHover))
@@ -415,7 +416,7 @@ struct AddSchedule {
               .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
               .width('100%')
 
-            Row({ space: 10 }) {
+            Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
               ForEach([
                 TaskIntensity.LOW,
                 TaskIntensity.MEDIUM,
@@ -428,8 +429,9 @@ struct AddSchedule {
                       ? (this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
                       : (this.settings.highContrast ? '#555555' : UiTokens.textSecondary))
                 }
-                .layoutWeight(1)
-                .height(42)
+                .width(64)
+                .height(36)
+                .margin({ right: 8, bottom: 8 })
                 .backgroundColor(this.selectedIntensity === intensity
                   ? (this.settings.highContrast ? UiTokens.hcBg : UiTokens.brandSoft)
                   : (this.settings.highContrast ? '#EEEEEE' : UiTokens.bgHover))
@@ -451,7 +453,7 @@ struct AddSchedule {
               .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
               .width('100%')
 
-            Row({ space: 10 }) {
+            Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
               ForEach([
                 TimeBlock.DAWN,
                 TimeBlock.MORNING,
@@ -466,8 +468,9 @@ struct AddSchedule {
                       ? (this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
                       : (this.settings.highContrast ? '#555555' : UiTokens.textSecondary))
                 }
-                .layoutWeight(1)
-                .height(42)
+                .width(64)
+                .height(36)
+                .margin({ right: 8, bottom: 8 })
                 .backgroundColor(this.selectedTimeBlock === block
                   ? (this.settings.highContrast ? UiTokens.hcBg : UiTokens.brandSoft)
                   : (this.settings.highContrast ? '#EEEEEE' : UiTokens.bgHover))

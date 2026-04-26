@@ -30,6 +30,7 @@ struct CourseSchedulePage {
   @State editWeekType: WeekType = WeekType.EVERY
   @State editStartWeek: number = 1
   @State editEndWeek: number = 20
+  @State editColor: string = '#37A2DA'
 
   @State showCalendarPicker: boolean = false
   @State calendarOptions: CalendarInfo[] = []
@@ -91,6 +92,7 @@ struct CourseSchedulePage {
     this.editWeekType = WeekType.EVERY
     this.editStartWeek = 1
     this.editEndWeek = this.state.totalWeeks
+    this.editColor = '#37A2DA'
     this.showEditPanel = true
   }
 
@@ -105,6 +107,7 @@ struct CourseSchedulePage {
     this.editWeekType = course.weekType
     this.editStartWeek = course.startWeek
     this.editEndWeek = course.endWeek
+    this.editColor = course.color
     this.showEditPanel = true
   }
 
@@ -124,6 +127,7 @@ struct CourseSchedulePage {
       c.weekType = this.editWeekType
       c.startWeek = this.editStartWeek
       c.endWeek = this.editEndWeek
+      c.color = this.editColor
       dataStore.updateCourse(c)
     } else {
       const c = new Course(
@@ -137,6 +141,7 @@ struct CourseSchedulePage {
         this.editStartWeek,
         this.editEndWeek
       )
+      c.color = this.editColor
       dataStore.addCourse(c)
     }
     this.state.courses = dataStore.getCourses()
@@ -302,24 +307,24 @@ struct CourseSchedulePage {
                     if (cell.course && cell.slot.slotNumber === cell.course.startSlot) {
                       Column() {
                         Text(cell.course.name)
-                          .fontSize(11)
+                          .fontSize(12)
                           .fontColor('#FFFFFF')
                           .fontWeight(FontWeight.Medium)
                           .maxLines(2)
                           .textOverflow({ overflow: TextOverflow.Ellipsis })
                         if (cell.course.classroom) {
                           Text(cell.course.classroom)
-                            .fontSize(9)
-                            .fontColor('rgba(255,255,255,0.85)')
+                            .fontSize(10)
+                            .fontColor('rgba(255,255,255,0.9)')
                             .maxLines(1)
                         }
                       }
-                      .width('95%')
-                      .height(`${cell.course.slotCount * 80 - 4}px`)
-                      .padding(4)
+                      .width('100%')
+                      .height(`${cell.course.slotCount * 80}px`)
+                      .padding({ left: 4, right: 4, top: 4, bottom: 4 })
                       .backgroundColor(cell.course.color)
-                      .borderRadius(UiTokens.radiusM)
-                      .justifyContent(FlexAlign.Center)
+                      .borderRadius(UiTokens.radiusS)
+                      .justifyContent(FlexAlign.Start)
                       .alignItems(HorizontalAlign.Center)
                       .onClick(() => {
                         if (cell.course) this.openEdit(cell.course)
@@ -437,17 +442,17 @@ struct CourseSchedulePage {
             .onClick(() => { this.showEditPanel = false })
 
           // Panel
-          Column({ space: UiTokens.gapM }) {
+          Column({ space: UiTokens.gapS }) {
             Row() {
               Text(this.editingCourse ? '编辑课程' : '添加课程')
-                .fontSize(UiTokens.textXL)
-                .fontWeight(FontWeight.Bold)
+                .fontSize(UiTokens.textL)
+                .fontWeight(FontWeight.Medium)
                 .fontColor(UiTokens.textPrimary)
                 .layoutWeight(1)
 
               if (this.editingCourse) {
                 Text('删除')
-                  .fontSize(UiTokens.textM)
+                  .fontSize(UiTokens.textS)
                   .fontColor(UiTokens.error)
                   .onClick(() => this.deleteCurrentCourse())
               }
@@ -456,114 +461,155 @@ struct CourseSchedulePage {
 
             TextInput({ placeholder: '课程名称', text: $$this.editName })
               .width('100%')
-              .height(44)
+              .height(38)
               .backgroundColor(UiTokens.bgHover)
               .borderRadius(UiTokens.radiusL)
 
             TextInput({ placeholder: '教室', text: $$this.editClassroom })
               .width('100%')
-              .height(44)
+              .height(38)
               .backgroundColor(UiTokens.bgHover)
               .borderRadius(UiTokens.radiusL)
 
             TextInput({ placeholder: '教师', text: $$this.editTeacher })
               .width('100%')
-              .height(44)
+              .height(38)
               .backgroundColor(UiTokens.bgHover)
               .borderRadius(UiTokens.radiusL)
 
-            Row({ space: UiTokens.gapM }) {
-              Column({ space: 4 }) {
-                Text('星期')
-                  .fontSize(UiTokens.textS)
-                  .fontColor(UiTokens.textSecondary)
-                Row() {
-                  Text('<')
-                    .fontSize(16)
-                    .fontColor(this.editDay > 1 ? UiTokens.brand : UiTokens.textTertiary)
-                    .onClick(() => { if (this.editDay > 1) this.editDay-- })
-                  Text(WEEKDAY_LABELS[this.editDay - 1])
-                    .fontSize(14)
-                    .fontColor(UiTokens.textPrimary)
-                    .layoutWeight(1)
-                    .textAlign(TextAlign.Center)
-                  Text('>')
-                    .fontSize(16)
-                    .fontColor(this.editDay < 7 ? UiTokens.brand : UiTokens.textTertiary)
-                    .onClick(() => { if (this.editDay < 7) this.editDay++ })
-                }
+            // Color picker
+            Column({ space: 4 }) {
+              Text('课程颜色')
+                .fontSize(UiTokens.textXS)
+                .fontColor(UiTokens.textSecondary)
                 .width('100%')
-                .height(40)
-                .backgroundColor(UiTokens.bgHover)
-                .borderRadius(UiTokens.radiusL)
-                .padding({ left: 8, right: 8 })
+              Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
+                ForEach([
+                  '#FF9F7F', '#FFDB5C', '#67E0E3', '#37A2DA', '#32C5E9',
+                  '#9FE6B8', '#1DD1A1', '#FB7293', '#E062AE', '#8378EA',
+                  '#96BFFF', '#FF9FF3'
+                ], (color: string) => {
+                  Column()
+                    .width(26)
+                    .height(26)
+                    .margin({ right: 8, bottom: 8 })
+                    .borderRadius(13)
+                    .backgroundColor(color)
+                    .border({
+                      width: this.editColor === color ? 2 : 0,
+                      color: UiTokens.textPrimary
+                    })
+                    .onClick(() => { this.editColor = color })
+                })
               }
-              .layoutWeight(1)
-
-              Column({ space: 4 }) {
-                Text('开始节')
-                  .fontSize(UiTokens.textS)
-                  .fontColor(UiTokens.textSecondary)
-                Row() {
-                  Text('<')
-                    .fontSize(16)
-                    .fontColor(this.editStartSlot > 1 ? UiTokens.brand : UiTokens.textTertiary)
-                    .onClick(() => { if (this.editStartSlot > 1) this.editStartSlot-- })
-                  Text(`第${this.editStartSlot}节`)
-                    .fontSize(14)
-                    .fontColor(UiTokens.textPrimary)
-                    .layoutWeight(1)
-                    .textAlign(TextAlign.Center)
-                  Text('>')
-                    .fontSize(16)
-                    .fontColor(this.editStartSlot < this.state.timeSlots.length ? UiTokens.brand : UiTokens.textTertiary)
-                    .onClick(() => { if (this.editStartSlot < this.state.timeSlots.length) this.editStartSlot++ })
-                }
-                .width('100%')
-                .height(40)
-                .backgroundColor(UiTokens.bgHover)
-                .borderRadius(UiTokens.radiusL)
-                .padding({ left: 8, right: 8 })
-              }
-              .layoutWeight(1)
-
-              Column({ space: 4 }) {
-                Text('节数')
-                  .fontSize(UiTokens.textS)
-                  .fontColor(UiTokens.textSecondary)
-                Row() {
-                  Text('<')
-                    .fontSize(16)
-                    .fontColor(this.editSlotCount > 1 ? UiTokens.brand : UiTokens.textTertiary)
-                    .onClick(() => { if (this.editSlotCount > 1) this.editSlotCount-- })
-                  Text(`${this.editSlotCount}节`)
-                    .fontSize(14)
-                    .fontColor(UiTokens.textPrimary)
-                    .layoutWeight(1)
-                    .textAlign(TextAlign.Center)
-                  Text('>')
-                    .fontSize(16)
-                    .fontColor(this.editSlotCount < 4 ? UiTokens.brand : UiTokens.textTertiary)
-                    .onClick(() => { if (this.editSlotCount < 4) this.editSlotCount++ })
-                }
-                .width('100%')
-                .height(40)
-                .backgroundColor(UiTokens.bgHover)
-                .borderRadius(UiTokens.radiusL)
-                .padding({ left: 8, right: 8 })
-              }
-              .layoutWeight(1)
+              .width('100%')
             }
             .width('100%')
 
-            Row({ space: UiTokens.gapM }) {
-              Column({ space: 4 }) {
-                Text('周次类型')
-                  .fontSize(UiTokens.textS)
+            // Row 1: 星期 + 开始节
+            Row({ space: UiTokens.gapS }) {
+              Row({ space: 6 }) {
+                Text('星期')
+                  .fontSize(UiTokens.textXS)
                   .fontColor(UiTokens.textSecondary)
+                  .width(36)
                 Row() {
                   Text('<')
-                    .fontSize(16)
+                    .fontSize(13)
+                    .fontColor(this.editDay > 1 ? UiTokens.brand : UiTokens.textTertiary)
+                    .onClick(() => { if (this.editDay > 1) this.editDay-- })
+                  Text(WEEKDAY_LABELS[this.editDay - 1])
+                    .fontSize(13)
+                    .fontColor(UiTokens.textPrimary)
+                    .layoutWeight(1)
+                    .textAlign(TextAlign.Center)
+                  Text('>')
+                    .fontSize(13)
+                    .fontColor(this.editDay < 7 ? UiTokens.brand : UiTokens.textTertiary)
+                    .onClick(() => { if (this.editDay < 7) this.editDay++ })
+                }
+                .layoutWeight(1)
+                .height(34)
+                .backgroundColor(UiTokens.bgHover)
+                .borderRadius(UiTokens.radiusL)
+                .padding({ left: 6, right: 6 })
+              }
+              .layoutWeight(1)
+              .height(34)
+              .alignItems(VerticalAlign.Center)
+
+              Row({ space: 6 }) {
+                Text('开始节')
+                  .fontSize(UiTokens.textXS)
+                  .fontColor(UiTokens.textSecondary)
+                  .width(40)
+                Row() {
+                  Text('<')
+                    .fontSize(13)
+                    .fontColor(this.editStartSlot > 1 ? UiTokens.brand : UiTokens.textTertiary)
+                    .onClick(() => { if (this.editStartSlot > 1) this.editStartSlot-- })
+                  Text(`第${this.editStartSlot}节`)
+                    .fontSize(13)
+                    .fontColor(UiTokens.textPrimary)
+                    .layoutWeight(1)
+                    .textAlign(TextAlign.Center)
+                  Text('>')
+                    .fontSize(13)
+                    .fontColor(this.editStartSlot < this.state.timeSlots.length ? UiTokens.brand : UiTokens.textTertiary)
+                    .onClick(() => { if (this.editStartSlot < this.state.timeSlots.length) this.editStartSlot++ })
+                }
+                .layoutWeight(1)
+                .height(34)
+                .backgroundColor(UiTokens.bgHover)
+                .borderRadius(UiTokens.radiusL)
+                .padding({ left: 6, right: 6 })
+              }
+              .layoutWeight(1)
+              .height(34)
+              .alignItems(VerticalAlign.Center)
+            }
+            .width('100%')
+
+            // Row 2: 节数 + 周次类型
+            Row({ space: UiTokens.gapS }) {
+              Row({ space: 6 }) {
+                Text('节数')
+                  .fontSize(UiTokens.textXS)
+                  .fontColor(UiTokens.textSecondary)
+                  .width(36)
+                Row() {
+                  Text('<')
+                    .fontSize(13)
+                    .fontColor(this.editSlotCount > 1 ? UiTokens.brand : UiTokens.textTertiary)
+                    .onClick(() => { if (this.editSlotCount > 1) this.editSlotCount-- })
+                  Text(`${this.editSlotCount}节`)
+                    .fontSize(13)
+                    .fontColor(UiTokens.textPrimary)
+                    .layoutWeight(1)
+                    .textAlign(TextAlign.Center)
+                  Text('>')
+                    .fontSize(13)
+                    .fontColor(this.editSlotCount < 4 ? UiTokens.brand : UiTokens.textTertiary)
+                    .onClick(() => { if (this.editSlotCount < 4) this.editSlotCount++ })
+                }
+                .layoutWeight(1)
+                .height(34)
+                .backgroundColor(UiTokens.bgHover)
+                .borderRadius(UiTokens.radiusL)
+                .padding({ left: 6, right: 6 })
+              }
+              .layoutWeight(1)
+              .height(34)
+              .alignItems(VerticalAlign.Center)
+
+              Row({ space: 6 }) {
+                Text('周次')
+                  .fontSize(UiTokens.textXS)
+                  .fontColor(UiTokens.textSecondary)
+                  .width(36)
+                Row() {
+                  Text('<')
+                    .fontSize(13)
                     .fontColor(UiTokens.brand)
                     .onClick(() => {
                       if (this.editWeekType === WeekType.EVERY) this.editWeekType = WeekType.EVEN
@@ -571,12 +617,12 @@ struct CourseSchedulePage {
                       else this.editWeekType = WeekType.ODD
                     })
                   Text(this.editWeekType === WeekType.EVERY ? '每周' : this.editWeekType === WeekType.ODD ? '单周' : '双周')
-                    .fontSize(14)
+                    .fontSize(13)
                     .fontColor(UiTokens.textPrimary)
                     .layoutWeight(1)
                     .textAlign(TextAlign.Center)
                   Text('>')
-                    .fontSize(16)
+                    .fontSize(13)
                     .fontColor(UiTokens.brand)
                     .onClick(() => {
                       if (this.editWeekType === WeekType.EVERY) this.editWeekType = WeekType.ODD
@@ -584,74 +630,86 @@ struct CourseSchedulePage {
                       else this.editWeekType = WeekType.EVERY
                     })
                 }
-                .width('100%')
-                .height(40)
+                .layoutWeight(1)
+                .height(34)
                 .backgroundColor(UiTokens.bgHover)
                 .borderRadius(UiTokens.radiusL)
-                .padding({ left: 8, right: 8 })
+                .padding({ left: 6, right: 6 })
               }
               .layoutWeight(1)
-
-              Column({ space: 4 }) {
-                Text('开始周')
-                  .fontSize(UiTokens.textS)
-                  .fontColor(UiTokens.textSecondary)
-                Row() {
-                  Text('<')
-                    .fontSize(16)
-                    .fontColor(this.editStartWeek > 1 ? UiTokens.brand : UiTokens.textTertiary)
-                    .onClick(() => { if (this.editStartWeek > 1) this.editStartWeek-- })
-                  Text(`${this.editStartWeek}`)
-                    .fontSize(14)
-                    .fontColor(UiTokens.textPrimary)
-                    .layoutWeight(1)
-                    .textAlign(TextAlign.Center)
-                  Text('>')
-                    .fontSize(16)
-                    .fontColor(this.editStartWeek < this.state.totalWeeks ? UiTokens.brand : UiTokens.textTertiary)
-                    .onClick(() => { if (this.editStartWeek < this.state.totalWeeks) this.editStartWeek++ })
-                }
-                .width('100%')
-                .height(40)
-                .backgroundColor(UiTokens.bgHover)
-                .borderRadius(UiTokens.radiusL)
-                .padding({ left: 8, right: 8 })
-              }
-              .layoutWeight(1)
-
-              Column({ space: 4 }) {
-                Text('结束周')
-                  .fontSize(UiTokens.textS)
-                  .fontColor(UiTokens.textSecondary)
-                Row() {
-                  Text('<')
-                    .fontSize(16)
-                    .fontColor(this.editEndWeek > 1 ? UiTokens.brand : UiTokens.textTertiary)
-                    .onClick(() => { if (this.editEndWeek > 1) this.editEndWeek-- })
-                  Text(`${this.editEndWeek}`)
-                    .fontSize(14)
-                    .fontColor(UiTokens.textPrimary)
-                    .layoutWeight(1)
-                    .textAlign(TextAlign.Center)
-                  Text('>')
-                    .fontSize(16)
-                    .fontColor(this.editEndWeek < this.state.totalWeeks ? UiTokens.brand : UiTokens.textTertiary)
-                    .onClick(() => { if (this.editEndWeek < this.state.totalWeeks) this.editEndWeek++ })
-                }
-                .width('100%')
-                .height(40)
-                .backgroundColor(UiTokens.bgHover)
-                .borderRadius(UiTokens.radiusL)
-                .padding({ left: 8, right: 8 })
-              }
-              .layoutWeight(1)
+              .height(34)
+              .alignItems(VerticalAlign.Center)
             }
             .width('100%')
 
-            Row({ space: UiTokens.gapM }) {
+            // Row 3: 开始周 + 结束周
+            Row({ space: UiTokens.gapS }) {
+              Row({ space: 6 }) {
+                Text('开始周')
+                  .fontSize(UiTokens.textXS)
+                  .fontColor(UiTokens.textSecondary)
+                  .width(40)
+                Row() {
+                  Text('<')
+                    .fontSize(13)
+                    .fontColor(this.editStartWeek > 1 ? UiTokens.brand : UiTokens.textTertiary)
+                    .onClick(() => { if (this.editStartWeek > 1) this.editStartWeek-- })
+                  Text(`${this.editStartWeek}`)
+                    .fontSize(13)
+                    .fontColor(UiTokens.textPrimary)
+                    .layoutWeight(1)
+                    .textAlign(TextAlign.Center)
+                  Text('>')
+                    .fontSize(13)
+                    .fontColor(this.editStartWeek < this.state.totalWeeks ? UiTokens.brand : UiTokens.textTertiary)
+                    .onClick(() => { if (this.editStartWeek < this.state.totalWeeks) this.editStartWeek++ })
+                }
+                .layoutWeight(1)
+                .height(34)
+                .backgroundColor(UiTokens.bgHover)
+                .borderRadius(UiTokens.radiusL)
+                .padding({ left: 6, right: 6 })
+              }
+              .layoutWeight(1)
+              .height(34)
+              .alignItems(VerticalAlign.Center)
+
+              Row({ space: 6 }) {
+                Text('结束周')
+                  .fontSize(UiTokens.textXS)
+                  .fontColor(UiTokens.textSecondary)
+                  .width(40)
+                Row() {
+                  Text('<')
+                    .fontSize(13)
+                    .fontColor(this.editEndWeek > 1 ? UiTokens.brand : UiTokens.textTertiary)
+                    .onClick(() => { if (this.editEndWeek > 1) this.editEndWeek-- })
+                  Text(`${this.editEndWeek}`)
+                    .fontSize(13)
+                    .fontColor(UiTokens.textPrimary)
+                    .layoutWeight(1)
+                    .textAlign(TextAlign.Center)
+                  Text('>')
+                    .fontSize(13)
+                    .fontColor(this.editEndWeek < this.state.totalWeeks ? UiTokens.brand : UiTokens.textTertiary)
+                    .onClick(() => { if (this.editEndWeek < this.state.totalWeeks) this.editEndWeek++ })
+                }
+                .layoutWeight(1)
+                .height(34)
+                .backgroundColor(UiTokens.bgHover)
+                .borderRadius(UiTokens.radiusL)
+                .padding({ left: 6, right: 6 })
+              }
+              .layoutWeight(1)
+              .height(34)
+              .alignItems(VerticalAlign.Center)
+            }
+            .width('100%')
+
+            Row({ space: UiTokens.gapS }) {
               Button('取消')
                 .layoutWeight(1)
-                .height(44)
+                .height(40)
                 .fontColor(UiTokens.textSecondary)
                 .backgroundColor(UiTokens.bgHover)
                 .borderRadius(UiTokens.radiusL)
@@ -659,7 +717,7 @@ struct CourseSchedulePage {
 
               Button('保存')
                 .layoutWeight(1)
-                .height(44)
+                .height(40)
                 .fontColor(UiTokens.textInverse)
                 .backgroundColor(UiTokens.brand)
                 .borderRadius(UiTokens.radiusL)
@@ -668,8 +726,12 @@ struct CourseSchedulePage {
             .width('100%')
           }
           .width('100%')
-          .padding(UiTokens.pagePadding)
-          .padding({ bottom: 32 })
+          .padding({
+            left: UiTokens.pagePadding,
+            right: UiTokens.pagePadding,
+            top: UiTokens.pagePadding,
+            bottom: 16
+          })
           .backgroundColor(UiTokens.bgCard)
           .borderRadius({ topLeft: 24, topRight: 24 })
         }
