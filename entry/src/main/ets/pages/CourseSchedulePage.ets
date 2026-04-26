@@ -40,6 +40,7 @@ struct CourseSchedulePage {
 
   aboutToAppear() {
     this.state = dataStore.getCourseState()
+    this.state.courses = dataStore.getCourses()
     this.selectedWeek = this.state.currentWeek
     this.calDAVSyncText = CalDAVService.getLastSyncText()
   }
@@ -305,27 +306,40 @@ struct CourseSchedulePage {
                 ForEach(this.buildSlotCells(day), (cell: SlotCellData) => {
                   Stack() {
                     if (cell.course && cell.slot.slotNumber === cell.course.startSlot) {
-                      Column() {
-                        Text(cell.course.name)
-                          .fontSize(12)
-                          .fontColor('#FFFFFF')
-                          .fontWeight(FontWeight.Medium)
-                          .maxLines(2)
-                          .textOverflow({ overflow: TextOverflow.Ellipsis })
-                        if (cell.course.classroom) {
-                          Text(cell.course.classroom)
-                            .fontSize(10)
-                            .fontColor('rgba(255,255,255,0.9)')
-                            .maxLines(1)
+                      Stack({ alignContent: Alignment.TopStart }) {
+                        Column() {
+                          Text(cell.course.name)
+                            .fontSize(12)
+                            .fontColor('#FFFFFF')
+                            .fontWeight(FontWeight.Medium)
+                            .maxLines(2)
+                            .textOverflow({ overflow: TextOverflow.Ellipsis })
+                            .width('100%')
+                          if (cell.course.classroom) {
+                            Text(cell.course.classroom)
+                              .fontSize(10)
+                              .fontColor('rgba(255,255,255,0.9)')
+                              .maxLines(1)
+                              .width('100%')
+                          }
+                          if (cell.course.teacher) {
+                            Text(cell.course.teacher)
+                              .fontSize(10)
+                              .fontColor('rgba(255,255,255,0.85)')
+                              .maxLines(1)
+                              .width('100%')
+                          }
                         }
+                        .width('100%')
+                        .height('100%')
+                        .padding({ left: 4, right: 4, top: 4, bottom: 4 })
+                        .justifyContent(FlexAlign.Start)
+                        .alignItems(HorizontalAlign.Center)
                       }
                       .width('100%')
                       .height(`${cell.course.slotCount * 80}px`)
-                      .padding({ left: 4, right: 4, top: 4, bottom: 4 })
                       .backgroundColor(cell.course.color)
                       .borderRadius(UiTokens.radiusS)
-                      .justifyContent(FlexAlign.Start)
-                      .alignItems(HorizontalAlign.Center)
                       .onClick(() => {
                         if (cell.course) this.openEdit(cell.course)
                       })
