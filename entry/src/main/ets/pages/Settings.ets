@@ -86,7 +86,7 @@ struct Settings {
 
   testFeishuConnection() {
     this.feishuMsg = '正在连接飞书...'
-    FeishuSyncService.exchangeCodeForToken('', (success, msg) => {
+    FeishuSyncService.testConnection((success, msg) => {
       this.feishuMsg = msg
     })
   }
@@ -455,7 +455,7 @@ struct Settings {
                   .borderRadius(UiTokens.radiusXL)
                   .onClick(() => { this.saveFeishuConfig() })
 
-                Button('获取授权')
+                Button('测试连接')
                   .layoutWeight(1)
                   .height(40)
                   .fontSize(this.baseFont())

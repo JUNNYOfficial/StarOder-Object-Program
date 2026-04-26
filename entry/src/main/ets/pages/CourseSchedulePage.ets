@@ -320,7 +320,7 @@ struct CourseSchedulePage {
                 .justifyContent(FlexAlign.Center)
                 .alignItems(HorizontalAlign.Center)
                 .border({ width: { bottom: 0.5 }, color: UiTokens.divider })
-              })
+              }, (slot: TimeSlot) => String(slot.slotNumber))
             }
             .width(60)
 
@@ -377,7 +377,7 @@ struct CourseSchedulePage {
                   .onClick(() => {
                     if (!cell.course) this.openAdd(day, cell.slot.slotNumber)
                   })
-                })
+                }, (cell: SlotCellData) => String(cell.slot.slotNumber))
               }
               .layoutWeight(1)
             })

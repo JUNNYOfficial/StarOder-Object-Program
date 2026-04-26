@@ -1,4 +1,4 @@
-import { Task, UserPreferences } from '../models/DataModels'
+import { Task, UserPreferences, TaskStatus } from '../models/DataModels'
 import { dataStore } from '../models/DataStore'
 import { ScheduleCard } from './ScheduleCard'
 import { UiTokens } from '../design/UiTokens'
@@ -129,6 +129,19 @@ export struct CalendarTab {
   loadDayTasks() {
     this.dayTasks = dataStore.getTasksByDate(this.selectedDate)
     this.dayCourses = this.getCoursesForDate(this.selectedDate)
+  }
+
+  advanceStatus(task: Task) {
+    const all = dataStore.getActiveTasks()
+    const idx = all.findIndex(t => t.id === task.id)
+    if (idx >= 0) {
+      const statusOrder = [TaskStatus.TODO, TaskStatus.STARTED, TaskStatus.MOSTLY, TaskStatus.DONE]
+      const currentIdx = statusOrder.indexOf(all[idx].status)
+      all[idx].status = statusOrder[(currentIdx + 1) % statusOrder.length]
+      all[idx].updatedAt = Date.now()
+      dataStore.saveTasks(all)
+      this.loadDayTasks()
+    }
   }
 
   private getCoursesForDate(dateStr: string): Course[] {
@@ -398,9 +411,11 @@ export struct CalendarTab {
                   onClickCard: () => {
                     router.pushUrl({ url: 'pages/ScheduleDetail', params: { id: task.id } })
                   },
-                  onToggleStatus: () => {}
+                  onToggleStatus: () => {
+                    this.advanceStatus(task)
+                  }
                 })
-              })
+              }, (task: Task) => task.id)
             }
             .width('100%')
           }

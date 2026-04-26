@@ -1,4 +1,4 @@
-import { router } from '@kit.ArkUI'
+import { router, promptAction } from '@kit.ArkUI'
 import { UserPreferences } from '../models/DataModels'
 import { dataStore } from '../models/DataStore'
 import { parseScheduleText, createTaskFromParsed, ParsedSchedule, setSystemReminder } from '../services/VoiceScheduleService'
@@ -39,7 +39,10 @@ struct VoiceInputPage {
     }
     const task = createTaskFromParsed(this.parsedResult)
     dataStore.addTask(task)
-    setSystemReminder(task)
+    const ok = setSystemReminder(task)
+    if (!ok) {
+      promptAction.showToast({ message: '当前版本暂不支持系统提醒' })
+    }
     router.back()
   }
 

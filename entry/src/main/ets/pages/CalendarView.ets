@@ -342,7 +342,7 @@ struct CalendarView {
                       this.advanceStatus(task)
                     }
                   })
-                })
+                }, (task: Task) => task.id)
               }
               .width('100%')
             }

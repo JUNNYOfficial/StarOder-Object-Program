@@ -282,7 +282,7 @@ struct WellnessView {
                     }
                     .width('100%')
                     .padding({ top: 8, bottom: 8 })
-                  })
+                  }, (day: DayEnergy) => day.date)
                 }
                 .width('100%')
                 .padding(UiTokens.cardPadding)
@@ -335,7 +335,7 @@ struct WellnessView {
                         .color(UiTokens.divider)
                         .margin({ left: 14 })
                     }
-                  })
+                  }, (record: MoodSurveyRecord) => record.date + '_' + record.time)
                 }
                 .width('100%')
                 .padding({ top: 6, bottom: 6 })

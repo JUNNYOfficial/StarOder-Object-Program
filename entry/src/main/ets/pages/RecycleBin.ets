@@ -156,7 +156,7 @@ struct RecycleBin {
               .width('100%')
               .padding({ left: UiTokens.pagePadding, right: UiTokens.pagePadding, top: 6, bottom: 6 })
             }
-          })
+          }, (task: Task) => task.id)
         }
         .width('100%')
         .layoutWeight(1)

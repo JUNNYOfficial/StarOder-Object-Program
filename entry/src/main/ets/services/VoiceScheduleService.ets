@@ -98,6 +98,15 @@ export function parseScheduleText(text: string): ParsedSchedule {
   const endM = endMinutes % 60
   result.endTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`
 
+  // 处理跨天
+  if (endMinutes >= 1440) {
+    const daysToAdd = Math.floor(endMinutes / 1440)
+    const [y, m, d] = result.date.split('-').map(Number)
+    const newDate = new Date(y, m - 1, d)
+    newDate.setDate(newDate.getDate() + daysToAdd)
+    result.date = `${newDate.getFullYear()}-${String(newDate.getMonth() + 1).padStart(2, '0')}-${String(newDate.getDate()).padStart(2, '0')}`
+  }
+
   // 推断类型
   if (text.includes('运动') || text.includes('跑步') || text.includes('健身') || text.includes('瑜伽')) {
     result.type = TaskType.EXERCISE
@@ -140,8 +149,8 @@ export function createTaskFromParsed(parsed: ParsedSchedule): Task {
   return task
 }
 
-export function setSystemReminder(task: Task): void {
+export function setSystemReminder(task: Task): boolean {
   // 原子化服务(atomicService)不支持 reminderAgentManager
   // 如需系统提醒，需将应用改为普通应用(bundleType: app)
-  console.info(`[提醒占位] ${task.title} ${task.date} ${task.startTime}`)
+  return false
 }

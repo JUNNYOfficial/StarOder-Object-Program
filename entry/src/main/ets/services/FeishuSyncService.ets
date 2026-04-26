@@ -109,8 +109,7 @@ function doPost(url: string, body: string, headers: Record<string, string>,
   })
 }
 
-function exchangeCodeForToken(code: string, onResult: (success: boolean, msg: string) => void): void {
-  // 不再使用 OAuth code 换 token，改为直接用 app_id + app_secret 获取 tenant_access_token
+function testConnection(onResult: (success: boolean, msg: string) => void): void {
   connectWithSecret(onResult)
 }
 
@@ -266,7 +265,7 @@ class FeishuSyncServiceClass {
   getToken(): string { return getToken() }
   saveToken(token: string, expiresIn: number): void { saveToken(token, expiresIn) }
   clearAuth(): void { clearAuth() }
-  exchangeCodeForToken(code: string, onResult: (success: boolean, msg: string) => void): void { connectWithSecret(onResult) }
+  testConnection(onResult: (success: boolean, msg: string) => void): void { testConnection(onResult) }
   fetchCalendarEvents(onResult: (tasks: Task[], msg: string) => void): void { fetchCalendarEvents(onResult) }
 }
 

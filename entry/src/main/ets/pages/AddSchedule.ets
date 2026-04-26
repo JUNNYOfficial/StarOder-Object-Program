@@ -1,4 +1,4 @@
-import { router } from '@kit.ArkUI'
+import { router, promptAction } from '@kit.ArkUI'
 import {
   Task, SubTask, UserPreferences, TaskTemplate,
   TaskType, TaskIntensity, TimeBlock, Priority, RepeatMode,
@@ -151,10 +151,38 @@ struct AddSchedule {
     }
   }
 
+  private validateDateFormat(date: string): boolean {
+    return /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(date)
+  }
+
+  private validateTimeFormat(time: string): boolean {
+    return /^([01]\d|2[0-3]):([0-5]\d)$/.test(time)
+  }
+
   saveTask() {
     if (!this.title.trim()) return
+    if (!this.validateDateFormat(this.selectedDate)) {
+      promptAction.showToast({ message: '日期格式不正确，应为 YYYY-MM-DD' })
+      return
+    }
     const start = this.startTime.trim() || ''
     const end = this.endTime.trim() || ''
+    if (start && !this.validateTimeFormat(start)) {
+      promptAction.showToast({ message: '开始时间格式不正确，应为 HH:mm' })
+      return
+    }
+    if (end && !this.validateTimeFormat(end)) {
+      promptAction.showToast({ message: '结束时间格式不正确，应为 HH:mm' })
+      return
+    }
+    if (start && end) {
+      const [sh, sm] = start.split(':').map(Number)
+      const [eh, em] = end.split(':').map(Number)
+      if (eh * 60 + em <= sh * 60 + sm) {
+        promptAction.showToast({ message: '结束时间必须晚于开始时间' })
+        return
+      }
+    }
     if (this.isEditMode) {
       const all = dataStore.getActiveTasks()
       const idx = all.findIndex(t => t.id === this.editTaskId)
@@ -184,7 +212,10 @@ struct AddSchedule {
       task.subTasks = this.subTasks.map((title) => new SubTask(title, task.id))
       dataStore.addTask(task)
       if (start && end) {
-        setSystemReminder(task)
+        const ok = setSystemReminder(task)
+        if (!ok) {
+          promptAction.showToast({ message: '当前版本暂不支持系统提醒' })
+        }
       }
     }
     router.back()
@@ -258,7 +289,7 @@ struct AddSchedule {
                 .onClick(() => {
                   this.applyTemplate(tmpl)
                 })
-              })
+              }, (tmpl: TaskTemplate) => tmpl.title)
             }
             .width('100%')
             .listDirection(Axis.Horizontal)
@@ -540,7 +571,7 @@ struct AddSchedule {
                   .padding(12)
                   .backgroundColor(UiTokens.bgHover)
                   .borderRadius(UiTokens.radiusM)
-                })
+                }, (item: string) => item)
               }
               .width('100%')
             }
@@ -613,7 +644,7 @@ struct AddSchedule {
                   .padding(12)
                   .backgroundColor(UiTokens.bgHover)
                   .borderRadius(UiTokens.radiusM)
-                })
+                }, (item: string, index: number) => String(index)
               }
               .width('100%')
             }
