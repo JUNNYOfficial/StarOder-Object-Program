@@ -63,10 +63,6 @@
               "ohos.want.action.home"
             ]
           }
-        ],
-        "formsEnabled": true,
-        "forms": [
-          "$profile:form_config"
         ]
       }
     ]
