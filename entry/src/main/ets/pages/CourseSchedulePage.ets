@@ -197,7 +197,8 @@ struct CourseSchedulePage {
     dataStore.saveCourseState(this.state)
     // Recalculate current week based on new start date
     const today = new Date()
-    const start = new Date(this.state.semesterStartDate + 'T00:00:00')
+    const [sy, sm, sd_] = this.state.semesterStartDate.split('-').map(Number)
+    const start = new Date(sy, sm - 1, sd_)
     const diffDays = Math.floor((today.getTime() - start.getTime()) / (24 * 60 * 60 * 1000))
     let week = Math.floor(diffDays / 7) + 1
     if (week < 1) week = 1
@@ -400,6 +401,8 @@ struct CourseSchedulePage {
               .onClick(() => {
                 router.pushUrl({ url: 'pages/TimeSlotSettingsPage' })
               })
+          }
+          .width('100%')
 
           Row({ space: UiTokens.gapM }) {
             Button('学期设置')
@@ -412,12 +415,26 @@ struct CourseSchedulePage {
               .onClick(() => {
                 const sd = this.state.semesterStartDate
                 if (sd) {
-                  this.pickerDate = new Date(sd + 'T00:00:00')
+                  const [py, pm, pd] = sd.split('-').map(Number)
+                  this.pickerDate = new Date(py, pm - 1, pd)
                 } else {
                   this.pickerDate = new Date()
                 }
                 this.showSemesterPicker = true
               })
+
+            Button('批量导入')
+              .layoutWeight(1)
+              .height(40)
+              .fontSize(UiTokens.textS)
+              .fontColor(UiTokens.textInverse)
+              .backgroundColor(UiTokens.brand)
+              .borderRadius(UiTokens.radiusL)
+              .onClick(() => {
+                router.pushUrl({ url: 'pages/CourseImportPage' })
+              })
+          }
+          .width('100%')
 
           Row({ space: UiTokens.gapM }) {
             Button('同步到华为日历')
@@ -888,8 +905,8 @@ struct CourseSchedulePage {
             DatePicker({ selected: this.pickerDate })
               .width('100%')
               .height(200)
-              .onDateChange((value: Date) => {
-                this.pickerDate = value
+              .onDateChange((value) => {
+                this.pickerDate = new Date(value.getFullYear(), value.getMonth(), value.getDate())
               })
 
             if (this.state.semesterStartDate) {

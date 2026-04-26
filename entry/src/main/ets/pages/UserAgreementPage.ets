@@ -84,7 +84,7 @@ struct UserAgreementPage {
           SectionBody('本协议适用中华人民共和国法律。因本协议引起的或与本协议有关的任何争议，双方应友好协商解决；协商不成的，任何一方均可向有管辖权的人民法院提起诉讼。')
 
           SectionTitle('十、联系我们')
-          SectionBody('如您对本协议有任何疑问，请联系：\n\n电子邮箱：feedback@starorder.app')
+          SectionBody('如您对本协议有任何疑问，请联系：\n\n电子邮箱：junny_huang@hotmail.com')
 
           Blank().height(32)
         }

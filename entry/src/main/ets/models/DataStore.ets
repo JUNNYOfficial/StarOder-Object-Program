@@ -1,6 +1,6 @@
 import { preferences } from '@kit.ArkData'
 import {
-  Task, SubTask, EnergyRecord, MoodSurveyRecord, FocusRecord, UserPreferences
+  Task, SubTask, EnergyRecord, MoodSurveyRecord, FocusRecord, UserPreferences, TaskStatus, RepeatMode
 } from './DataModels'
 import { Course, TimeSlot, CourseScheduleState, DEFAULT_TIME_SLOTS } from './CourseModels'
 
@@ -119,13 +119,13 @@ class DataStore {
   private expandRecurringTasks(targetDate: string): Task[] {
     const result: Task[] = []
     const all = this.getActiveTasks()
-    const target = new Date(targetDate + 'T00:00:00')
+    const target = this.parseLocalDate(targetDate)
 
     for (let i = 0; i < all.length; i++) {
       const t = all[i]
       if (t.repeatMode === RepeatMode.NONE) continue
 
-      const origin = new Date(t.date + 'T00:00:00')
+      const origin = this.parseLocalDate(t.date)
       if (target.getTime() < origin.getTime()) continue
       if (target.getTime() === origin.getTime()) continue // already included as direct task
 
@@ -323,6 +323,11 @@ class DataStore {
     const m = String(d.getMonth() + 1).padStart(2, '0')
     const day = String(d.getDate()).padStart(2, '0')
     return `${y}-${m}-${day}`
+  }
+
+  private parseLocalDate(dateStr: string): Date {
+    const [y, m, d] = dateStr.split('-').map(Number)
+    return new Date(y, m - 1, d)
   }
 }
 

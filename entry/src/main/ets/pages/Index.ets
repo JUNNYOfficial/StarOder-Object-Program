@@ -1,4 +1,4 @@
-import { router } from '@kit.ArkUI'
+import { router, promptAction } from '@kit.ArkUI'
 import { Task, TaskStatus, UserPreferences } from '../models/DataModels'
 import { dataStore } from '../models/DataStore'
 import { ScheduleCard } from '../components/ScheduleCard'
@@ -149,7 +149,8 @@ struct Index {
   }
 
   build() {
-    Column() {
+    Stack() {
+      Column() {
       // Header
       Column({ space: 4 }) {
         Text(this.greeting)
@@ -285,7 +286,7 @@ struct Index {
                   .onClick(() => {
                     router.pushUrl({ url: 'pages/CourseSchedulePage' })
                   })
-                })
+                }, (course: Course) => course.id)
               }
               .width('100%')
               .padding({ top: 4, bottom: 4 })
@@ -375,7 +376,7 @@ struct Index {
                                                       .onClick(() => {
                                                         router.pushUrl({ url: 'pages/CourseSchedulePage' })
                                                       })
-                    })
+                    }, (course: Course) => course.id)
                   }
                   .width('100%')
                   .padding({ top: 4, bottom: 4 })
@@ -398,7 +399,7 @@ struct Index {
                 })
               }
               .padding({ left: UiTokens.pagePadding, right: UiTokens.pagePadding })
-            })
+            }, (task: Task) => task.id)
           }
           .width('100%')
           .layoutWeight(1)
@@ -501,10 +502,7 @@ struct Index {
               .backgroundColor(UiTokens.bgHover)
               .borderRadius(UiTokens.radiusL)
               .onClick(() => {
-                const ctx = getContext(this)
-                if (ctx.terminateSelf) {
-                  ctx.terminateSelf()
-                }
+                promptAction.showToast({ message: '您需要同意协议才能继续使用' })
               })
 
             Button('同意并继续')
@@ -529,6 +527,9 @@ struct Index {
       .height('100%')
       .justifyContent(FlexAlign.End)
     }
+  }
+  .width('100%')
+  .height('100%')
   }
 
   @Builder

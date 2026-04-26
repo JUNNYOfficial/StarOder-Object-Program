@@ -78,6 +78,19 @@ struct Settings {
     })
   }
 
+  saveFeishuConfig() {
+    FeishuSyncService.setAppId(this.feishuAppId.trim())
+    FeishuSyncService.setAppSecret(this.feishuAppSecret.trim())
+    this.feishuMsg = '配置已保存'
+  }
+
+  testFeishuConnection() {
+    this.feishuMsg = '正在连接飞书...'
+    FeishuSyncService.exchangeCodeForToken('', (success, msg) => {
+      this.feishuMsg = msg
+    })
+  }
+
   private baseFont(): number {
     return this.settings.largeText ? UiTokens.textL : UiTokens.textM
   }

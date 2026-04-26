@@ -72,7 +72,7 @@ struct PrivacyPolicyPage {
           SectionBody('我们可能会不时更新本隐私政策。当政策发生重大变更时，我们会在应用内显著位置提示您。继续使用本应用即表示您同意修订后的政策。')
 
           SectionTitle('七、联系我们')
-          SectionBody('如您对本隐私政策有任何疑问、意见或建议，请通过应用内反馈渠道或以下方式联系我们：\n\n电子邮箱：feedback@starorder.app')
+          SectionBody('如您对本隐私政策有任何疑问、意见或建议，请通过应用内反馈渠道或以下方式联系我们：\n\n电子邮箱：junny_huang@hotmail.com')
 
           // Bottom padding
           Blank().height(32)
