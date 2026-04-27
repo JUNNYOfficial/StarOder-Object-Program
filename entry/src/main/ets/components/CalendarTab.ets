@@ -57,12 +57,6 @@ export struct CalendarTab {
     return this.settings.largeText ? UiTokens.text2XL : UiTokens.textXL
   }
 
-  private formatYMD(y: number, m: number, d: number): string {
-    const ms = String(m).padStart(2, '0')
-    const ds = String(d).padStart(2, '0')
-    return `${y}-${ms}-${ds}`
-  }
-
   generateCalendar() {
     const firstDay = new Date(this.currentYear, this.currentMonth - 1, 1)
     const startWeekday = firstDay.getDay()
@@ -81,7 +75,7 @@ export struct CalendarTab {
     if (this.courseState.courses.length > 0 && this.courseState.semesterStartDate) {
       const start = new Date(this.courseState.semesterStartDate)
       for (let d = 1; d <= daysInMonth; d++) {
-        const dateStr = this.formatYMD(this.currentYear, this.currentMonth, d)
+        const dateStr = formatYMD(this.currentYear, this.currentMonth, d)
         const date = new Date(dateStr)
         const diffDays = Math.floor((date.getTime() - start.getTime()) / (24 * 60 * 60 * 1000))
         const week = Math.floor(diffDays / 7) + 1
@@ -109,7 +103,7 @@ export struct CalendarTab {
       days.push(new CalendarDay('', 0, false, false, 0))
     }
     for (let d = 1; d <= daysInMonth; d++) {
-      const dateStr = this.formatYMD(this.currentYear, this.currentMonth, d)
+      const dateStr = formatYMD(this.currentYear, this.currentMonth, d)
       const count = taskCountByDate[dateStr] ? taskCountByDate[dateStr] : 0
       days.push(new CalendarDay(dateStr, d, true, dateStr === this.todayStr, count))
     }
@@ -157,16 +151,6 @@ export struct CalendarTab {
     }
     result.sort((a, b) => a.startSlot - b.startSlot)
     return result
-  }
-
-  private getCourseTimeText(course: Course): string {
-    const startSlot = this.courseState.timeSlots.find(s => s.slotNumber === course.startSlot)
-    const endSlotNum = course.startSlot + course.slotCount - 1
-    const endSlot = this.courseState.timeSlots.find(s => s.slotNumber === endSlotNum)
-    if (startSlot && endSlot) {
-      return `${startSlot.startTime}-${endSlot.endTime}`
-    }
-    return `第${course.startSlot}-${endSlotNum}节`
   }
 
   prevMonth() {
@@ -356,7 +340,7 @@ export struct CalendarTab {
                 ForEach(this.dayCourses, (course: Course) => {
                   Row({ space: UiTokens.gapM }) {
                     Column() {
-                      Text(this.getCourseTimeText(course))
+                      Text(getCourseTimeText(course, this.courseState.timeSlots))
                         .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
                         .fontWeight(FontWeight.Medium)
                         .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)

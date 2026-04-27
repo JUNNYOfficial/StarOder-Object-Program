@@ -7,6 +7,7 @@ import { TimerTab } from '../components/TimerTab'
 import { SettingsTab } from '../components/SettingsTab'
 import { UiTokens } from '../design/UiTokens'
 import { addDays, todayStr, formatDate } from '../utils/DateUtils'
+import { getCourseTimeText } from '../utils/UiHelper'
 import { CourseScheduleState, Course, WeekType } from '../models/CourseModels'
 
 @Entry
@@ -89,16 +90,6 @@ struct Index {
     return result
   }
 
-  private getCourseTimeText(course: Course): string {
-    const startSlot = this.courseState.timeSlots.find(s => s.slotNumber === course.startSlot)
-    const endSlotNum = course.startSlot + course.slotCount - 1
-    const endSlot = this.courseState.timeSlots.find(s => s.slotNumber === endSlotNum)
-    if (startSlot && endSlot) {
-      return `${startSlot.startTime}-${endSlot.endTime}`
-    }
-    return `第${course.startSlot}-${endSlotNum}节`
-  }
-
   prevDay() {
     this.currentDate = addDays(this.currentDate, -1)
     this.loadData()
@@ -140,14 +131,7 @@ struct Index {
   }
 
   advanceStatus(task: Task) {
-    const all = dataStore.getActiveTasks()
-    const idx = all.findIndex(t => t.id === task.id)
-    if (idx >= 0) {
-      const statusOrder = [TaskStatus.TODO, TaskStatus.STARTED, TaskStatus.MOSTLY, TaskStatus.DONE]
-      const currentIdx = statusOrder.indexOf(all[idx].status)
-      all[idx].status = statusOrder[(currentIdx + 1) % statusOrder.length]
-      all[idx].updatedAt = Date.now()
-      dataStore.saveTasks(all)
+    if (dataStore.advanceTaskStatus(task.id)) {
       this.loadData()
     }
   }
@@ -253,7 +237,7 @@ struct Index {
                 ForEach(this.todayCourses, (course: Course) => {
                   Row({ space: UiTokens.gapM }) {
                     Column() {
-                      Text(this.getCourseTimeText(course))
+                      Text(getCourseTimeText(course, this.courseState.timeSlots))
                         .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
                         .fontWeight(FontWeight.Medium)
                         .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
@@ -343,7 +327,7 @@ struct Index {
                     ForEach(this.todayCourses, (course: Course) => {
                       Row({ space: UiTokens.gapM }) {
                                                         Column() {
-                                                          Text(this.getCourseTimeText(course))
+                                                          Text(getCourseTimeText(course, this.courseState.timeSlots))
                                                             .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
                                                             .fontWeight(FontWeight.Medium)
                                                             .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)

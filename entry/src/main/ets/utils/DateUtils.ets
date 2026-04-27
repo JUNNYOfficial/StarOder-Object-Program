@@ -15,6 +15,12 @@ export function todayStr(): string {
   return formatDate(new Date())
 }
 
+export function formatYMD(y: number, m: number, d: number): string {
+  const ms = String(m).padStart(2, '0')
+  const ds = String(d).padStart(2, '0')
+  return `${y}-${ms}-${ds}`
+}
+
 export function tomorrowStr(): string {
   const d = new Date()
   d.setDate(d.getDate() + 1)

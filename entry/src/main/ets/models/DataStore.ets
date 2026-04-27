@@ -368,6 +368,19 @@ class DataStore {
     this.put(KEY_YESTERDAY_SUMMARY, summary)
   }
 
+  // ===== Task Status Advancement =====
+  advanceTaskStatus(taskId: string): boolean {
+    const all = this.getActiveTasks()
+    const idx = all.findIndex(t => t.id === taskId)
+    if (idx < 0) return false
+    const statusOrder = [TaskStatus.TODO, TaskStatus.STARTED, TaskStatus.MOSTLY, TaskStatus.DONE]
+    const currentIdx = statusOrder.indexOf(all[idx].status)
+    all[idx].status = statusOrder[(currentIdx + 1) % statusOrder.length]
+    all[idx].updatedAt = Date.now()
+    this.saveTasks(all)
+    return true
+  }
+
   // ===== Yesterday Summary =====
   getYesterdaySummary(yesterday: string): YesterdaySummary {
     const tasks = this.getTasksByDate(yesterday)

@@ -1,5 +1,6 @@
 import { UiTokens } from '../design/UiTokens'
 import { RepeatMode } from '../models/DataModels'
+import { Course, TimeSlot } from '../models/CourseModels'
 
 export function getRepeatModeLabel(mode: RepeatMode): string {
   switch (mode) {
@@ -30,4 +31,14 @@ export function getSmallFont(largeText: boolean): number {
 
 export function getExtraLargeFont(largeText: boolean): number {
   return largeText ? UiTokens.textXL : UiTokens.textL
+}
+
+export function getCourseTimeText(course: Course, timeSlots: TimeSlot[]): string {
+  const startSlot = timeSlots.find(s => s.slotNumber === course.startSlot)
+  const endSlotNum = course.startSlot + course.slotCount - 1
+  const endSlot = timeSlots.find(s => s.slotNumber === endSlotNum)
+  if (startSlot && endSlot) {
+    return `${startSlot.startTime}-${endSlot.endTime}`
+  }
+  return `第${course.startSlot}-${endSlotNum}节`
 }

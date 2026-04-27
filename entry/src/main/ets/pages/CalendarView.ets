@@ -54,12 +54,6 @@ struct CalendarView {
     return this.settings.largeText ? UiTokens.text2XL : UiTokens.textXL
   }
 
-  private formatYMD(y: number, m: number, d: number): string {
-    const ms = String(m).padStart(2, '0')
-    const ds = String(d).padStart(2, '0')
-    return `${y}-${ms}-${ds}`
-  }
-
   generateCalendar() {
     const firstDay = new Date(this.currentYear, this.currentMonth - 1, 1)
     const startWeekday = firstDay.getDay()
@@ -79,7 +73,7 @@ struct CalendarView {
       days.push(new CalendarDay('', 0, false, false, 0))
     }
     for (let d = 1; d <= daysInMonth; d++) {
-      const dateStr = this.formatYMD(this.currentYear, this.currentMonth, d)
+      const dateStr = formatYMD(this.currentYear, this.currentMonth, d)
       const count = taskCountByDate[dateStr] ? taskCountByDate[dateStr] : 0
       days.push(new CalendarDay(dateStr, d, true, dateStr === this.todayStr, count))
     }
@@ -129,14 +123,7 @@ struct CalendarView {
   }
 
   advanceStatus(task: Task) {
-    const all = dataStore.getActiveTasks()
-    const idx = all.findIndex(t => t.id === task.id)
-    if (idx >= 0) {
-      const statusOrder = [TaskStatus.TODO, TaskStatus.STARTED, TaskStatus.MOSTLY, TaskStatus.DONE]
-      const currentIdx = statusOrder.indexOf(all[idx].status)
-      all[idx].status = statusOrder[(currentIdx + 1) % statusOrder.length]
-      all[idx].updatedAt = Date.now()
-      dataStore.saveTasks(all)
+    if (dataStore.advanceTaskStatus(task.id)) {
       this.loadDayTasks()
     }
   }

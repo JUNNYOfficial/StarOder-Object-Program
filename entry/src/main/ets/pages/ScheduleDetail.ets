@@ -70,15 +70,8 @@ struct ScheduleDetail {
 
   advanceStatus() {
     if (!this.task) return
-    const all = dataStore.getActiveTasks()
-    const idx = all.findIndex(t => t.id === this.task!.id)
-    if (idx >= 0) {
-      const statusOrder = [TaskStatus.TODO, TaskStatus.STARTED, TaskStatus.MOSTLY, TaskStatus.DONE]
-      const currentIdx = statusOrder.indexOf(all[idx].status)
-      all[idx].status = statusOrder[(currentIdx + 1) % statusOrder.length]
-      all[idx].updatedAt = Date.now()
-      dataStore.saveTasks(all)
-      this.task = all[idx]
+    if (dataStore.advanceTaskStatus(this.task.id)) {
+      this.task = dataStore.getActiveTasks().find(t => t.id === this.task!.id) || this.task
     }
   }
 
