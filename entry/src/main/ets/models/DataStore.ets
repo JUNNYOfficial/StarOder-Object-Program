@@ -3,6 +3,7 @@ import {
   Task, SubTask, EnergyRecord, MoodSurveyRecord, FocusRecord, UserPreferences, TaskStatus, RepeatMode, YesterdaySummary
 } from './DataModels'
 import { Course, TimeSlot, CourseScheduleState, DEFAULT_TIME_SLOTS, WeekType } from './CourseModels'
+import { formatDate } from '../utils/DateUtils'
 
 interface ConflictResult {
   hasConflict: boolean
@@ -239,10 +240,10 @@ class DataStore {
   }
 
   getTodayFocusMinutes(): number {
-    const today = this.formatDate(new Date())
+    const today = formatDate(new Date())
     return this.getFocusRecords()
       .filter(r => {
-        const localDate = this.formatDate(new Date(r.startTime))
+        const localDate = formatDate(new Date(r.startTime))
         return localDate === today
       })
       .reduce((sum, r) => sum + r.actualMinutes, 0)
@@ -386,7 +387,7 @@ class DataStore {
     for (let i = 0; i < allFocus.length; i++) {
       const r = allFocus[i]
       if (!r.startTime) continue
-      const localDate = this.formatDate(new Date(r.startTime))
+      const localDate = formatDate(new Date(r.startTime))
       if (localDate === yesterday) {
         focusMinutes += r.actualMinutes
       }
@@ -470,7 +471,7 @@ class DataStore {
         totalMinutes += r.actualMinutes
         sessions++
         if (r.completed) completedSessions++
-        const dateStr = this.formatDate(new Date(r.startTime))
+        const dateStr = formatDate(new Date(r.startTime))
         dailyData[dateStr] = (dailyData[dateStr] || 0) + r.actualMinutes
       }
     }
@@ -485,8 +486,8 @@ class DataStore {
       weekEnd.setDate(weekEnd.getDate() - w * 7)
       const weekStart = new Date(weekEnd)
       weekStart.setDate(weekStart.getDate() - 6)
-      const startStr = this.formatDate(weekStart)
-      const endStr = this.formatDate(weekEnd)
+      const startStr = formatDate(weekStart)
+      const endStr = formatDate(weekEnd)
       const stats = this.getFocusStatsByRange(startStr, endStr)
       result.push({
         label: `${weekStart.getMonth() + 1}/${weekStart.getDate()}-${weekEnd.getMonth() + 1}/${weekEnd.getDate()}`,
@@ -503,7 +504,7 @@ class DataStore {
     for (let d = days - 1; d >= 0; d--) {
       const date = new Date(now)
       date.setDate(date.getDate() - d)
-      const dateStr = this.formatDate(date)
+      const dateStr = formatDate(date)
       const stats = this.getFocusStatsByRange(dateStr, dateStr)
       result.push({
         label: `${date.getMonth() + 1}/${date.getDate()}`,
@@ -514,13 +515,6 @@ class DataStore {
   }
 
   // ===== Utils =====
-  private formatDate(d: Date): string {
-    const y = d.getFullYear()
-    const m = String(d.getMonth() + 1).padStart(2, '0')
-    const day = String(d.getDate()).padStart(2, '0')
-    return `${y}-${m}-${day}`
-  }
-
   private parseLocalDate(dateStr: string): Date {
     const parts = dateStr.split('-').map(Number)
     return new Date(parts[0], parts[1] - 1, parts[2])

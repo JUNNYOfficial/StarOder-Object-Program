@@ -4,7 +4,7 @@ import { window } from '@kit.ArkUI';
 import { formBindingData, formProvider } from '@kit.FormKit';
 import { dataStore } from '../models/DataStore';
 import { Task, SubTask, TaskType, TaskIntensity, TimeBlock, TaskStatus } from '../models/DataModels';
-import { addDays } from '../utils/DateUtils';
+import { addDays, formatDate } from '../utils/DateUtils';
 
 interface TaskWithMinutes {
   task: Task
@@ -50,7 +50,7 @@ export default class EntryAbility extends UIAbility {
 
   private updateFormData(formId: string): void {
     try {
-      const today = this.formatDate(new Date())
+      const today = formatDate(new Date())
       const tasks = dataStore.getTasksByDate(today)
       const todoCount = tasks.filter(t => t.status !== TaskStatus.DONE).length
 
@@ -128,7 +128,7 @@ export default class EntryAbility extends UIAbility {
     // 先清理旧的，避免同一天重复显示
     dataStore.setShouldShowYesterdaySummary(false)
 
-    const today = this.formatDate(new Date())
+    const today = formatDate(new Date())
     const lastLogin = dataStore.getLastLoginDate()
 
     // 有上次登录记录且跨天了，显示昨天完成情况
@@ -150,7 +150,7 @@ export default class EntryAbility extends UIAbility {
       return;
     }
 
-    const today = this.formatDate(new Date());
+    const today = formatDate(new Date());
 
     const s1 = new Task('吃早餐', today, '08:00', '08:30');
     s1.type = TaskType.HOME;
@@ -194,10 +194,4 @@ export default class EntryAbility extends UIAbility {
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Sample data seeded');
   }
 
-  private formatDate(d: Date): string {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-  }
 }

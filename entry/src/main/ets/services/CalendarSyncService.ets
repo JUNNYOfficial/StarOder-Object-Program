@@ -3,6 +3,7 @@ import { BusinessError } from '@kit.BasicServicesKit'
 import { abilityAccessCtrl, Permissions } from '@kit.AbilityKit'
 import { Course, TimeSlot, WeekType, CourseScheduleState } from '../models/CourseModels'
 import { Task } from '../models/DataModels'
+import { formatDate, formatTime } from '../utils/DateUtils'
 
 const TAG = '[CalendarSync]'
 
@@ -245,9 +246,9 @@ class CalendarSyncServiceClass {
       }
       const startDate = new Date(startMs)
       const endDate = new Date(endMs)
-      const dateStr = this.formatDate(startDate)
-      const startTimeStr = this.formatTime(startDate)
-      const endTimeStr = this.formatTime(endDate)
+      const dateStr = formatDate(startDate)
+      const startTimeStr = formatTime(startDate)
+      const endTimeStr = formatTime(endDate)
       const task = new Task(String(title), dateStr, startTimeStr, endTimeStr)
       const desc = e.description
       if (desc) {
@@ -257,19 +258,6 @@ class CalendarSyncServiceClass {
       tasks.push(task)
     }
     return tasks
-  }
-
-  private formatDate(d: Date): string {
-    const y = d.getFullYear()
-    const m = String(d.getMonth() + 1).padStart(2, '0')
-    const day = String(d.getDate()).padStart(2, '0')
-    return `${y}-${m}-${day}`
-  }
-
-  private formatTime(d: Date): string {
-    const h = String(d.getHours()).padStart(2, '0')
-    const min = String(d.getMinutes()).padStart(2, '0')
-    return `${h}:${min}`
   }
 
   private getCurrentSemesterStart(): Date {

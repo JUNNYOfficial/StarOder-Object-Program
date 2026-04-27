@@ -43,7 +43,7 @@ export struct CalendarTab {
     const now = new Date()
     this.currentYear = now.getFullYear()
     this.currentMonth = now.getMonth() + 1
-    this.todayStr = this.formatDate(now)
+    this.todayStr = formatDate(now)
     this.selectedDate = this.todayStr
     this.generateCalendar()
     this.loadDayTasks()
@@ -55,13 +55,6 @@ export struct CalendarTab {
 
   private largeFont(): number {
     return this.settings.largeText ? UiTokens.text2XL : UiTokens.textXL
-  }
-
-  private formatDate(d: Date): string {
-    const y = d.getFullYear()
-    const m = String(d.getMonth() + 1).padStart(2, '0')
-    const day = String(d.getDate()).padStart(2, '0')
-    return `${y}-${m}-${day}`
   }
 
   private formatYMD(y: number, m: number, d: number): string {

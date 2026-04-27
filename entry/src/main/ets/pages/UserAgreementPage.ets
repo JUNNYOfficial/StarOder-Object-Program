@@ -9,14 +9,11 @@ struct UserAgreementPage {
       // Header
       Row() {
         Button() {
-          Text('<')
-            .fontSize(20)
-            .fontColor(UiTokens.textPrimary)
+          Text('返回')
+            .fontSize(UiTokens.textM)
+            .fontColor(UiTokens.textSecondary)
         }
-        .width(40)
-        .height(40)
-        .backgroundColor(UiTokens.bgHover)
-        .borderRadius(UiTokens.radiusM)
+        .backgroundColor('transparent')
         .onClick(() => router.back())
 
         Text('用户协议')

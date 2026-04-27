@@ -77,13 +77,6 @@ struct WellnessView {
     return this.settings.largeText ? UiTokens.text2XL : UiTokens.textXL
   }
 
-  private formatDate(d: Date): string {
-    const y = d.getFullYear()
-    const m = String(d.getMonth() + 1).padStart(2, '0')
-    const day = String(d.getDate()).padStart(2, '0')
-    return `${y}-${m}-${day}`
-  }
-
   private loadData() {
     this.loadEnergyData()
     this.loadFocusStats()
@@ -102,7 +95,7 @@ struct WellnessView {
     for (let i = 6; i >= 0; i--) {
       const d = new Date(today)
       d.setDate(d.getDate() - i)
-      const dateStr = this.formatDate(d)
+      const dateStr = formatDate(d)
       let rating = 0
       let hasData = false
       for (let j = 0; j < allEnergy.length; j++) {
@@ -153,8 +146,8 @@ struct WellnessView {
     const startOfWeek = new Date(now)
     const dayOfWeek = now.getDay() === 0 ? 7 : now.getDay()
     startOfWeek.setDate(now.getDate() - dayOfWeek + 1)
-    const startStr = this.formatDate(startOfWeek)
-    const endStr = this.formatDate(now)
+    const startStr = formatDate(startOfWeek)
+    const endStr = formatDate(now)
 
     let total = 0
     let completed = 0

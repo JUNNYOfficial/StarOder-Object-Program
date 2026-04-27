@@ -6,7 +6,7 @@ import { CalendarTab } from '../components/CalendarTab'
 import { TimerTab } from '../components/TimerTab'
 import { SettingsTab } from '../components/SettingsTab'
 import { UiTokens } from '../design/UiTokens'
-import { addDays, todayStr } from '../utils/DateUtils'
+import { addDays, todayStr, formatDate } from '../utils/DateUtils'
 import { CourseScheduleState, Course, WeekType } from '../models/CourseModels'
 
 @Entry
@@ -28,7 +28,7 @@ struct Index {
 
   aboutToAppear() {
     const now = new Date()
-    this.currentDate = this.formatDate(now)
+    this.currentDate = formatDate(now)
     this.greeting = this.getGreeting(now)
     this.loadData()
     if (!dataStore.hasAgreedToTerms()) {
@@ -110,7 +110,7 @@ struct Index {
   }
 
   goToday() {
-    this.currentDate = this.formatDate(new Date())
+    this.currentDate = formatDate(new Date())
     this.loadData()
   }
 
@@ -127,13 +127,6 @@ struct Index {
       }
       this.filteredTasks = result
     }
-  }
-
-  formatDate(d: Date): string {
-    const y = d.getFullYear()
-    const m = String(d.getMonth() + 1).padStart(2, '0')
-    const day = String(d.getDate()).padStart(2, '0')
-    return `${y}-${m}-${day}`
   }
 
   getGreeting(d: Date): string {

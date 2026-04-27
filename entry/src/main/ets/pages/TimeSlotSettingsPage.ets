@@ -39,14 +39,11 @@ struct TimeSlotSettingsPage {
       // Header
       Row() {
         Button() {
-          Text('<')
-            .fontSize(UiTokens.textL)
-            .fontColor(UiTokens.textPrimary)
+          Text('返回')
+            .fontSize(UiTokens.textM)
+            .fontColor(UiTokens.textSecondary)
         }
-        .width(36)
-        .height(36)
-        .backgroundColor(UiTokens.bgHover)
-        .borderRadius(UiTokens.radiusM)
+        .backgroundColor('transparent')
         .onClick(() => router.back())
 
         Text('课表时间段')
