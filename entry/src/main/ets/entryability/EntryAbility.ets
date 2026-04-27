@@ -4,6 +4,18 @@ import { window } from '@kit.ArkUI';
 import { formBindingData, formProvider } from '@kit.FormKit';
 import { dataStore } from '../models/DataStore';
 import { Task, SubTask, TaskType, TaskIntensity, TimeBlock, TaskStatus } from '../models/DataModels';
+import { addDays } from '../utils/DateUtils';
+
+interface TaskWithMinutes {
+  task: Task
+  minutes: number
+}
+
+interface FormUpdateData {
+  todayCount: number
+  nextTask: string
+  nextTime: string
+}
 
 const DOMAIN = 0x0000;
 
@@ -46,11 +58,12 @@ export default class EntryAbility extends UIAbility {
       let nextTime = ''
       const now = new Date()
       const nowMinutes = now.getHours() * 60 + now.getMinutes()
-      const upcoming = tasks
+      const upcoming: TaskWithMinutes[] = tasks
         .filter(t => t.startTime)
         .map(t => {
           const parts = (t.startTime as string).split(':').map(Number)
-          return { task: t, minutes: parts[0] * 60 + parts[1] }
+          const item: TaskWithMinutes = { task: t, minutes: parts[0] * 60 + parts[1] }
+          return item
         })
         .filter(t => t.minutes > nowMinutes)
         .sort((a, b) => a.minutes - b.minutes)
@@ -63,7 +76,7 @@ export default class EntryAbility extends UIAbility {
         nextTime = tasks[0].startTime || ''
       }
 
-      const formData = {
+      const formData: FormUpdateData = {
         todayCount: todoCount,
         nextTask: nextTask,
         nextTime: nextTime
@@ -87,6 +100,7 @@ export default class EntryAbility extends UIAbility {
 
   onWindowStageCreate(windowStage: window.WindowStage): void {
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onWindowStageCreate');
+    this.checkYesterdaySummary();
     this.seedSampleData();
 
     windowStage.loadContent(this.launchWantUri, (err) => {
@@ -108,6 +122,27 @@ export default class EntryAbility extends UIAbility {
 
   onBackground(): void {
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onBackground');
+  }
+
+  private checkYesterdaySummary(): void {
+    // 先清理旧的，避免同一天重复显示
+    dataStore.setShouldShowYesterdaySummary(false)
+
+    const today = this.formatDate(new Date())
+    const lastLogin = dataStore.getLastLoginDate()
+
+    // 有上次登录记录且跨天了，显示昨天完成情况
+    if (lastLogin && lastLogin < today) {
+      const yesterday = addDays(today, -1)
+      const summary = dataStore.getYesterdaySummary(yesterday)
+      // 只有昨天有数据才显示
+      if (summary.totalTasks > 0 || summary.focusMinutes > 0) {
+        dataStore.setStoredYesterdaySummary(summary)
+        dataStore.setShouldShowYesterdaySummary(true)
+      }
+    }
+
+    dataStore.setLastLoginDate(today)
   }
 
   private seedSampleData(): void {

@@ -313,3 +313,19 @@ export class TaskTemplate {
     this.durationMinutes = durationMinutes
   }
 }
+
+export class YesterdaySummary {
+  date: string
+  totalTasks: number
+  completedTasks: number
+  completionRate: number
+  focusMinutes: number
+
+  constructor(date: string, totalTasks: number, completedTasks: number, focusMinutes: number) {
+    this.date = date
+    this.totalTasks = totalTasks
+    this.completedTasks = completedTasks
+    this.completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
+    this.focusMinutes = focusMinutes
+  }
+}

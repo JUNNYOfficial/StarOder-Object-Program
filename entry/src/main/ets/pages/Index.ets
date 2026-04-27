@@ -1,5 +1,5 @@
 import { router, promptAction } from '@kit.ArkUI'
-import { Task, TaskStatus, UserPreferences } from '../models/DataModels'
+import { Task, TaskStatus, UserPreferences, YesterdaySummary } from '../models/DataModels'
 import { dataStore } from '../models/DataStore'
 import { ScheduleCard } from '../components/ScheduleCard'
 import { CalendarTab } from '../components/CalendarTab'
@@ -23,6 +23,8 @@ struct Index {
   @State courseState: CourseScheduleState = new CourseScheduleState()
   @State todayCourses: Course[] = []
   @State showTermsDialog: boolean = false
+  @State showYesterdaySummary: boolean = false
+  @State yesterdaySummary: YesterdaySummary = new YesterdaySummary('', 0, 0, 0)
 
   aboutToAppear() {
     const now = new Date()
@@ -31,6 +33,15 @@ struct Index {
     this.loadData()
     if (!dataStore.hasAgreedToTerms()) {
       this.showTermsDialog = true
+    }
+    this.checkYesterdaySummary()
+  }
+
+  private checkYesterdaySummary(): void {
+    if (dataStore.shouldShowYesterdaySummary()) {
+      this.yesterdaySummary = dataStore.getStoredYesterdaySummary()
+      this.showYesterdaySummary = true
+      dataStore.setShouldShowYesterdaySummary(false)
     }
   }
 
@@ -520,6 +531,92 @@ struct Index {
               })
           }
           .width('100%')
+        }
+        .width('100%')
+        .padding(UiTokens.pagePadding)
+        .backgroundColor(UiTokens.bgCard)
+        .borderRadius({ topLeft: 24, topRight: 24 })
+      }
+      .width('100%')
+      .height('100%')
+      .justifyContent(FlexAlign.End)
+    }
+
+    if (this.showYesterdaySummary) {
+      Column() {
+        Column()
+          .width('100%')
+          .layoutWeight(1)
+          .backgroundColor('rgba(0,0,0,0.4)')
+          .onClick(() => {
+            this.showYesterdaySummary = false
+          })
+
+        Column({ space: UiTokens.gapM }) {
+          Text(`昨天 (${this.yesterdaySummary.date}) 的完成情况`)
+            .fontSize(UiTokens.textL)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(UiTokens.textPrimary)
+            .width('100%')
+            .textAlign(TextAlign.Center)
+
+          Row({ space: UiTokens.gapM }) {
+            Column({ space: 4 }) {
+              Text(`${this.yesterdaySummary.completedTasks}/${this.yesterdaySummary.totalTasks}`)
+                .fontSize(this.settings.largeText ? UiTokens.textXL : UiTokens.textL)
+                .fontWeight(FontWeight.Bold)
+                .fontColor(UiTokens.brand)
+              Text('完成任务')
+                .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                .fontColor(UiTokens.textSecondary)
+            }
+            .layoutWeight(1)
+            .padding(16)
+            .backgroundColor(UiTokens.bgHover)
+            .borderRadius(UiTokens.radiusXL)
+            .alignItems(HorizontalAlign.Center)
+
+            Column({ space: 4 }) {
+              Text(`${this.yesterdaySummary.completionRate}%`)
+                .fontSize(this.settings.largeText ? UiTokens.textXL : UiTokens.textL)
+                .fontWeight(FontWeight.Bold)
+                .fontColor(UiTokens.brand)
+              Text('完成率')
+                .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                .fontColor(UiTokens.textSecondary)
+            }
+            .layoutWeight(1)
+            .padding(16)
+            .backgroundColor(UiTokens.bgHover)
+            .borderRadius(UiTokens.radiusXL)
+            .alignItems(HorizontalAlign.Center)
+
+            Column({ space: 4 }) {
+              Text(`${this.yesterdaySummary.focusMinutes}`)
+                .fontSize(this.settings.largeText ? UiTokens.textXL : UiTokens.textL)
+                .fontWeight(FontWeight.Bold)
+                .fontColor(UiTokens.brand)
+              Text('专注分钟')
+                .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                .fontColor(UiTokens.textSecondary)
+            }
+            .layoutWeight(1)
+            .padding(16)
+            .backgroundColor(UiTokens.bgHover)
+            .borderRadius(UiTokens.radiusXL)
+            .alignItems(HorizontalAlign.Center)
+          }
+          .width('100%')
+
+          Button('知道了')
+            .width('100%')
+            .height(48)
+            .fontColor('#FFFFFF')
+            .backgroundColor(UiTokens.brand)
+            .borderRadius(UiTokens.radiusXL)
+            .onClick(() => {
+              this.showYesterdaySummary = false
+            })
         }
         .width('100%')
         .padding(UiTokens.pagePadding)

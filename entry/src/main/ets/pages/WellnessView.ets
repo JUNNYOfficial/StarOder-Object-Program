@@ -17,6 +17,26 @@ class DayEnergy {
   }
 }
 
+class FocusDailyData {
+  label: string
+  minutes: number
+  constructor(label: string, minutes: number) {
+    this.label = label
+    this.minutes = minutes
+  }
+}
+
+class FocusWeeklyData {
+  label: string
+  totalMinutes: number
+  sessions: number
+  constructor(label: string, totalMinutes: number, sessions: number) {
+    this.label = label
+    this.totalMinutes = totalMinutes
+    this.sessions = sessions
+  }
+}
+
 @Entry
 @Component
 struct WellnessView {
@@ -36,8 +56,8 @@ struct WellnessView {
   @State moodContext: string = ''
 
   // Focus stats enhancement
-  @State dailyFocusData: Array<{ label: string, minutes: number }> = []
-  @State weeklyFocusData: Array<{ label: string, totalMinutes: number, sessions: number }> = []
+  @State dailyFocusData: FocusDailyData[] = []
+  @State weeklyFocusData: FocusWeeklyData[] = []
   @State maxDailyMinutes: number = 1
   @State maxWeeklyMinutes: number = 1
   @State taskCompletionRate: number = 0
@@ -342,7 +362,7 @@ struct WellnessView {
                   .width('100%')
 
                 Row({ space: 6 }) {
-                  ForEach(this.dailyFocusData, (day: { label: string, minutes: number }) => {
+                  ForEach(this.dailyFocusData, (day: FocusDailyData) => {
                     Column({ space: 4 }) {
                       Stack({ alignContent: Alignment.Bottom }) {
                         Column()
@@ -402,7 +422,7 @@ struct WellnessView {
                   .width('100%')
 
                 Column({ space: UiTokens.gapS }) {
-                  ForEach(this.weeklyFocusData, (week: { label: string, totalMinutes: number, sessions: number }) => {
+                  ForEach(this.weeklyFocusData, (week: FocusWeeklyData) => {
                     Row({ space: 10 }) {
                       Text(week.label)
                         .width(70)

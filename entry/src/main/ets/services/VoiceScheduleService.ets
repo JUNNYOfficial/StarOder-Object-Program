@@ -25,6 +25,17 @@ export class ParsedSchedule {
   }
 }
 
+interface ParsedTimeResult {
+  hour: number
+  minute: number
+  timeBlock: TimeBlock
+}
+
+interface TaskTypeIntensity {
+  type: TaskType
+  intensity: TaskIntensity
+}
+
 const WEEKDAY_MAP: Record<string, number> = {
   '周一': 1, '星期一': 1, '周二': 2, '星期二': 2,
   '周三': 3, '星期三': 3, '周四': 4, '星期四': 4,
@@ -152,7 +163,7 @@ function parseDateFromText(text: string): string {
   return todayStr()
 }
 
-function parseTimeFromText(text: string): { hour: number, minute: number, timeBlock: TimeBlock } {
+function parseTimeFromText(text: string): ParsedTimeResult {
   let hour = 9
   let minute = 0
   let timeBlock = TimeBlock.MORNING
@@ -198,7 +209,8 @@ function parseTimeFromText(text: string): { hour: number, minute: number, timeBl
     timeBlock = TimeBlock.NIGHT
   }
 
-  return { hour, minute, timeBlock }
+  const result: ParsedTimeResult = { hour, minute, timeBlock }
+  return result
 }
 
 function parseDurationFromText(text: string, defaultMinutes: number): number {
@@ -229,38 +241,45 @@ function parseDurationFromText(text: string, defaultMinutes: number): number {
   return defaultMinutes
 }
 
-function inferTypeAndIntensity(text: string): { type: TaskType, intensity: TaskIntensity } {
+function inferTypeAndIntensity(text: string): TaskTypeIntensity {
   if (text.includes('运动') || text.includes('跑步') || text.includes('健身') || text.includes('瑜伽')
     || text.includes('游泳') || text.includes('打球') || text.includes('骑行')) {
-    return { type: TaskType.EXERCISE, intensity: TaskIntensity.HIGH }
+    const r1: TaskTypeIntensity = { type: TaskType.EXERCISE, intensity: TaskIntensity.HIGH }
+    return r1
   }
 
   if (text.includes('开会') || text.includes('会议') || text.includes('讨论') || text.includes('工作')
     || text.includes('项目') || text.includes('报告') || text.includes('答辩') || text.includes('面试')) {
-    return { type: TaskType.THINK, intensity: TaskIntensity.HIGH }
+    const r2: TaskTypeIntensity = { type: TaskType.THINK, intensity: TaskIntensity.HIGH }
+    return r2
   }
 
   if (text.includes('学习') || text.includes('复习') || text.includes('备考') || text.includes('读书')
     || text.includes('阅读') || text.includes('写作业') || text.includes('做题')) {
-    return { type: TaskType.THINK, intensity: TaskIntensity.MEDIUM }
+    const r3: TaskTypeIntensity = { type: TaskType.THINK, intensity: TaskIntensity.MEDIUM }
+    return r3
   }
 
   if (text.includes('吃饭') || text.includes('早餐') || text.includes('午餐') || text.includes('晚餐')
     || text.includes('做饭') || text.includes('买菜')) {
-    return { type: TaskType.HOME, intensity: TaskIntensity.LOW }
+    const r4: TaskTypeIntensity = { type: TaskType.HOME, intensity: TaskIntensity.LOW }
+    return r4
   }
 
   if (text.includes('休息') || text.includes('睡觉') || text.includes('午睡') || text.includes('放松')
     || text.includes('冥想') || text.includes('打盹')) {
-    return { type: TaskType.REST, intensity: TaskIntensity.LOW }
+    const r5: TaskTypeIntensity = { type: TaskType.REST, intensity: TaskIntensity.LOW }
+    return r5
   }
 
   if (text.includes('社交') || text.includes('聚会') || text.includes('见面') || text.includes('朋友')
     || text.includes('约会') || text.includes('聚餐') || text.includes('聊天')) {
-    return { type: TaskType.SOCIAL, intensity: TaskIntensity.MEDIUM }
+    const r6: TaskTypeIntensity = { type: TaskType.SOCIAL, intensity: TaskIntensity.MEDIUM }
+    return r6
   }
 
-  return { type: TaskType.THINK, intensity: TaskIntensity.MEDIUM }
+  const r7: TaskTypeIntensity = { type: TaskType.THINK, intensity: TaskIntensity.MEDIUM }
+  return r7
 }
 
 function cleanTitle(text: string): string {
@@ -290,7 +309,10 @@ export function parseScheduleText(text: string): ParsedSchedule {
   result.title = text
   result.date = parseDateFromText(text)
 
-  const { hour, minute, timeBlock } = parseTimeFromText(text)
+  const parsedTime = parseTimeFromText(text)
+  const hour = parsedTime.hour
+  const minute = parsedTime.minute
+  const timeBlock = parsedTime.timeBlock
   result.startTime = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
   result.timeBlock = timeBlock
 

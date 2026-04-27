@@ -1,8 +1,31 @@
 import { preferences } from '@kit.ArkData'
 import {
-  Task, SubTask, EnergyRecord, MoodSurveyRecord, FocusRecord, UserPreferences, TaskStatus, RepeatMode
+  Task, SubTask, EnergyRecord, MoodSurveyRecord, FocusRecord, UserPreferences, TaskStatus, RepeatMode, YesterdaySummary
 } from './DataModels'
 import { Course, TimeSlot, CourseScheduleState, DEFAULT_TIME_SLOTS, WeekType } from './CourseModels'
+
+interface ConflictResult {
+  hasConflict: boolean
+  conflictWith: string
+}
+
+interface FocusStatsResult {
+  totalMinutes: number
+  sessions: number
+  completedSessions: number
+  dailyData: Record<string, number>
+}
+
+interface FocusWeeklyStat {
+  label: string
+  totalMinutes: number
+  sessions: number
+}
+
+interface FocusDailyStat {
+  label: string
+  minutes: number
+}
 
 const KEY_TASKS = 'star_tasks'
 const KEY_ENERGY = 'star_energy_records'
@@ -12,6 +35,9 @@ const KEY_PREFS = 'star_user_prefs'
 const KEY_COURSES = 'star_courses'
 const KEY_COURSE_STATE = 'star_course_state'
 const KEY_AGREED_TERMS = 'star_agreed_terms'
+const KEY_LAST_LOGIN_DATE = 'star_last_login_date'
+const KEY_SHOW_YESTERDAY_SUMMARY = 'star_show_yesterday_summary'
+const KEY_YESTERDAY_SUMMARY = 'star_yesterday_summary'
 
 class DataStore {
   private pref: preferences.Preferences | null = null
@@ -316,6 +342,59 @@ class DataStore {
     this.put(KEY_AGREED_TERMS, agreed)
   }
 
+  // ===== Last Login Tracking =====
+  getLastLoginDate(): string {
+    return this.get<string>(KEY_LAST_LOGIN_DATE, '')
+  }
+
+  setLastLoginDate(date: string): void {
+    this.put(KEY_LAST_LOGIN_DATE, date)
+  }
+
+  shouldShowYesterdaySummary(): boolean {
+    return this.get<boolean>(KEY_SHOW_YESTERDAY_SUMMARY, false)
+  }
+
+  setShouldShowYesterdaySummary(show: boolean): void {
+    this.put(KEY_SHOW_YESTERDAY_SUMMARY, show)
+  }
+
+  getStoredYesterdaySummary(): YesterdaySummary {
+    return this.get<YesterdaySummary>(KEY_YESTERDAY_SUMMARY, new YesterdaySummary('', 0, 0, 0))
+  }
+
+  setStoredYesterdaySummary(summary: YesterdaySummary): void {
+    this.put(KEY_YESTERDAY_SUMMARY, summary)
+  }
+
+  // ===== Yesterday Summary =====
+  getYesterdaySummary(yesterday: string): YesterdaySummary {
+    const tasks = this.getTasksByDate(yesterday)
+    let totalTasks = 0
+    let completedTasks = 0
+    for (let i = 0; i < tasks.length; i++) {
+      if (!tasks[i].deleted) {
+        totalTasks++
+        if (tasks[i].status === TaskStatus.DONE) {
+          completedTasks++
+        }
+      }
+    }
+
+    let focusMinutes = 0
+    const allFocus = this.getFocusRecords()
+    for (let i = 0; i < allFocus.length; i++) {
+      const r = allFocus[i]
+      if (!r.startTime) continue
+      const localDate = this.formatDate(new Date(r.startTime))
+      if (localDate === yesterday) {
+        focusMinutes += r.actualMinutes
+      }
+    }
+
+    return new YesterdaySummary(yesterday, totalTasks, completedTasks, focusMinutes)
+  }
+
   clearAll(): void {
     if (!this.pref) return
     try {
@@ -327,7 +406,7 @@ class DataStore {
   }
 
   // ===== Conflict Detection =====
-  checkTaskConflict(date: string, startTime: string, endTime: string, excludeId?: string): { hasConflict: boolean, conflictWith: string } {
+  checkTaskConflict(date: string, startTime: string, endTime: string, excludeId?: string): ConflictResult {
     if (!startTime || !endTime) return { hasConflict: false, conflictWith: '' }
     const tasks = this.getTasksByDate(date)
     const startMin = this.timeToMinutes(startTime)
@@ -347,7 +426,7 @@ class DataStore {
     return { hasConflict: false, conflictWith: '' }
   }
 
-  checkCourseConflict(state: CourseScheduleState, newCourse: Course, excludeId?: string): { hasConflict: boolean, conflictWith: string } {
+  checkCourseConflict(state: CourseScheduleState, newCourse: Course, excludeId?: string): ConflictResult {
     const courses = this.getCourses()
     for (let i = 0; i < courses.length; i++) {
       const c = courses[i]
@@ -374,7 +453,7 @@ class DataStore {
   }
 
   // ===== Focus Stats Aggregation =====
-  getFocusStatsByRange(startDate: string, endDate: string): { totalMinutes: number, sessions: number, completedSessions: number, dailyData: Record<string, number> } {
+  getFocusStatsByRange(startDate: string, endDate: string): FocusStatsResult {
     const all = this.getFocusRecords()
     const start = this.parseLocalDate(startDate).getTime()
     const end = this.parseLocalDate(endDate).getTime() + 24 * 60 * 60 * 1000
@@ -398,8 +477,8 @@ class DataStore {
     return { totalMinutes, sessions, completedSessions, dailyData }
   }
 
-  getFocusWeeklyStats(weeks: number = 4): Array<{ label: string, totalMinutes: number, sessions: number }> {
-    const result: Array<{ label: string, totalMinutes: number, sessions: number }> = []
+  getFocusWeeklyStats(weeks: number = 4): FocusWeeklyStat[] {
+    const result: FocusWeeklyStat[] = []
     const now = new Date()
     for (let w = weeks - 1; w >= 0; w--) {
       const weekEnd = new Date(now)
@@ -418,8 +497,8 @@ class DataStore {
     return result
   }
 
-  getFocusDailyStats(days: number = 7): Array<{ label: string, minutes: number }> {
-    const result: Array<{ label: string, minutes: number }> = []
+  getFocusDailyStats(days: number = 7): FocusDailyStat[] {
+    const result: FocusDailyStat[] = []
     const now = new Date()
     for (let d = days - 1; d >= 0; d--) {
       const date = new Date(now)

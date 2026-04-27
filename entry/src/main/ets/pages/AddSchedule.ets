@@ -9,6 +9,7 @@ import { UiTokens } from '../design/UiTokens'
 import { todayStr, tomorrowStr, dayAfterTomorrowStr } from '../utils/DateUtils'
 import { setSystemReminder } from '../services/VoiceScheduleService'
 import { getRepeatModeLabel } from '../utils/UiHelper'
+import { CalendarSyncService } from '../services/CalendarSyncService'
 
 @Entry
 @Component
@@ -168,6 +169,23 @@ struct AddSchedule {
   private normalizeTime(time: string): string {
     const parts = time.split(':').map(Number)
     return `${String(parts[0]).padStart(2, '0')}:${String(parts[1]).padStart(2, '0')}`
+  }
+
+  importFromCalendar(): void {
+    const parts = this.selectedDate.split('-').map(Number)
+    const startOfDay = new Date(parts[0], parts[1] - 1, parts[2], 0, 0, 0).getTime()
+    const endOfDay = new Date(parts[0], parts[1] - 1, parts[2], 23, 59, 59).getTime()
+    CalendarSyncService.importEventsFromCalendar(getContext(this), startOfDay, endOfDay, (tasks, msg) => {
+      if (tasks.length === 0) {
+        promptAction.showToast({ message: msg })
+        return
+      }
+      for (let i = 0; i < tasks.length; i++) {
+        dataStore.addTask(tasks[i])
+      }
+      promptAction.showToast({ message: `成功导入 ${tasks.length} 个日程` })
+      router.back()
+    })
   }
 
   saveTask() {
@@ -712,6 +730,18 @@ struct AddSchedule {
             .width('100%')
           }
           .width('100%')
+
+          Button('从系统日历导入')
+            .width('100%')
+            .height(48)
+            .fontSize(this.baseFont())
+            .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
+            .backgroundColor(this.settings.highContrast ? '#EEEEEE' : UiTokens.bgHover)
+            .borderRadius(UiTokens.radiusXL)
+            .margin({ top: 8 })
+            .onClick(() => {
+              this.importFromCalendar()
+            })
 
           // Save button
           Button('保存日程')
