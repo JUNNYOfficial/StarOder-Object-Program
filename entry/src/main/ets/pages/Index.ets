@@ -9,6 +9,7 @@ import { UiTokens } from '../design/UiTokens'
 import { addDays, todayStr, formatDate, formatTime } from '../utils/DateUtils'
 import { getCourseTimeText } from '../utils/UiHelper'
 import { DayTimeline } from '../components/DayTimeline'
+import { VisualScheduleView } from '../components/VisualScheduleView'
 import { CourseScheduleState, Course, WeekType } from '../models/CourseModels'
 import { EnergySummary, getTodayEnergySummary } from '../utils/EnergyBank'
 
@@ -30,7 +31,7 @@ struct Index {
   @State yesterdaySummary: YesterdaySummary = new YesterdaySummary('', 0, 0, 0)
   @State showMoodPrompt: boolean = false
   @State currentTimeStr: string = ''
-  @State showTimeline: boolean = true
+  @State viewMode: number = 1 // 0=list, 1=timeline, 2=visual
   @State showBadDayDialog: boolean = false
   @State energySummary: EnergySummary = new EnergySummary(8, 0, 0, 0)
   private clockTimer: number = -1
@@ -403,7 +404,7 @@ struct Index {
 
               if (this.currentDate === todayStr()) {
                 Button() {
-                  Text(this.showTimeline ? '列表' : '轴')
+                  Text(this.viewMode === 0 ? '轴' : this.viewMode === 1 ? '卡片' : '列表')
                     .fontSize(UiTokens.textXS)
                     .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
                 }
@@ -412,7 +413,7 @@ struct Index {
                 .backgroundColor(UiTokens.bgHover)
                 .borderRadius(UiTokens.radiusM)
                 .onClick(() => {
-                  this.showTimeline = !this.showTimeline
+                  this.viewMode = (this.viewMode + 1) % 3
                 })
               }
             }
@@ -473,8 +474,8 @@ struct Index {
               .padding({ top: 4, bottom: 4 })
             }
 
-            // 任务区域：时间轴视图 或 列表视图
-            if (this.showTimeline && this.currentDate === todayStr()) {
+            // 任务区域：三种视图切换
+            if (this.viewMode === 1 && this.currentDate === todayStr()) {
               DayTimeline({
                 tasks: this.filteredTasks,
                 settings: this.settings,
@@ -487,6 +488,14 @@ struct Index {
                 },
                 onClickCourse: () => {
                   router.pushUrl({ url: 'pages/CourseSchedulePage' })
+                }
+              })
+            } else if (this.viewMode === 2 && this.currentDate === todayStr()) {
+              VisualScheduleView({
+                tasks: this.filteredTasks,
+                settings: this.settings,
+                onClickTask: (task: Task) => {
+                  router.pushUrl({ url: 'pages/ScheduleDetail', params: { id: task.id } })
                 }
               })
             } else {
