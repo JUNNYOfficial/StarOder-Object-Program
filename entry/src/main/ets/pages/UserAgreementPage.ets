@@ -34,7 +34,7 @@ struct UserAgreementPage {
       Scroll() {
         Column({ space: UiTokens.gapM }) {
           SectionTitle('更新日期')
-          SectionBody('2025年4月26日')
+          SectionBody('2025年4月29日')
 
           SectionTitle('一、协议范围')
           SectionBody('本协议是您（以下简称"用户"或"您"）与星序（以下简称"本应用"或"我们"）之间关于使用本应用及相关服务所订立的协议。请您仔细阅读本协议，一旦您开始使用本应用，即视为您已充分理解并同意接受本协议所有条款的约束。')

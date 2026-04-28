@@ -40,7 +40,7 @@ struct Index {
     this.currentDate = formatDate(now)
     this.greeting = this.getGreeting(now)
     await this.loadData()
-    if (!(await dataStore.hasAgreedToTerms())) {
+    if (!(await dataStore.isTermsVersionAccepted())) {
       this.showTermsDialog = true
     }
     await this.checkYesterdaySummary()
@@ -625,7 +625,7 @@ struct Index {
               .backgroundColor(UiTokens.brand)
               .borderRadius(UiTokens.radiusL)
               .onClick(async () => {
-                await dataStore.setAgreedToTerms(true)
+                await dataStore.setAgreedToTerms()
                 this.showTermsDialog = false
               })
           }

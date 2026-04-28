@@ -70,7 +70,7 @@ struct FaceMoodCheckPage {
     const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
     const record = new FaceMoodRecord(todayStr(), timeStr, this.analysisResult?.score || 3, this.analysisResult?.confidence || 0)
     record.analysisReason = this.analysisResult?.reason || ''
-    record.imageUri = this.imageUri
+    record.imageUri = this.settings.retainFacePhotos ? this.imageUri : ''
     record.userConfirmed = true
     record.userAdjustedScore = this.userScore
     await dataStore.saveFaceMoodRecord(record)

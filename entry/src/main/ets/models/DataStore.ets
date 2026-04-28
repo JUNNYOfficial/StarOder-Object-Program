@@ -42,6 +42,7 @@ const KEY_PREFS = 'star_user_prefs'
 const KEY_COURSES = 'star_courses'
 const KEY_COURSE_STATE = 'star_course_state'
 const KEY_AGREED_TERMS = 'star_agreed_terms'
+const TERMS_VERSION = '1.1'
 const KEY_LAST_LOGIN_DATE = 'star_last_login_date'
 const KEY_SHOW_YESTERDAY_SUMMARY = 'star_show_yesterday_summary'
 const KEY_YESTERDAY_SUMMARY = 'star_yesterday_summary'
@@ -470,12 +471,18 @@ class DataStore {
   }
 
   // ===== Terms agreement =====
-  async hasAgreedToTerms(): Promise<boolean> {
-    return this.get<boolean>(KEY_AGREED_TERMS, false)
+  async getAcceptedTermsVersion(): Promise<string> {
+    const stored = await this.get<string>(KEY_AGREED_TERMS, '')
+    return stored || ''
   }
 
-  async setAgreedToTerms(agreed: boolean): Promise<void> {
-    await this.put(KEY_AGREED_TERMS, agreed)
+  async isTermsVersionAccepted(): Promise<boolean> {
+    const stored = await this.getAcceptedTermsVersion()
+    return stored === TERMS_VERSION
+  }
+
+  async setAgreedToTerms(): Promise<void> {
+    await this.put(KEY_AGREED_TERMS, TERMS_VERSION)
   }
 
   // ===== Last Login Tracking =====

@@ -47,6 +47,11 @@ export struct SettingsTab {
     await dataStore.saveUserPrefs(this.settings)
   }
 
+  async toggleRetainFacePhotos() {
+    this.settings.retainFacePhotos = !this.settings.retainFacePhotos
+    await dataStore.saveUserPrefs(this.settings)
+  }
+
   async saveCalDAVConfig() {
     await CalDAVService.setConfig(this.caldavConfig)
     this.caldavMsg = '配置已保存'
@@ -88,6 +93,21 @@ export struct SettingsTab {
   async exportDataFn() {
     this.exportDataStr = await dataStore.exportAll(this.exportPassword)
     this.dataMsg = this.exportPassword ? '数据已加密导出，请复制保存' : '数据已导出到下方文本框，请复制保存'
+  }
+
+  showPlaintextExportWarning() {
+    AlertDialog.show({
+      title: '安全警告',
+      message: '您未设置导出密码，备份数据将以明文形式保存。任何人获取该文本即可读取您的全部日程、心情记录等数据。建议设置密码后再导出。',
+      primaryButton: {
+        value: '仍要导出',
+        action: async () => { await this.exportDataFn() }
+      },
+      secondaryButton: {
+        value: '取消',
+        action: () => {}
+      }
+    })
   }
 
   async importDataFn() {
@@ -181,6 +201,15 @@ export struct SettingsTab {
               '在日程列表中显示准备事项',
               this.settings.showPrepareHints,
               () => { this.togglePrepareHints() }
+            )
+
+            Divider().strokeWidth(0.5).color(UiTokens.divider).margin({ left: 14 })
+
+            this.SettingRow(
+              '保留面部照片',
+              '心情识别后保存拍摄的照片',
+              this.settings.retainFacePhotos,
+              () => { this.toggleRetainFacePhotos() }
             )
           }
           .width('100%')
@@ -536,7 +565,13 @@ export struct SettingsTab {
               .fontColor(UiTokens.textInverse)
               .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
               .borderRadius(UiTokens.radiusXL)
-              .onClick(async () => { await this.exportDataFn() })
+              .onClick(() => {
+                if (!this.exportPassword || this.exportPassword.length === 0) {
+                  this.showPlaintextExportWarning()
+                  return
+                }
+                this.exportDataFn()
+              })
 
             if (this.exportDataStr) {
               TextArea({ text: $$this.exportDataStr })

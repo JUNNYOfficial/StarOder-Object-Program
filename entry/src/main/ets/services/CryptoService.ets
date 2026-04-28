@@ -8,6 +8,10 @@ export class CryptoService {
   private static localKey: cryptoFramework.SymKey | null = null
   private static keyInitPromise: Promise<void> | null = null
 
+  // Export KDF parameters (PBKDF2-equivalent)
+  private static readonly EXPORT_ITERATIONS = 10000
+  private static readonly EXPORT_SALT_LEN = 16
+
   static async initLocalKey(): Promise<void> {
     if (CryptoService.localKey) return
     if (CryptoService.keyInitPromise) return CryptoService.keyInitPromise
@@ -15,12 +19,14 @@ export class CryptoService {
     CryptoService.keyInitPromise = (async () => {
       let deviceSeed: string
       try {
-        deviceSeed = `${deviceInfo.productModel || ''}_${deviceInfo.brand || ''}`
+        deviceSeed = `${deviceInfo.productModel || ''}_${deviceInfo.brand || ''}_${deviceInfo.marketName || ''}_${deviceInfo.deviceType || ''}_${deviceInfo.manufacture || ''}`
       } catch (e) {
         deviceSeed = 'fallback_device_seed'
       }
       const seed = `${deviceSeed}_${CryptoService.LOCAL_SALT}`
-      const keyData = await CryptoService.sha256(seed)
+      const encoder = new util.TextEncoder()
+      const seedBytes = encoder.encodeInto(seed)
+      const keyData = await CryptoService.deriveKey(seedBytes, 1000)
       const generator = cryptoFramework.createSymKeyGenerator('AES256')
       CryptoService.localKey = await generator.convertKey({ data: keyData })
     })()
@@ -50,35 +56,48 @@ export class CryptoService {
   }
 
   static async encryptForExport(plainText: string, password: string): Promise<string> {
-    const salt = CryptoService.randomBytes(16)
-    const keyData = await CryptoService.sha256(password + CryptoService.bytesToHex(salt))
+    const salt = await CryptoService.randomBytes(CryptoService.EXPORT_SALT_LEN)
+    const keyData = await CryptoService.deriveExportKey(password, salt)
     const generator = cryptoFramework.createSymKeyGenerator('AES256')
     const key = await generator.convertKey({ data: keyData })
     const encrypted = await CryptoService.aesEncrypt(plainText, key)
     const encryptedBytes = CryptoService.base64Decode(encrypted)
     const combined = new Uint8Array([...salt, ...encryptedBytes])
     const payload = CryptoService.base64Encode(combined)
-    return `star_export_v2:${payload}`
+    return `star_export_v3:${payload}`
   }
 
   static async decryptForImport(cipherText: string, password: string): Promise<string> {
-    if (!cipherText.startsWith('star_export_v2:')) {
-      return cipherText
+    if (cipherText.startsWith('star_export_v3:')) {
+      const payload = cipherText.slice('star_export_v3:'.length)
+      const bytes = CryptoService.base64Decode(payload)
+      const salt = bytes.slice(0, CryptoService.EXPORT_SALT_LEN)
+      const encryptedBytes = bytes.slice(CryptoService.EXPORT_SALT_LEN)
+      const keyData = await CryptoService.deriveExportKey(password, salt)
+      const generator = cryptoFramework.createSymKeyGenerator('AES256')
+      const key = await generator.convertKey({ data: keyData })
+      const encrypted = CryptoService.base64Encode(encryptedBytes)
+      return CryptoService.aesDecrypt(encrypted, key)
     }
-    const payload = cipherText.slice('star_export_v2:'.length)
-    const bytes = CryptoService.base64Decode(payload)
-    const salt = bytes.slice(0, 16)
-    const encryptedBytes = bytes.slice(16)
-    const keyData = await CryptoService.sha256(password + CryptoService.bytesToHex(salt))
-    const generator = cryptoFramework.createSymKeyGenerator('AES256')
-    const key = await generator.convertKey({ data: keyData })
-    const encrypted = CryptoService.base64Encode(encryptedBytes)
-    return CryptoService.aesDecrypt(encrypted, key)
+
+    if (cipherText.startsWith('star_export_v2:')) {
+      const payload = cipherText.slice('star_export_v2:'.length)
+      const bytes = CryptoService.base64Decode(payload)
+      const salt = bytes.slice(0, 16)
+      const encryptedBytes = bytes.slice(16)
+      const keyData = await CryptoService.sha256(password + CryptoService.bytesToHex(salt))
+      const generator = cryptoFramework.createSymKeyGenerator('AES256')
+      const key = await generator.convertKey({ data: keyData })
+      const encrypted = CryptoService.base64Encode(encryptedBytes)
+      return CryptoService.aesDecrypt(encrypted, key)
+    }
+
+    return cipherText
   }
 
   private static async aesEncrypt(plainText: string, key: cryptoFramework.SymKey): Promise<string> {
     const cipher = cryptoFramework.createCipher('AES256|CBC|PKCS7')
-    const iv = CryptoService.randomBytes(16)
+    const iv = await CryptoService.randomBytes(16)
     const ivParams: cryptoFramework.IvParamsSpec = {
       iv: { data: iv },
       algName: 'IvParamsSpec'
@@ -124,12 +143,28 @@ export class CryptoService {
     return result.data
   }
 
-  private static randomBytes(length: number): Uint8Array {
-    const bytes = new Uint8Array(length)
-    for (let i = 0; i < length; i++) {
-      bytes[i] = Math.floor(Math.random() * 256)
+  private static async deriveExportKey(password: string, salt: Uint8Array): Promise<Uint8Array> {
+    const encoder = new util.TextEncoder()
+    const passwordBytes = encoder.encodeInto(password)
+    const input = new Uint8Array([...passwordBytes, ...salt])
+    return CryptoService.deriveKey(input, CryptoService.EXPORT_ITERATIONS)
+  }
+
+  private static async deriveKey(input: Uint8Array, iterations: number): Promise<Uint8Array> {
+    let data = input
+    for (let i = 0; i < iterations; i++) {
+      const md = cryptoFramework.createMd('SHA256')
+      await md.update({ data } as cryptoFramework.DataBlob)
+      const result = await md.digest()
+      data = result.data
     }
-    return bytes
+    return data
+  }
+
+  private static async randomBytes(length: number): Promise<Uint8Array> {
+    const rand = cryptoFramework.createRandom()
+    const blob = await rand.generateRandom(length)
+    return blob.data
   }
 
   private static base64Encode(bytes: Uint8Array): string {

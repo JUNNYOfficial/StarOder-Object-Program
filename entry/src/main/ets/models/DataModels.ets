@@ -185,6 +185,7 @@ export class UserPreferences {
   largeText: boolean
   reduceAnimations: boolean
   showPrepareHints: boolean
+  retainFacePhotos: boolean
 
   constructor() {
     this.timeDisplay = '24h'
@@ -196,6 +197,7 @@ export class UserPreferences {
     this.largeText = false
     this.reduceAnimations = true
     this.showPrepareHints = true
+    this.retainFacePhotos = false
   }
 }
 
