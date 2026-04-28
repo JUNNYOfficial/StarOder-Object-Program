@@ -13,6 +13,8 @@
     "pages/TimeSlotSettingsPage",
     "pages/RecycleBin",
     "pages/PrivacyPolicyPage",
-    "pages/UserAgreementPage"
+    "pages/UserAgreementPage",
+    "pages/FaceMoodCheckPage",
+    "pages/MoodSelfCheckPage"
   ]
 }

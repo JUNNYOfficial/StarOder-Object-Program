@@ -25,6 +25,10 @@
       "value": "用于语音录入识别日程内容"
     },
     {
+      "name": "camera_permission_reason",
+      "value": "用于拍摄面部照片进行情绪参考分析"
+    },
+    {
       "name": "form_name",
       "value": "星序速览"
     },

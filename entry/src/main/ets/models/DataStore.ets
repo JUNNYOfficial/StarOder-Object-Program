@@ -1,6 +1,6 @@
 import { preferences } from '@kit.ArkData'
 import {
-  Task, SubTask, EnergyRecord, MoodSurveyRecord, FocusRecord, UserPreferences, TaskStatus, RepeatMode, YesterdaySummary
+  Task, SubTask, EnergyRecord, MoodSurveyRecord, FocusRecord, UserPreferences, TaskStatus, RepeatMode, YesterdaySummary, FaceMoodRecord
 } from './DataModels'
 import { Course, TimeSlot, CourseScheduleState, DEFAULT_TIME_SLOTS, WeekType } from './CourseModels'
 import { formatDate } from '../utils/DateUtils'
@@ -44,6 +44,8 @@ const KEY_AGREED_TERMS = 'star_agreed_terms'
 const KEY_LAST_LOGIN_DATE = 'star_last_login_date'
 const KEY_SHOW_YESTERDAY_SUMMARY = 'star_show_yesterday_summary'
 const KEY_YESTERDAY_SUMMARY = 'star_yesterday_summary'
+const KEY_FACE_MOOD = 'star_face_mood_records'
+const KEY_LAST_MOOD_PROMPT = 'star_last_mood_prompt'
 
 class DataStore {
   private pref: preferences.Preferences | null = null
@@ -433,6 +435,33 @@ class DataStore {
     all[idx].updatedAt = Date.now()
     this.saveTasks(all)
     return true
+  }
+
+  // ===== Face Mood Records =====
+  getFaceMoodRecords(): FaceMoodRecord[] {
+    return this.get<FaceMoodRecord[]>(KEY_FACE_MOOD, [])
+  }
+
+  saveFaceMoodRecord(record: FaceMoodRecord): void {
+    const all = this.getFaceMoodRecords()
+    all.push(record)
+    this.put(KEY_FACE_MOOD, all)
+  }
+
+  // ===== Mood Prompt Tracking =====
+  getLastMoodPromptDate(): string {
+    return this.get<string>(KEY_LAST_MOOD_PROMPT, '')
+  }
+
+  setLastMoodPromptDate(date: string): void {
+    this.put(KEY_LAST_MOOD_PROMPT, date)
+  }
+
+  hasMoodRecordToday(): boolean {
+    const today = formatDate(new Date())
+    const surveys = this.getMoodSurveys()
+    const faceRecords = this.getFaceMoodRecords()
+    return surveys.some(r => r.date === today) || faceRecords.some(r => r.date === today)
   }
 
   // ===== Yesterday Summary =====

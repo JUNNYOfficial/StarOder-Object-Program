@@ -26,6 +26,7 @@ struct Index {
   @State showTermsDialog: boolean = false
   @State showYesterdaySummary: boolean = false
   @State yesterdaySummary: YesterdaySummary = new YesterdaySummary('', 0, 0, 0)
+  @State showMoodPrompt: boolean = false
 
   aboutToAppear() {
     const now = new Date()
@@ -36,6 +37,24 @@ struct Index {
       this.showTermsDialog = true
     }
     this.checkYesterdaySummary()
+    this.checkMoodPrompt()
+  }
+
+  private checkMoodPrompt(): void {
+    const today = todayStr()
+    // 今天已经提示过，不再提示
+    if (dataStore.getLastMoodPromptDate() === today) {
+      return
+    }
+    // 今天已经有情绪记录，不再提示
+    if (dataStore.hasMoodRecordToday()) {
+      return
+    }
+    // 30% 概率触发抽查
+    if (Math.random() < 0.3) {
+      this.showMoodPrompt = true
+      dataStore.setLastMoodPromptDate(today)
+    }
   }
 
   private checkYesterdaySummary(): void {
@@ -508,6 +527,75 @@ struct Index {
               })
           }
           .width('100%')
+        }
+        .width('100%')
+        .padding(UiTokens.pagePadding)
+        .backgroundColor(UiTokens.bgCard)
+        .borderRadius({ topLeft: 24, topRight: 24 })
+      }
+      .width('100%')
+      .height('100%')
+      .justifyContent(FlexAlign.End)
+    }
+
+    if (this.showMoodPrompt) {
+      Column() {
+        Column()
+          .width('100%')
+          .layoutWeight(1)
+          .backgroundColor('rgba(0,0,0,0.4)')
+          .onClick(() => {
+            this.showMoodPrompt = false
+          })
+
+        Column({ space: UiTokens.gapM }) {
+          Text('🎯 随机情绪抽查')
+            .fontSize(UiTokens.textXL)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(UiTokens.textPrimary)
+            .width('100%')
+            .textAlign(TextAlign.Center)
+
+          Text('关注一下此刻的心情吧，只需要几秒钟。')
+            .fontSize(UiTokens.textS)
+            .fontColor(UiTokens.textSecondary)
+            .width('100%')
+            .textAlign(TextAlign.Center)
+
+          Row({ space: UiTokens.gapS }) {
+            Button('📷 摄像头检测')
+              .layoutWeight(1)
+              .height(44)
+              .fontColor('#FFFFFF')
+              .backgroundColor(UiTokens.brand)
+              .borderRadius(UiTokens.radiusL)
+              .onClick(() => {
+                this.showMoodPrompt = false
+                router.pushUrl({ url: 'pages/FaceMoodCheckPage' })
+              })
+
+            Button('✏️ 手动自查')
+              .layoutWeight(1)
+              .height(44)
+              .fontColor('#FFFFFF')
+              .backgroundColor(UiTokens.done)
+              .borderRadius(UiTokens.radiusL)
+              .onClick(() => {
+                this.showMoodPrompt = false
+                router.pushUrl({ url: 'pages/MoodSelfCheckPage' })
+              })
+          }
+          .width('100%')
+
+          Button('稍后再说')
+            .width('100%')
+            .height(44)
+            .fontColor(UiTokens.textSecondary)
+            .backgroundColor(UiTokens.bgHover)
+            .borderRadius(UiTokens.radiusL)
+            .onClick(() => {
+              this.showMoodPrompt = false
+            })
         }
         .width('100%')
         .padding(UiTokens.pagePadding)

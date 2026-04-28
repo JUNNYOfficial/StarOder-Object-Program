@@ -314,6 +314,30 @@ export class TaskTemplate {
   }
 }
 
+export class FaceMoodRecord {
+  id: string
+  date: string
+  time: string
+  moodScore: number // 1-5
+  confidence: number // 0-1
+  analysisReason: string
+  imageUri: string
+  userConfirmed: boolean
+  userAdjustedScore: number
+
+  constructor(date: string, time: string, moodScore: number, confidence: number) {
+    this.id = Date.now().toString() + Math.random().toString(36).slice(2, 8)
+    this.date = date
+    this.time = time
+    this.moodScore = moodScore
+    this.confidence = confidence
+    this.analysisReason = ''
+    this.imageUri = ''
+    this.userConfirmed = false
+    this.userAdjustedScore = moodScore
+  }
+}
+
 export class YesterdaySummary {
   date: string
   totalTasks: number

@@ -18,8 +18,8 @@
         "name": "release",
         "type": "HarmonyOS",
         "material": {
-          "certpath": "/Users/junnyzhangqi/DevEcoStudioProjects/StarOrder_Cloud/signatures/release.cer",
-          "keyAlias": "releaseKey",
+          "certpath": "/Users/junnyzhangqi/DevEcoStudioProjects/StarOrder_Cloud/signatures/StarOrder-Open.cer",
+          "keyAlias": "releasekey",
           "keyPassword": "Release@123",
           "profile": "/Users/junnyzhangqi/DevEcoStudioProjects/StarOrder_Cloud/signatures/release.p7b",
           "signAlg": "SHA256withECDSA",
@@ -45,7 +45,7 @@
     ],
     "buildModeSet": [
       {
-        "name": "debug",
+        "name": "debug"
       },
       {
         "name": "release"

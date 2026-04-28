@@ -613,6 +613,31 @@ struct WellnessView {
               }
               .width('100%')
 
+              Row({ space: UiTokens.gapM }) {
+                Button('📷 摄像头检测')
+                  .layoutWeight(1)
+                  .height(48)
+                  .fontSize(this.baseFont())
+                  .fontColor(UiTokens.textInverse)
+                  .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
+                  .borderRadius(UiTokens.radiusXL)
+                  .onClick(() => {
+                    router.pushUrl({ url: 'pages/FaceMoodCheckPage' })
+                  })
+
+                Button('✏️ 情绪自查')
+                  .layoutWeight(1)
+                  .height(48)
+                  .fontSize(this.baseFont())
+                  .fontColor(UiTokens.textInverse)
+                  .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
+                  .borderRadius(UiTokens.radiusXL)
+                  .onClick(() => {
+                    router.pushUrl({ url: 'pages/MoodSelfCheckPage' })
+                  })
+              }
+              .width('100%')
+
               if (this.showEnergyInput) {
                 Column({ space: UiTokens.gapM }) {
                   Text('今天感觉有多少能量？')
