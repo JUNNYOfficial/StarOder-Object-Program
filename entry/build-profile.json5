@@ -1,6 +1,5 @@
 {
   "apiType": "stageMode",
-  "buildMode": "release",
   "buildOption": {
     "resOptions": {
       "copyCodeResource": {
