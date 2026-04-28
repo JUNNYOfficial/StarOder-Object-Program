@@ -27,7 +27,7 @@ export struct SubTaskItem {
           .strokeWidth(this.subTask.completed ? 0 : 1.5)
 
         if (this.subTask.completed) {
-          Text('✓')
+          Text('完成')
             .fontSize(this.settings.largeText ? 14 : 12)
             .fontColor(UiTokens.textInverse)
             .fontWeight(FontWeight.Bold)

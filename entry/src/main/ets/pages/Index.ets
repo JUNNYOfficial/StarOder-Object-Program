@@ -299,7 +299,7 @@ struct Index {
             if (this.currentDate === todayStr()) {
               Row() {
                 Button() {
-                  Text('🤍 今天状态不好')
+                  Text('今天状态不好')
                     .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
                     .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textSecondary)
                 }
@@ -661,7 +661,7 @@ struct Index {
           })
 
         Column({ space: UiTokens.gapM }) {
-          Text('🎯 随机情绪抽查')
+          Text('随机情绪抽查')
             .fontSize(UiTokens.textXL)
             .fontWeight(FontWeight.Bold)
             .fontColor(UiTokens.textPrimary)
@@ -675,7 +675,7 @@ struct Index {
             .textAlign(TextAlign.Center)
 
           Row({ space: UiTokens.gapS }) {
-            Button('📷 摄像头检测')
+            Button('摄像头检测')
               .layoutWeight(1)
               .height(44)
               .fontColor('#FFFFFF')
@@ -686,7 +686,7 @@ struct Index {
                 router.pushUrl({ url: 'pages/FaceMoodCheckPage' })
               })
 
-            Button('✏️ 手动自查')
+            Button('手动自查')
               .layoutWeight(1)
               .height(44)
               .fontColor('#FFFFFF')
@@ -730,7 +730,7 @@ struct Index {
           })
 
         Column({ space: UiTokens.gapM }) {
-          Text('🤍 今天状态不好')
+          Text('今天状态不好')
             .fontSize(UiTokens.textXL)
             .fontWeight(FontWeight.Bold)
             .fontColor(UiTokens.textPrimary)

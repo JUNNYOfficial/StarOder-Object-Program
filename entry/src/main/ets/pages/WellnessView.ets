@@ -614,7 +614,7 @@ struct WellnessView {
               .width('100%')
 
               Row({ space: UiTokens.gapM }) {
-                Button('📷 摄像头检测')
+                Button('摄像头检测')
                   .layoutWeight(1)
                   .height(48)
                   .fontSize(this.baseFont())
@@ -625,7 +625,7 @@ struct WellnessView {
                     router.pushUrl({ url: 'pages/FaceMoodCheckPage' })
                   })
 
-                Button('✏️ 情绪自查')
+                Button('情绪自查')
                   .layoutWeight(1)
                   .height(48)
                   .fontSize(this.baseFont())

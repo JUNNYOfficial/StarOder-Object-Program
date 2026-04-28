@@ -79,9 +79,6 @@ export struct VisualScheduleView {
       Column({ space: UiTokens.gapXL }) {
         if (this.tasks.length === 0) {
           Column() {
-            Text('🎯')
-              .fontSize(48)
-              .margin({ bottom: UiTokens.gapM })
             Text('今天还没有安排任务')
               .fontSize(this.settings.largeText ? UiTokens.textL : UiTokens.textM)
               .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textTertiary)

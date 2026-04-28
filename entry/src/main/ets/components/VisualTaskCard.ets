@@ -8,14 +8,14 @@ export struct VisualTaskCard {
   @Prop settings: UserPreferences
   onClickCard: () => void = () => {}
 
-  private typeIcon(): string {
+  private typeLabel(): string {
     switch (this.task.type) {
-      case TaskType.THINK: return '🧠'
-      case TaskType.SOCIAL: return '💬'
-      case TaskType.HOME: return '🏠'
-      case TaskType.REST: return '☕'
-      case TaskType.EXERCISE: return '🏃'
-      default: return '📋'
+      case TaskType.THINK: return '思'
+      case TaskType.SOCIAL: return '社'
+      case TaskType.HOME: return '居'
+      case TaskType.REST: return '休'
+      case TaskType.EXERCISE: return '动'
+      default: return '务'
     }
   }
 
@@ -47,9 +47,16 @@ export struct VisualTaskCard {
 
   build() {
     Column({ space: UiTokens.gapS }) {
-      // Type icon
-      Text(this.typeIcon())
-        .fontSize(this.iconFont())
+      // Type icon circle
+      Text(this.typeLabel())
+        .fontSize(this.settings.largeText ? UiTokens.textL : UiTokens.textM)
+        .fontColor('#FFFFFF')
+        .fontWeight(FontWeight.Medium)
+        .width(this.settings.largeText ? 48 : 40)
+        .height(this.settings.largeText ? 48 : 40)
+        .textAlign(TextAlign.Center)
+        .backgroundColor(getTypeConfig(this.task.type).color)
+        .borderRadius(this.settings.largeText ? 24 : 20)
         .opacity(this.opacityValue())
 
       // Title
@@ -63,20 +70,12 @@ export struct VisualTaskCard {
         .width('100%')
         .opacity(this.opacityValue())
 
-      // Time + status indicator
-      Row({ space: 4 }) {
-        if (this.timeLabel().length > 0) {
-          Text(this.timeLabel())
-            .fontSize(UiTokens.textXS)
-            .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textTertiary)
-            .opacity(this.opacityValue())
-        }
-
-        if (this.isDone()) {
-          Text('✓')
-            .fontSize(UiTokens.textXS)
-            .fontColor(UiTokens.done)
-        }
+      // Time label
+      if (this.timeLabel().length > 0) {
+        Text(this.timeLabel())
+          .fontSize(UiTokens.textXS)
+          .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textTertiary)
+          .opacity(this.opacityValue())
       }
     }
     .width('100%')

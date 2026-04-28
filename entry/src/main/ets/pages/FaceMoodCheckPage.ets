@@ -109,7 +109,7 @@ struct FaceMoodCheckPage {
         Column({ space: UiTokens.gapXL }) {
           if (!this.capturedImage) {
             Column({ space: UiTokens.gapM }) {
-              Text('📷')
+              Text('拍照')
                 .fontSize(60)
 
               Text('点击按钮拍摄一张自拍照')

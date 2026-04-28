@@ -434,7 +434,7 @@ struct TimerPage {
                     .alignItems(HorizontalAlign.Start)
 
                     if (this.selectedTaskId === task.id) {
-                      Text('✓')
+                      Text('已选')
                         .fontSize(UiTokens.textM)
                         .fontColor(UiTokens.brand)
                         .fontWeight(FontWeight.Bold)
