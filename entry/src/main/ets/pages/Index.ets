@@ -10,6 +10,7 @@ import { addDays, todayStr, formatDate, formatTime } from '../utils/DateUtils'
 import { getCourseTimeText } from '../utils/UiHelper'
 import { DayTimeline } from '../components/DayTimeline'
 import { CourseScheduleState, Course, WeekType } from '../models/CourseModels'
+import { EnergySummary, getTodayEnergySummary } from '../utils/EnergyBank'
 
 @Entry
 @Component
@@ -31,6 +32,7 @@ struct Index {
   @State currentTimeStr: string = ''
   @State showTimeline: boolean = true
   @State showBadDayDialog: boolean = false
+  @State energySummary: EnergySummary = new EnergySummary(8, 0, 0, 0)
   private clockTimer: number = -1
 
   async aboutToAppear(): Promise<void> {
@@ -81,6 +83,8 @@ struct Index {
     this.applyFilter()
     this.courseState = await dataStore.getCourseState()
     this.todayCourses = this.getTodayCourses()
+    const energyRecords = await dataStore.getEnergyRecords()
+    this.energySummary = getTodayEnergySummary(this.tasks, energyRecords)
   }
 
   private getCurrentWeek(state: CourseScheduleState): number {
@@ -477,6 +481,7 @@ struct Index {
                 currentDate: this.currentDate,
                 courses: this.todayCourses,
                 courseTimeSlots: this.courseState.timeSlots,
+                energySummary: this.energySummary,
                 onClickTask: (task: Task) => {
                   router.pushUrl({ url: 'pages/ScheduleDetail', params: { id: task.id } })
                 },

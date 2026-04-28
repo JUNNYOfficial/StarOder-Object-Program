@@ -1,4 +1,4 @@
-import { Task, getTypeConfig, UserPreferences, TypeConfig } from '../models/DataModels'
+import { Task, TaskType, getTypeConfig, UserPreferences, TypeConfig } from '../models/DataModels'
 import { Course, TimeSlot } from '../models/CourseModels'
 import { UiTokens } from '../design/UiTokens'
 import {
@@ -6,6 +6,7 @@ import {
   getDayTimeRange, minutesToTime, DayTimeRange, TaskTimeInfo,
   TransitionInfo, getTransitionInfo
 } from '../utils/TimeUtils'
+import { getTaskEnergyCost, EnergySummary } from '../utils/EnergyBank'
 
 const HOUR_HEIGHT: number = 60      // 每小时 60dp，1分钟 = 1dp
 const MIN_TASK_HEIGHT: number = 52  // 任务卡片最小高度
@@ -186,6 +187,21 @@ struct TimelineTaskCard {
       }
       .width('100%')
 
+      // 能量消耗提示（社交任务）
+      if (this.task.type === TaskType.SOCIAL) {
+        Row({ space: 4 }) {
+          Text('能量消耗: 高')
+            .fontSize(UiTokens.textXS)
+            .fontColor(this.settings.highContrast ? UiTokens.hcText : '#C9A898')
+            .fontWeight(FontWeight.Medium)
+
+          Text('· 建议前后留恢复时间')
+            .fontSize(UiTokens.textXS)
+            .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textTertiary)
+        }
+        .width('100%')
+      }
+
       // 进行中任务：时间流逝进度条
       if (this.info.isOngoing) {
         Stack() {
@@ -227,6 +243,7 @@ export struct DayTimeline {
   @Prop currentDate: string
   @Prop courses: Course[] = []
   @Prop courseTimeSlots: TimeSlot[] = []
+  @Prop energySummary: EnergySummary = new EnergySummary(8, 0, 0, 0)
   onClickTask: (task: Task) => void = () => {}
   onClickCourse: (course: Course) => void = () => {}
 
@@ -494,6 +511,60 @@ export struct DayTimeline {
   build() {
     Scroll(this.scroller) {
       Column({ space: 0 }) {
+        // 能量预算条
+        Row({ space: 8 }) {
+          Column({ space: 4 }) {
+            Row({ space: 6 }) {
+              Text('今日能量')
+                .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+                .fontWeight(FontWeight.Medium)
+
+              Text(`${this.energySummary.net}/${this.energySummary.budget}`)
+                .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                .fontColor(this.energySummary.overBudget
+                  ? (this.settings.highContrast ? UiTokens.hcText : '#C9A898')
+                  : UiTokens.textSecondary)
+            }
+            .width('100%')
+
+            Stack() {
+              Row()
+                .width('100%')
+                .height(6)
+                .backgroundColor(this.settings.highContrast ? '#CCCCCC' : UiTokens.divider)
+                .borderRadius(3)
+              Row()
+                .width(`${Math.min(100, (this.energySummary.net / this.energySummary.budget) * 100)}%`)
+                .height(6)
+                .backgroundColor(this.energySummary.overBudget
+                  ? (this.settings.highContrast ? UiTokens.hcText : '#C9A898')
+                  : UiTokens.brand)
+                .borderRadius(3)
+            }
+            .width('100%')
+            .height(6)
+
+            if (this.energySummary.overBudget) {
+              Text('能量已透支，建议取消或推迟非必要任务')
+                .fontSize(UiTokens.textXS)
+                .fontColor(this.settings.highContrast ? UiTokens.hcText : '#C9A898')
+                .width('100%')
+            } else if (this.energySummary.socialCount > 0) {
+              Text(`社交任务 ${this.energySummary.socialCount} 个 · 注意安排恢复时间`)
+                .fontSize(UiTokens.textXS)
+                .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textTertiary)
+                .width('100%')
+            }
+          }
+          .width('100%')
+          .padding(12)
+          .backgroundColor(this.settings.highContrast ? UiTokens.hcBg : UiTokens.bgCard)
+          .borderRadius(UiTokens.radiusM)
+        }
+        .width('100%')
+        .padding({ left: UiTokens.pagePadding, right: UiTokens.pagePadding, top: 8, bottom: 4 })
+
         // 全天事项（无精确时间的任务）
         if (this.allDayTasks.length > 0) {
           Column({ space: UiTokens.gapS }) {
