@@ -37,7 +37,10 @@
       "name": "default"
     },
     {
-      "name": "ohosTest",
+      "name": "release"
+    },
+    {
+      "name": "ohosTest"
     }
   ]
 }

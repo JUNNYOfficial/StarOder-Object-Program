@@ -19,6 +19,15 @@ export class FaceMoodAnalyzer {
     const height = info.size.height
 
     const bufferSize = width * height * 4
+    // 防止高清照片导致 ArrayBuffer 溢出（如 4000x3000 = 48MB）
+    const MAX_BUFFER_SIZE = 16 * 1024 * 1024 // 16MB
+    if (bufferSize > MAX_BUFFER_SIZE) {
+      return {
+        score: 3,
+        confidence: 0.3,
+        reason: '照片尺寸过大，建议靠近镜头重新拍摄'
+      }
+    }
     const buffer = new ArrayBuffer(bufferSize)
     await pixelMap.readPixelsToBuffer(buffer)
 

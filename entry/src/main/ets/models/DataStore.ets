@@ -396,7 +396,7 @@ class DataStore {
       }
     } catch (e) {
       console.error('Import failed:', JSON.stringify(e))
-      throw e
+      throw new Error('Import failed: ' + JSON.stringify(e))
     }
   }
 

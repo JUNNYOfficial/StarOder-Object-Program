@@ -12,4 +12,4 @@
 /.appanalyzer
 /app-icon-*.png
 *.log
-/signatures
+/signatures.DS_Store

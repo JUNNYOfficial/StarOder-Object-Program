@@ -253,7 +253,7 @@ struct TimerPage {
               .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
               .width('100%')
 
-            Row({ space: 10 }) {
+            Row({ space: 6 }) {
               ForEach([
                 FocusMode.MINI,
                 FocusMode.NORMAL,
@@ -267,13 +267,20 @@ struct TimerPage {
                     .fontColor(this.selectedMode === mode
                       ? (this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
                       : (this.settings.highContrast ? '#555555' : UiTokens.textSecondary))
+                    .maxLines(1)
+                    .textOverflow({ overflow: TextOverflow.Ellipsis })
+                    .width('100%')
+                    .textAlign(TextAlign.Center)
 
                   Text(`${getFocusModeConfig(mode).defaultMinutes}分钟`)
                     .fontSize(UiTokens.textXS)
                     .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textTertiary)
+                    .maxLines(1)
+                    .width('100%')
+                    .textAlign(TextAlign.Center)
                 }
                 .layoutWeight(1)
-                .padding(12)
+                .padding({ top: 10, bottom: 10, left: 6, right: 6 })
                 .backgroundColor(this.selectedMode === mode
                   ? (this.settings.highContrast ? UiTokens.hcBg : UiTokens.brandSoft)
                   : (this.settings.highContrast ? '#EEEEEE' : UiTokens.bgHover))

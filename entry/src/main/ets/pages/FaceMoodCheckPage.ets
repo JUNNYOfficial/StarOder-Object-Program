@@ -43,7 +43,7 @@ struct FaceMoodCheckPage {
         this.capturedImage = await imageSource.createPixelMap()
         this.showConfirm = false
         this.analysisResult = null
-        this.analyzeImage()
+        await this.analyzeImage()
       }
     } catch (e) {
       console.error('Camera picker failed:', JSON.stringify(e))
@@ -218,7 +218,7 @@ struct FaceMoodCheckPage {
             .fontColor(UiTokens.textInverse)
             .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
             .borderRadius(UiTokens.radiusXL)
-            .onClick(() => { this.takePhoto() })
+            .onClick(async () => { await this.takePhoto() })
         }
         .width('100%')
         .padding(UiTokens.pagePadding)

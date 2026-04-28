@@ -1,6 +1,6 @@
 import { cryptoFramework } from '@kit.CryptoArchitectureKit'
 import util from '@ohos.util'
-import { deviceInfo } from '@kit.DeviceKit'
+import deviceInfo from '@ohos.deviceInfo'
 
 export class CryptoService {
   private static readonly LOCAL_SALT = 'StarOrder_v2_Salt_X7k9'
@@ -9,55 +9,55 @@ export class CryptoService {
   private static keyInitPromise: Promise<void> | null = null
 
   static async initLocalKey(): Promise<void> {
-    if (this.localKey) return
-    if (this.keyInitPromise) return this.keyInitPromise
+    if (CryptoService.localKey) return
+    if (CryptoService.keyInitPromise) return CryptoService.keyInitPromise
 
-    this.keyInitPromise = (async () => {
+    CryptoService.keyInitPromise = (async () => {
       let deviceSeed: string
       try {
-        deviceSeed = `${deviceInfo.marketName || ''}_${deviceInfo.productModel || ''}_${deviceInfo.brand || ''}_${deviceInfo.manufacture || ''}`
+        deviceSeed = `${deviceInfo.productModel || ''}_${deviceInfo.brand || ''}`
       } catch (e) {
         deviceSeed = 'fallback_device_seed'
       }
-      const seed = `${deviceSeed}_${this.LOCAL_SALT}`
-      const keyData = await this.sha256(seed)
+      const seed = `${deviceSeed}_${CryptoService.LOCAL_SALT}`
+      const keyData = await CryptoService.sha256(seed)
       const generator = cryptoFramework.createSymKeyGenerator('AES256')
-      this.localKey = await generator.convertKey({ data: keyData })
+      CryptoService.localKey = await generator.convertKey({ data: keyData })
     })()
 
-    return this.keyInitPromise
+    return CryptoService.keyInitPromise
   }
 
   static async encryptLocal(plainText: string): Promise<string> {
-    await this.initLocalKey()
-    if (!this.localKey) throw new Error('Local key not initialized')
-    const encrypted = await this.aesEncrypt(plainText, this.localKey)
-    return this.ENC_PREFIX + encrypted
+    await CryptoService.initLocalKey()
+    if (!CryptoService.localKey) throw new Error('Local key not initialized')
+    const encrypted = await CryptoService.aesEncrypt(plainText, CryptoService.localKey)
+    return CryptoService.ENC_PREFIX + encrypted
   }
 
   static async decryptLocal(cipherText: string): Promise<string> {
-    await this.initLocalKey()
-    if (!this.localKey) throw new Error('Local key not initialized')
-    if (!cipherText.startsWith(this.ENC_PREFIX)) {
+    await CryptoService.initLocalKey()
+    if (!CryptoService.localKey) throw new Error('Local key not initialized')
+    if (!cipherText.startsWith(CryptoService.ENC_PREFIX)) {
       return cipherText
     }
-    const payload = cipherText.slice(this.ENC_PREFIX.length)
-    return this.aesDecrypt(payload, this.localKey)
+    const payload = cipherText.slice(CryptoService.ENC_PREFIX.length)
+    return CryptoService.aesDecrypt(payload, CryptoService.localKey)
   }
 
   static isEncrypted(cipherText: string): boolean {
-    return cipherText.startsWith(this.ENC_PREFIX)
+    return cipherText.startsWith(CryptoService.ENC_PREFIX)
   }
 
   static async encryptForExport(plainText: string, password: string): Promise<string> {
-    const salt = this.randomBytes(16)
-    const keyData = await this.sha256(password + this.bytesToHex(salt))
+    const salt = CryptoService.randomBytes(16)
+    const keyData = await CryptoService.sha256(password + CryptoService.bytesToHex(salt))
     const generator = cryptoFramework.createSymKeyGenerator('AES256')
     const key = await generator.convertKey({ data: keyData })
-    const encrypted = await this.aesEncrypt(plainText, key)
-    const encryptedBytes = this.base64Decode(encrypted)
+    const encrypted = await CryptoService.aesEncrypt(plainText, key)
+    const encryptedBytes = CryptoService.base64Decode(encrypted)
     const combined = new Uint8Array([...salt, ...encryptedBytes])
-    const payload = this.base64Encode(combined)
+    const payload = CryptoService.base64Encode(combined)
     return `star_export_v2:${payload}`
   }
 
@@ -66,26 +66,26 @@ export class CryptoService {
       return cipherText
     }
     const payload = cipherText.slice('star_export_v2:'.length)
-    const bytes = this.base64Decode(payload)
+    const bytes = CryptoService.base64Decode(payload)
     const salt = bytes.slice(0, 16)
     const encryptedBytes = bytes.slice(16)
-    const keyData = await this.sha256(password + this.bytesToHex(salt))
+    const keyData = await CryptoService.sha256(password + CryptoService.bytesToHex(salt))
     const generator = cryptoFramework.createSymKeyGenerator('AES256')
     const key = await generator.convertKey({ data: keyData })
-    const encrypted = this.base64Encode(encryptedBytes)
-    return this.aesDecrypt(encrypted, key)
+    const encrypted = CryptoService.base64Encode(encryptedBytes)
+    return CryptoService.aesDecrypt(encrypted, key)
   }
 
   private static async aesEncrypt(plainText: string, key: cryptoFramework.SymKey): Promise<string> {
     const cipher = cryptoFramework.createCipher('AES256|CBC|PKCS7')
-    const iv = this.randomBytes(16)
+    const iv = CryptoService.randomBytes(16)
     const ivParams: cryptoFramework.IvParamsSpec = {
       iv: { data: iv },
       algName: 'IvParamsSpec'
     }
     await cipher.init(cryptoFramework.CryptoMode.ENCRYPT_MODE, key, ivParams)
     const encoder = new util.TextEncoder()
-    const plainBlob = { data: encoder.encodeInto(plainText) }
+    const plainBlob: cryptoFramework.DataBlob = { data: encoder.encodeInto(plainText) }
     const updateOutput = await cipher.update(plainBlob)
     const finalOutput = await cipher.doFinal(null)
     let cipherData = updateOutput?.data || new Uint8Array(0)
@@ -93,11 +93,11 @@ export class CryptoService {
       cipherData = new Uint8Array([...cipherData, ...finalOutput.data])
     }
     const combined = new Uint8Array([...iv, ...cipherData])
-    return this.base64Encode(combined)
+    return CryptoService.base64Encode(combined)
   }
 
   private static async aesDecrypt(cipherText: string, key: cryptoFramework.SymKey): Promise<string> {
-    const combined = this.base64Decode(cipherText)
+    const combined = CryptoService.base64Decode(cipherText)
     const iv = combined.slice(0, 16)
     const cipherData = combined.slice(16)
     const cipher = cryptoFramework.createCipher('AES256|CBC|PKCS7')
@@ -106,7 +106,7 @@ export class CryptoService {
       algName: 'IvParamsSpec'
     }
     await cipher.init(cryptoFramework.CryptoMode.DECRYPT_MODE, key, ivParams)
-    const updateOutput = await cipher.update({ data: cipherData })
+    const updateOutput = await cipher.update({ data: cipherData } as cryptoFramework.DataBlob)
     const finalOutput = await cipher.doFinal(null)
     let plainData = updateOutput?.data || new Uint8Array(0)
     if (finalOutput?.data) {
@@ -119,7 +119,7 @@ export class CryptoService {
   private static async sha256(input: string): Promise<Uint8Array> {
     const encoder = new util.TextEncoder()
     const md = cryptoFramework.createMd('SHA256')
-    await md.update({ data: encoder.encodeInto(input) })
+    await md.update({ data: encoder.encodeInto(input) } as cryptoFramework.DataBlob)
     const result = await md.digest()
     return result.data
   }
