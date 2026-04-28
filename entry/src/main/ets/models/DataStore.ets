@@ -28,6 +28,11 @@ interface FocusDailyStat {
   minutes: number
 }
 
+interface SyncExternalTasksResult {
+  added: number
+  updated: number
+}
+
 const KEY_TASKS = 'star_tasks'
 const KEY_ENERGY = 'star_energy_records'
 const KEY_MOOD = 'star_mood_surveys'
@@ -82,6 +87,34 @@ class DataStore {
 
   saveTasks(tasks: Task[]): void {
     this.put(KEY_TASKS, tasks)
+  }
+
+  syncExternalTasks(newTasks: Task[], source: string): SyncExternalTasksResult {
+    const all = this.getTasks()
+    let added = 0
+    let updated = 0
+    for (let i = 0; i < newTasks.length; i++) {
+      const newTask = newTasks[i]
+      newTask.source = source
+      const existingIdx = all.findIndex(t => t.externalId === newTask.externalId && t.source === source)
+      if (existingIdx >= 0) {
+        const existing = all[existingIdx]
+        existing.title = newTask.title
+        existing.date = newTask.date
+        existing.startTime = newTask.startTime
+        existing.endTime = newTask.endTime
+        existing.notes = newTask.notes
+        existing.timeBlock = newTask.timeBlock
+        existing.updatedAt = Date.now()
+        updated++
+      } else {
+        all.push(newTask)
+        added++
+      }
+    }
+    this.saveTasks(all)
+    const result: SyncExternalTasksResult = { added: added, updated: updated }
+    return result
   }
 
   addTask(task: Task): void {

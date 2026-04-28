@@ -1,5 +1,5 @@
 import { router, promptAction } from '@kit.ArkUI'
-import { UserPreferences } from '../models/DataModels'
+import { Task, UserPreferences } from '../models/DataModels'
 import { dataStore } from '../models/DataStore'
 import { UiTokens } from '../design/UiTokens'
 import { CalDAVService, CalDAVConfig } from '../services/CalDAVService'
@@ -68,6 +68,18 @@ export struct SettingsTab {
     this.feishuMsg = '正在连接飞书...'
     FeishuSyncService.testConnection((success: boolean, msg: string) => {
       this.feishuMsg = msg
+    })
+  }
+
+  syncFeishuEvents() {
+    this.feishuMsg = '正在同步飞书日程...'
+    FeishuSyncService.fetchCalendarEvents((tasks: Task[], msg: string) => {
+      if (tasks.length === 0) {
+        this.feishuMsg = msg
+        return
+      }
+      const result = dataStore.syncExternalTasks(tasks, 'feishu')
+      this.feishuMsg = `同步成功：新增 ${result.added} 个，更新 ${result.updated} 个日程`
     })
   }
 
@@ -457,6 +469,15 @@ export struct SettingsTab {
                     .onClick(() => { this.testFeishuConnection() })
                 }
                 .width('100%')
+
+                Button('同步飞书日程')
+                  .width('100%')
+                  .height(40)
+                  .fontSize(this.baseFont())
+                  .fontColor(UiTokens.textInverse)
+                  .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
+                  .borderRadius(UiTokens.radiusXL)
+                  .onClick(() => { this.syncFeishuEvents() })
 
                 if (this.feishuMsg) {
                   Text(this.feishuMsg)

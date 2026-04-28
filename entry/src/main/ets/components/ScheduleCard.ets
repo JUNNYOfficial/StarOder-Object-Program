@@ -99,7 +99,7 @@ export struct ScheduleCard {
       // Card
       Column({ space: UiTokens.gapS }) {
         // Title row
-        Row() {
+        Row({ space: 6 }) {
           Text(this.task.title)
             .fontSize(this.baseFont())
             .fontWeight(FontWeight.Medium)
@@ -107,6 +107,16 @@ export struct ScheduleCard {
             .layoutWeight(1)
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
+
+          if (this.task.source === 'feishu') {
+            Text('飞书')
+              .fontSize(UiTokens.textXS)
+              .fontColor(UiTokens.brand)
+              .fontWeight(FontWeight.Medium)
+              .backgroundColor(UiTokens.brandSoft)
+              .padding({ left: 4, right: 4, top: 1, bottom: 1 })
+              .borderRadius(UiTokens.radiusS)
+          }
 
           Text(this.statusText())
             .fontSize(UiTokens.textXS)

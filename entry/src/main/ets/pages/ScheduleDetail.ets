@@ -34,6 +34,16 @@ struct ScheduleDetail {
     return this.settings.largeText ? UiTokens.text2XL : UiTokens.textXL
   }
 
+  private isExternalTask(): boolean {
+    return this.task ? this.task.source !== 'manual' && this.task.source !== '' : false
+  }
+
+  private sourceLabel(): string {
+    if (!this.task) return ''
+    if (this.task.source === 'feishu') return '来自飞书'
+    return '外部日程'
+  }
+
   private statusText(): string {
     if (!this.task) return ''
     switch (this.task.status) {
@@ -121,27 +131,37 @@ struct ScheduleDetail {
           .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
 
         Row({ space: 8 }) {
-          Button() {
-            Text('编辑')
-              .fontSize(this.baseFont())
-              .fontColor(UiTokens.brand)
-          }
-          .backgroundColor('transparent')
-          .onClick(() => {
-            if (this.task) {
-              router.pushUrl({ url: 'pages/AddSchedule', params: { id: this.task.id } })
+          if (!this.isExternalTask()) {
+            Button() {
+              Text('编辑')
+                .fontSize(this.baseFont())
+                .fontColor(UiTokens.brand)
             }
-          })
+            .backgroundColor('transparent')
+            .onClick(() => {
+              if (this.task) {
+                router.pushUrl({ url: 'pages/AddSchedule', params: { id: this.task.id } })
+              }
+            })
 
-          Button() {
-            Text('删除')
-              .fontSize(this.baseFont())
-              .fontColor(UiTokens.paused)
+            Button() {
+              Text('删除')
+                .fontSize(this.baseFont())
+                .fontColor(UiTokens.paused)
+            }
+            .backgroundColor('transparent')
+            .onClick(() => {
+              this.deleteTask()
+            })
+          } else {
+            Text(this.sourceLabel())
+              .fontSize(UiTokens.textS)
+              .fontColor(UiTokens.brand)
+              .fontWeight(FontWeight.Medium)
+              .backgroundColor(UiTokens.brandSoft)
+              .padding({ left: 8, right: 8, top: 4, bottom: 4 })
+              .borderRadius(UiTokens.radiusS)
           }
-          .backgroundColor('transparent')
-          .onClick(() => {
-            this.deleteTask()
-          })
         }
       }
       .width('100%')
@@ -177,6 +197,16 @@ struct ScheduleDetail {
                   : this.task.date)
                   .fontSize(UiTokens.textS)
                   .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textTertiary)
+
+                if (this.isExternalTask()) {
+                  Text(this.sourceLabel())
+                    .fontSize(UiTokens.textXS)
+                    .fontColor(UiTokens.brand)
+                    .fontWeight(FontWeight.Medium)
+                    .backgroundColor(UiTokens.brandSoft)
+                    .padding({ left: 6, right: 6, top: 2, bottom: 2 })
+                    .borderRadius(UiTokens.radiusS)
+                }
               }
               .width('100%')
 
