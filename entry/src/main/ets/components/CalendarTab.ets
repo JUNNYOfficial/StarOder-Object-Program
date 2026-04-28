@@ -39,16 +39,16 @@ export struct CalendarTab {
   @State monthNames: string[] = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月']
   @State weekdayLabels: string[] = ['一', '二', '三', '四', '五', '六', '日']
 
-  aboutToAppear() {
-    this.settings = dataStore.getUserPrefs()
-    this.courseState = dataStore.getCourseState()
+  async aboutToAppear() {
+    this.settings = await dataStore.getUserPrefs()
+    this.courseState = await dataStore.getCourseState()
     const now = new Date()
     this.currentYear = now.getFullYear()
     this.currentMonth = now.getMonth() + 1
     this.todayStr = formatDate(now)
     this.selectedDate = this.todayStr
-    this.generateCalendar()
-    this.loadDayTasks()
+    await this.generateCalendar()
+    await this.loadDayTasks()
   }
 
   private baseFont(): number {
@@ -59,13 +59,13 @@ export struct CalendarTab {
     return this.settings.largeText ? UiTokens.text2XL : UiTokens.textXL
   }
 
-  generateCalendar() {
+  async generateCalendar() {
     const firstDay = new Date(this.currentYear, this.currentMonth - 1, 1)
     const startWeekday = firstDay.getDay()
     const offset = (startWeekday + 6) % 7
     const daysInMonth = new Date(this.currentYear, this.currentMonth, 0).getDate()
 
-    const allTasks = dataStore.getActiveTasks()
+    const allTasks = await dataStore.getActiveTasks()
     const taskCountByDate: Record<string, number> = {}
     for (let i = 0; i < allTasks.length; i++) {
       const d = allTasks[i].date
@@ -115,21 +115,21 @@ export struct CalendarTab {
     this.calendarDays = days
   }
 
-  loadDayTasks() {
-    this.dayTasks = dataStore.getTasksByDate(this.selectedDate)
+  async loadDayTasks() {
+    this.dayTasks = await dataStore.getTasksByDate(this.selectedDate)
     this.dayCourses = this.getCoursesForDate(this.selectedDate)
   }
 
-  advanceStatus(task: Task) {
-    const all = dataStore.getActiveTasks()
+  async advanceStatus(task: Task) {
+    const all = await dataStore.getActiveTasks()
     const idx = all.findIndex(t => t.id === task.id)
     if (idx >= 0) {
       const statusOrder = [TaskStatus.TODO, TaskStatus.STARTED, TaskStatus.MOSTLY, TaskStatus.DONE]
       const currentIdx = statusOrder.indexOf(all[idx].status)
       all[idx].status = statusOrder[(currentIdx + 1) % statusOrder.length]
       all[idx].updatedAt = Date.now()
-      dataStore.saveTasks(all)
-      this.loadDayTasks()
+      await dataStore.saveTasks(all)
+      await this.loadDayTasks()
     }
   }
 
@@ -155,39 +155,39 @@ export struct CalendarTab {
     return result
   }
 
-  prevMonth() {
+  async prevMonth() {
     if (this.currentMonth === 1) {
       this.currentMonth = 12
       this.currentYear = this.currentYear - 1
     } else {
       this.currentMonth = this.currentMonth - 1
     }
-    this.generateCalendar()
+    await this.generateCalendar()
   }
 
-  nextMonth() {
+  async nextMonth() {
     if (this.currentMonth === 12) {
       this.currentMonth = 1
       this.currentYear = this.currentYear + 1
     } else {
       this.currentMonth = this.currentMonth + 1
     }
-    this.generateCalendar()
+    await this.generateCalendar()
   }
 
-  goToday() {
+  async goToday() {
     const now = new Date()
     this.currentYear = now.getFullYear()
     this.currentMonth = now.getMonth() + 1
     this.selectedDate = this.todayStr
-    this.generateCalendar()
-    this.loadDayTasks()
+    await this.generateCalendar()
+    await this.loadDayTasks()
   }
 
-  selectDay(day: CalendarDay) {
+  async selectDay(day: CalendarDay) {
     if (!day.isCurrentMonth || day.day === 0) return
     this.selectedDate = day.date
-    this.loadDayTasks()
+    await this.loadDayTasks()
   }
 
   build() {

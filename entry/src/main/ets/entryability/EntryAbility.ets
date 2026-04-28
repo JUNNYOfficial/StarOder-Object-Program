@@ -22,18 +22,18 @@ const DOMAIN = 0x0000;
 export default class EntryAbility extends UIAbility {
   private launchWantUri: string = 'pages/Index'
 
-  onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
+  async onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): Promise<void> {
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onCreate');
-    dataStore.init(this.context);
-    this.handleWant(want);
+    await dataStore.init(this.context);
+    await this.handleWant(want);
   }
 
-  onNewWant(want: Want, launchParam: AbilityConstant.LaunchParam): void {
+  async onNewWant(want: Want, launchParam: AbilityConstant.LaunchParam): Promise<void> {
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onNewWant');
-    this.handleWant(want);
+    await this.handleWant(want);
   }
 
-  private handleWant(want: Want): void {
+  private async handleWant(want: Want): Promise<void> {
     if (want.parameters) {
       const urlValue = want.parameters['url']
       if (urlValue) {
@@ -44,14 +44,14 @@ export default class EntryAbility extends UIAbility {
     const formId = want.parameters?.['formId'] as string
     const formConfig = want.parameters?.['formConfig'] as string
     if (formId && formConfig) {
-      this.updateFormData(formId)
+      await this.updateFormData(formId)
     }
   }
 
-  private updateFormData(formId: string): void {
+  private async updateFormData(formId: string): Promise<void> {
     try {
       const today = formatDate(new Date())
-      const tasks = dataStore.getTasksByDate(today)
+      const tasks = await dataStore.getTasksByDate(today)
       const todoCount = tasks.filter(t => t.status !== TaskStatus.DONE).length
 
       let nextTask = ''
@@ -98,10 +98,10 @@ export default class EntryAbility extends UIAbility {
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onDestroy');
   }
 
-  onWindowStageCreate(windowStage: window.WindowStage): void {
+  async onWindowStageCreate(windowStage: window.WindowStage): Promise<void> {
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onWindowStageCreate');
-    this.checkYesterdaySummary();
-    this.seedSampleData();
+    await this.checkYesterdaySummary();
+    await this.seedSampleData();
 
     windowStage.loadContent(this.launchWantUri, (err) => {
       if (err.code) {
@@ -124,29 +124,29 @@ export default class EntryAbility extends UIAbility {
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onBackground');
   }
 
-  private checkYesterdaySummary(): void {
+  private async checkYesterdaySummary(): Promise<void> {
     // 先清理旧的，避免同一天重复显示
-    dataStore.setShouldShowYesterdaySummary(false)
+    await dataStore.setShouldShowYesterdaySummary(false)
 
     const today = formatDate(new Date())
-    const lastLogin = dataStore.getLastLoginDate()
+    const lastLogin = await dataStore.getLastLoginDate()
 
     // 有上次登录记录且跨天了，显示昨天完成情况
     if (lastLogin && lastLogin < today) {
       const yesterday = addDays(today, -1)
-      const summary = dataStore.getYesterdaySummary(yesterday)
+      const summary = await dataStore.getYesterdaySummary(yesterday)
       // 只有昨天有数据才显示
       if (summary.totalTasks > 0 || summary.focusMinutes > 0) {
-        dataStore.setStoredYesterdaySummary(summary)
-        dataStore.setShouldShowYesterdaySummary(true)
+        await dataStore.setStoredYesterdaySummary(summary)
+        await dataStore.setShouldShowYesterdaySummary(true)
       }
     }
 
-    dataStore.setLastLoginDate(today)
+    await dataStore.setLastLoginDate(today)
   }
 
-  private seedSampleData(): void {
-    if (dataStore.getActiveTasks().length > 0) {
+  private async seedSampleData(): Promise<void> {
+    if ((await dataStore.getActiveTasks()).length > 0) {
       return;
     }
 
@@ -190,7 +190,7 @@ export default class EntryAbility extends UIAbility {
     s4.timeBlock = TimeBlock.AFTERNOON;
     s4.status = TaskStatus.PAUSED;
 
-    dataStore.saveTasks([s1, s2, s3, s4]);
+    await dataStore.saveTasks([s1, s2, s3, s4]);
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Sample data seeded');
   }
 

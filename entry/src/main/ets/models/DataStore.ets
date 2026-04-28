@@ -4,6 +4,7 @@ import {
 } from './DataModels'
 import { Course, TimeSlot, CourseScheduleState, DEFAULT_TIME_SLOTS, WeekType } from './CourseModels'
 import { formatDate } from '../utils/DateUtils'
+import { CryptoService } from '../services/CryptoService'
 
 interface ConflictResult {
   hasConflict: boolean
@@ -46,36 +47,72 @@ const KEY_SHOW_YESTERDAY_SUMMARY = 'star_show_yesterday_summary'
 const KEY_YESTERDAY_SUMMARY = 'star_yesterday_summary'
 const KEY_FACE_MOOD = 'star_face_mood_records'
 const KEY_LAST_MOOD_PROMPT = 'star_last_mood_prompt'
+const KEY_ENC_MIGRATED = 'star_enc_migrated'
 
 class DataStore {
   private pref: preferences.Preferences | null = null
+  private initialized: boolean = false
 
-  init(context: Context): void {
+  async init(context: Context): Promise<void> {
     try {
       this.pref = preferences.getPreferencesSync(context, { name: 'star_order_db_v2' })
-      this.cleanExpiredDeletedTasks()
+      await CryptoService.initLocalKey()
+      await this.migrateToEncrypted()
+      await this.cleanExpiredDeletedTasks()
+      this.initialized = true
     } catch (e) {
       console.error('DataStore init failed:', JSON.stringify(e))
     }
   }
 
+  private async migrateToEncrypted(): Promise<void> {
+    if (!this.pref) return
+    const migrated = this.pref.getSync(KEY_ENC_MIGRATED, '') as string
+    if (migrated === 'true') return
+
+    const keysToMigrate = [
+      KEY_TASKS, KEY_ENERGY, KEY_MOOD, KEY_FOCUS, KEY_PREFS,
+      KEY_COURSES, KEY_COURSE_STATE, KEY_AGREED_TERMS, KEY_LAST_LOGIN_DATE,
+      KEY_SHOW_YESTERDAY_SUMMARY, KEY_YESTERDAY_SUMMARY,
+      KEY_FACE_MOOD, KEY_LAST_MOOD_PROMPT
+    ]
+
+    for (const key of keysToMigrate) {
+      const raw = this.pref.getSync(key, '') as string
+      if (raw && !CryptoService.isEncrypted(raw)) {
+        try {
+          const encrypted = await CryptoService.encryptLocal(raw)
+          this.pref.putSync(key, encrypted)
+        } catch (e) {
+          console.error(`Migrate ${key} failed:`, JSON.stringify(e))
+        }
+      }
+    }
+
+    this.pref.putSync(KEY_ENC_MIGRATED, 'true')
+    this.pref.flush()
+  }
+
   // ===== Generic helpers =====
-  put<T>(key: string, value: T): void {
+  async put<T>(key: string, value: T): Promise<void> {
     if (!this.pref) return
     try {
-      this.pref.putSync(key, JSON.stringify(value))
+      const plain = JSON.stringify(value)
+      const encrypted = await CryptoService.encryptLocal(plain)
+      this.pref.putSync(key, encrypted)
       this.pref.flush()
     } catch (e) {
       console.error(`Save ${key} failed:`, JSON.stringify(e))
     }
   }
 
-  get<T>(key: string, defaultValue: T): T {
+  async get<T>(key: string, defaultValue: T): Promise<T> {
     if (!this.pref) return defaultValue
     try {
       const raw = this.pref.getSync(key, '') as string
       if (!raw) return defaultValue
-      return JSON.parse(raw) as T
+      const decrypted = await CryptoService.decryptLocal(raw)
+      return JSON.parse(decrypted) as T
     } catch (e) {
       console.error(`Get ${key} failed:`, JSON.stringify(e))
       return defaultValue
@@ -83,16 +120,16 @@ class DataStore {
   }
 
   // ===== Tasks =====
-  getTasks(): Task[] {
+  async getTasks(): Promise<Task[]> {
     return this.get<Task[]>(KEY_TASKS, [])
   }
 
-  saveTasks(tasks: Task[]): void {
+  async saveTasks(tasks: Task[]): Promise<void> {
     this.put(KEY_TASKS, tasks)
   }
 
-  syncExternalTasks(newTasks: Task[], source: string): SyncExternalTasksResult {
-    const all = this.getTasks()
+  async syncExternalTasks(newTasks: Task[], source: string): Promise<SyncExternalTasksResult> {
+    const all = await this.getTasks()
     let added = 0
     let updated = 0
     for (let i = 0; i < newTasks.length; i++) {
@@ -114,24 +151,24 @@ class DataStore {
         added++
       }
     }
-    this.saveTasks(all)
+    await this.saveTasks(all)
     const result: SyncExternalTasksResult = { added: added, updated: updated }
     return result
   }
 
-  addTask(task: Task): void {
-    const all = this.getTasks()
+  async addTask(task: Task): Promise<void> {
+    const all = await this.getTasks()
     all.push(task)
-    this.saveTasks(all)
+    await this.saveTasks(all)
   }
 
-  updateTask(task: Task): void {
-    const all = this.getTasks()
+  async updateTask(task: Task): Promise<void> {
+    const all = await this.getTasks()
     const idx = all.findIndex(t => t.id === task.id)
     if (idx >= 0) {
       task.updatedAt = Date.now()
       all[idx] = task
-      this.saveTasks(all)
+      await this.saveTasks(all)
     }
   }
 
@@ -146,60 +183,60 @@ class DataStore {
     return taskId
   }
 
-  softDeleteTask(taskId: string): void {
+  async softDeleteTask(taskId: string): Promise<void> {
     const originalId = this.resolveOriginalTaskId(taskId)
-    const all = this.getTasks()
+    const all = await this.getTasks()
     const idx = all.findIndex(t => t.id === originalId)
     if (idx >= 0) {
       all[idx].deleted = true
       all[idx].deletedAt = Date.now()
       all[idx].updatedAt = Date.now()
-      this.saveTasks(all)
+      await this.saveTasks(all)
     }
   }
 
-  restoreTask(taskId: string): void {
+  async restoreTask(taskId: string): Promise<void> {
     const originalId = this.resolveOriginalTaskId(taskId)
-    const all = this.getTasks()
+    const all = await this.getTasks()
     const idx = all.findIndex(t => t.id === originalId)
     if (idx >= 0) {
       all[idx].deleted = false
       all[idx].deletedAt = 0
       all[idx].updatedAt = Date.now()
-      this.saveTasks(all)
+      await this.saveTasks(all)
     }
   }
 
-  permanentlyDeleteTask(taskId: string): void {
+  async permanentlyDeleteTask(taskId: string): Promise<void> {
     const originalId = this.resolveOriginalTaskId(taskId)
-    const all = this.getTasks()
+    const all = await this.getTasks()
     const filtered = all.filter(t => t.id !== originalId)
-    this.saveTasks(filtered)
+    await this.saveTasks(filtered)
   }
 
-  getDeletedTasks(): Task[] {
-    return this.getTasks().filter(t => t.deleted)
+  async getDeletedTasks(): Promise<Task[]> {
+    return (await this.getTasks()).filter(t => t.deleted)
   }
 
-  getActiveTasks(): Task[] {
-    return this.getTasks().filter(t => !t.deleted)
+  async getActiveTasks(): Promise<Task[]> {
+    return (await this.getTasks()).filter(t => !t.deleted)
   }
 
-  getTaskById(taskId: string): Task | undefined {
+  async getTaskById(taskId: string): Promise<Task | undefined> {
     const originalId = this.resolveOriginalTaskId(taskId)
-    return this.getActiveTasks().find(t => t.id === originalId)
+    return (await this.getActiveTasks()).find(t => t.id === originalId)
   }
 
-  getTasksByDate(date: string): Task[] {
-    const direct = this.getActiveTasks().filter(t => t.date === date)
-    const recurring = this.expandRecurringTasks(date)
+  async getTasksByDate(date: string): Promise<Task[]> {
+    const direct = (await this.getActiveTasks()).filter(t => t.date === date)
+    const recurring = await this.expandRecurringTasks(date)
     return [...direct, ...recurring]
       .sort((a, b) => a.startTime.localeCompare(b.startTime))
   }
 
-  private expandRecurringTasks(targetDate: string): Task[] {
+  private async expandRecurringTasks(targetDate: string): Promise<Task[]> {
     const result: Task[] = []
-    const all = this.getActiveTasks()
+    const all = await this.getActiveTasks()
     const target = this.parseLocalDate(targetDate)
 
     for (let i = 0; i < all.length; i++) {
@@ -208,7 +245,7 @@ class DataStore {
 
       const origin = this.parseLocalDate(t.date)
       if (target.getTime() < origin.getTime()) continue
-      if (target.getTime() === origin.getTime()) continue // already included as direct task
+      if (target.getTime() === origin.getTime()) continue
 
       let match = false
       if (t.repeatMode === RepeatMode.DAILY) {
@@ -244,59 +281,59 @@ class DataStore {
     return result
   }
 
-  cleanExpiredDeletedTasks(days: number = 3): void {
-    const all = this.getTasks()
+  async cleanExpiredDeletedTasks(days: number = 3): Promise<void> {
+    const all = await this.getTasks()
     const cutoff = Date.now() - days * 24 * 60 * 60 * 1000
     const cleaned = all.filter(t => !(t.deleted && t.deletedAt > 0 && t.deletedAt < cutoff))
     if (cleaned.length !== all.length) {
-      this.saveTasks(cleaned)
+      await this.saveTasks(cleaned)
     }
   }
 
   // ===== Energy Records =====
-  getEnergyRecords(): EnergyRecord[] {
+  async getEnergyRecords(): Promise<EnergyRecord[]> {
     return this.get<EnergyRecord[]>(KEY_ENERGY, [])
   }
 
-  saveEnergyRecord(record: EnergyRecord): void {
-    const all = this.getEnergyRecords()
+  async saveEnergyRecord(record: EnergyRecord): Promise<void> {
+    const all = await this.getEnergyRecords()
     all.push(record)
-    this.put(KEY_ENERGY, all)
+    await this.put(KEY_ENERGY, all)
   }
 
-  getEnergyRecordsByDate(date: string): EnergyRecord[] {
-    return this.getEnergyRecords().filter(r => r.date === date)
+  async getEnergyRecordsByDate(date: string): Promise<EnergyRecord[]> {
+    return (await this.getEnergyRecords()).filter(r => r.date === date)
   }
 
   // ===== Mood Surveys =====
-  getMoodSurveys(): MoodSurveyRecord[] {
+  async getMoodSurveys(): Promise<MoodSurveyRecord[]> {
     return this.get<MoodSurveyRecord[]>(KEY_MOOD, [])
   }
 
-  saveMoodSurvey(record: MoodSurveyRecord): void {
-    const all = this.getMoodSurveys()
+  async saveMoodSurvey(record: MoodSurveyRecord): Promise<void> {
+    const all = await this.getMoodSurveys()
     all.push(record)
-    this.put(KEY_MOOD, all)
+    await this.put(KEY_MOOD, all)
   }
 
-  getMoodSurveyCountByDate(date: string): number {
-    return this.getMoodSurveys().filter(r => r.date === date).length
+  async getMoodSurveyCountByDate(date: string): Promise<number> {
+    return (await this.getMoodSurveys()).filter(r => r.date === date).length
   }
 
   // ===== Focus Records =====
-  getFocusRecords(): FocusRecord[] {
+  async getFocusRecords(): Promise<FocusRecord[]> {
     return this.get<FocusRecord[]>(KEY_FOCUS, [])
   }
 
-  saveFocusRecord(record: FocusRecord): void {
-    const all = this.getFocusRecords()
+  async saveFocusRecord(record: FocusRecord): Promise<void> {
+    const all = await this.getFocusRecords()
     all.push(record)
-    this.put(KEY_FOCUS, all)
+    await this.put(KEY_FOCUS, all)
   }
 
-  getTodayFocusMinutes(): number {
+  async getTodayFocusMinutes(): Promise<number> {
     const today = formatDate(new Date())
-    return this.getFocusRecords()
+    return (await this.getFocusRecords())
       .filter(r => {
         const localDate = formatDate(new Date(r.startTime))
         return localDate === today
@@ -305,168 +342,156 @@ class DataStore {
   }
 
   // ===== User Preferences =====
-  getUserPrefs(): UserPreferences {
+  async getUserPrefs(): Promise<UserPreferences> {
     return this.get<UserPreferences>(KEY_PREFS, new UserPreferences())
   }
 
-  saveUserPrefs(prefs: UserPreferences): void {
-    this.put(KEY_PREFS, prefs)
+  async saveUserPrefs(prefs: UserPreferences): Promise<void> {
+    await this.put(KEY_PREFS, prefs)
   }
 
   // ===== Data Import/Export =====
-  exportAll(): string {
-    const tasks = this.getTasks()
-    const energyRecords = this.getEnergyRecords()
-    const moodSurveys = this.getMoodSurveys()
-    const focusRecords = this.getFocusRecords()
-    const userPrefs = this.getUserPrefs()
-    return JSON.stringify({ tasks, energyRecords, moodSurveys, focusRecords, userPrefs })
+  async exportAll(password?: string): Promise<string> {
+    const tasks = await this.getTasks()
+    const energyRecords = await this.getEnergyRecords()
+    const moodSurveys = await this.getMoodSurveys()
+    const focusRecords = await this.getFocusRecords()
+    const userPrefs = await this.getUserPrefs()
+    const courses = await this.getCourses()
+    const courseState = await this.getCourseState()
+    const plainJson = JSON.stringify({ tasks, energyRecords, moodSurveys, focusRecords, userPrefs, courses, courseState })
+    if (password && password.length > 0) {
+      return CryptoService.encryptForExport(plainJson, password)
+    }
+    return plainJson
   }
 
-  importAll(jsonStr: string, mode: 'merge' | 'overwrite'): void {
+  async importAll(cipherStr: string, mode: 'merge' | 'overwrite', password?: string): Promise<void> {
+    let plainStr: string
+    if (password && password.length > 0) {
+      plainStr = await CryptoService.decryptForImport(cipherStr, password)
+    } else {
+      plainStr = cipherStr
+    }
     try {
-      const raw = JSON.parse(jsonStr) as Record<string, object>
+      const raw = JSON.parse(plainStr) as Record<string, object>
       if (mode === 'overwrite') {
-        if (raw.tasks) this.saveTasks(raw.tasks as Task[])
-        if (raw.energyRecords) this.put(KEY_ENERGY, raw.energyRecords)
-        if (raw.moodSurveys) this.put(KEY_MOOD, raw.moodSurveys)
-        if (raw.focusRecords) this.put(KEY_FOCUS, raw.focusRecords)
-        if (raw.userPrefs) this.saveUserPrefs(raw.userPrefs as UserPreferences)
+        if (raw.tasks) await this.saveTasks(raw.tasks as Task[])
+        if (raw.energyRecords) await this.put(KEY_ENERGY, raw.energyRecords)
+        if (raw.moodSurveys) await this.put(KEY_MOOD, raw.moodSurveys)
+        if (raw.focusRecords) await this.put(KEY_FOCUS, raw.focusRecords)
+        if (raw.userPrefs) await this.saveUserPrefs(raw.userPrefs as UserPreferences)
+        if (raw.courses) await this.saveCourses(raw.courses as Course[])
+        if (raw.courseState) await this.saveCourseState(raw.courseState as CourseScheduleState)
       } else {
         if (raw.tasks) {
-          const existing = this.getTasks()
+          const existing = await this.getTasks()
           const existingIds = new Set(existing.map(t => t.id))
           const newTasks = (raw.tasks as Task[]).filter(t => !existingIds.has(t.id))
           for (let i = 0; i < newTasks.length; i++) {
             existing.push(newTasks[i])
           }
-          this.saveTasks(existing)
+          await this.saveTasks(existing)
         }
       }
     } catch (e) {
       console.error('Import failed:', JSON.stringify(e))
+      throw e
     }
   }
 
   // ===== Course Schedule =====
-  getCourseState(): CourseScheduleState {
-    const state = this.get<CourseScheduleState>(KEY_COURSE_STATE, new CourseScheduleState())
+  async getCourseState(): Promise<CourseScheduleState> {
+    const state = await this.get<CourseScheduleState>(KEY_COURSE_STATE, new CourseScheduleState())
     if (!state.timeSlots || state.timeSlots.length === 0) {
       state.timeSlots = DEFAULT_TIME_SLOTS.map(s => new TimeSlot(s.slotNumber, s.startTime, s.endTime))
     }
     return state
   }
 
-  saveCourseState(state: CourseScheduleState): void {
-    this.put(KEY_COURSE_STATE, state)
+  async saveCourseState(state: CourseScheduleState): Promise<void> {
+    await this.put(KEY_COURSE_STATE, state)
   }
 
-  getCourses(): Course[] {
+  async getCourses(): Promise<Course[]> {
     return this.get<Course[]>(KEY_COURSES, [])
   }
 
-  saveCourses(courses: Course[]): void {
-    this.put(KEY_COURSES, courses)
+  async saveCourses(courses: Course[]): Promise<void> {
+    await this.put(KEY_COURSES, courses)
   }
 
-  addCourse(course: Course): void {
-    const courses = this.getCourses()
+  async addCourse(course: Course): Promise<void> {
+    const courses = await this.getCourses()
     courses.push(course)
-    this.saveCourses(courses)
+    await this.saveCourses(courses)
   }
 
-  updateCourse(course: Course): void {
-    const courses = this.getCourses()
+  async updateCourse(course: Course): Promise<void> {
+    const courses = await this.getCourses()
     const idx = courses.findIndex(c => c.id === course.id)
     if (idx >= 0) {
       courses[idx] = course
-      this.saveCourses(courses)
+      await this.saveCourses(courses)
     }
   }
 
-  deleteCourse(id: string): void {
-    const courses = this.getCourses().filter(c => c.id !== id)
-    this.saveCourses(courses)
+  async deleteCourse(id: string): Promise<void> {
+    const courses = (await this.getCourses()).filter(c => c.id !== id)
+    await this.saveCourses(courses)
   }
 
   // ===== Terms agreement =====
-  hasAgreedToTerms(): boolean {
+  async hasAgreedToTerms(): Promise<boolean> {
     return this.get<boolean>(KEY_AGREED_TERMS, false)
   }
 
-  setAgreedToTerms(agreed: boolean): void {
-    this.put(KEY_AGREED_TERMS, agreed)
+  async setAgreedToTerms(agreed: boolean): Promise<void> {
+    await this.put(KEY_AGREED_TERMS, agreed)
   }
 
   // ===== Last Login Tracking =====
-  getLastLoginDate(): string {
+  async getLastLoginDate(): Promise<string> {
     return this.get<string>(KEY_LAST_LOGIN_DATE, '')
   }
 
-  setLastLoginDate(date: string): void {
-    this.put(KEY_LAST_LOGIN_DATE, date)
+  async setLastLoginDate(date: string): Promise<void> {
+    await this.put(KEY_LAST_LOGIN_DATE, date)
   }
 
-  shouldShowYesterdaySummary(): boolean {
+  async shouldShowYesterdaySummary(): Promise<boolean> {
     return this.get<boolean>(KEY_SHOW_YESTERDAY_SUMMARY, false)
   }
 
-  setShouldShowYesterdaySummary(show: boolean): void {
-    this.put(KEY_SHOW_YESTERDAY_SUMMARY, show)
+  async setShouldShowYesterdaySummary(show: boolean): Promise<void> {
+    await this.put(KEY_SHOW_YESTERDAY_SUMMARY, show)
   }
 
-  getStoredYesterdaySummary(): YesterdaySummary {
+  async getStoredYesterdaySummary(): Promise<YesterdaySummary> {
     return this.get<YesterdaySummary>(KEY_YESTERDAY_SUMMARY, new YesterdaySummary('', 0, 0, 0))
   }
 
-  setStoredYesterdaySummary(summary: YesterdaySummary): void {
-    this.put(KEY_YESTERDAY_SUMMARY, summary)
+  async setStoredYesterdaySummary(summary: YesterdaySummary): Promise<void> {
+    await this.put(KEY_YESTERDAY_SUMMARY, summary)
   }
 
   // ===== Task Status Advancement =====
-  advanceTaskStatus(taskId: string): boolean {
+  async advanceTaskStatus(taskId: string): Promise<boolean> {
     const originalId = this.resolveOriginalTaskId(taskId)
-    const all = this.getActiveTasks()
+    const all = await this.getActiveTasks()
     const idx = all.findIndex(t => t.id === originalId)
     if (idx < 0) return false
     const statusOrder = [TaskStatus.TODO, TaskStatus.STARTED, TaskStatus.MOSTLY, TaskStatus.DONE]
     const currentIdx = statusOrder.indexOf(all[idx].status)
     all[idx].status = statusOrder[(currentIdx + 1) % statusOrder.length]
     all[idx].updatedAt = Date.now()
-    this.saveTasks(all)
+    await this.saveTasks(all)
     return true
   }
 
-  // ===== Face Mood Records =====
-  getFaceMoodRecords(): FaceMoodRecord[] {
-    return this.get<FaceMoodRecord[]>(KEY_FACE_MOOD, [])
-  }
-
-  saveFaceMoodRecord(record: FaceMoodRecord): void {
-    const all = this.getFaceMoodRecords()
-    all.push(record)
-    this.put(KEY_FACE_MOOD, all)
-  }
-
-  // ===== Mood Prompt Tracking =====
-  getLastMoodPromptDate(): string {
-    return this.get<string>(KEY_LAST_MOOD_PROMPT, '')
-  }
-
-  setLastMoodPromptDate(date: string): void {
-    this.put(KEY_LAST_MOOD_PROMPT, date)
-  }
-
-  hasMoodRecordToday(): boolean {
-    const today = formatDate(new Date())
-    const surveys = this.getMoodSurveys()
-    const faceRecords = this.getFaceMoodRecords()
-    return surveys.some(r => r.date === today) || faceRecords.some(r => r.date === today)
-  }
-
   // ===== Yesterday Summary =====
-  getYesterdaySummary(yesterday: string): YesterdaySummary {
-    const tasks = this.getTasksByDate(yesterday)
+  async getYesterdaySummary(yesterday: string): Promise<YesterdaySummary> {
+    const tasks = await this.getTasksByDate(yesterday)
     let totalTasks = 0
     let completedTasks = 0
     for (let i = 0; i < tasks.length; i++) {
@@ -479,7 +504,7 @@ class DataStore {
     }
 
     let focusMinutes = 0
-    const allFocus = this.getFocusRecords()
+    const allFocus = await this.getFocusRecords()
     for (let i = 0; i < allFocus.length; i++) {
       const r = allFocus[i]
       if (!r.startTime) continue
@@ -492,7 +517,7 @@ class DataStore {
     return new YesterdaySummary(yesterday, totalTasks, completedTasks, focusMinutes)
   }
 
-  clearAll(): void {
+  async clearAll(): Promise<void> {
     if (!this.pref) return
     try {
       this.pref.clearSync()
@@ -503,9 +528,9 @@ class DataStore {
   }
 
   // ===== Conflict Detection =====
-  checkTaskConflict(date: string, startTime: string, endTime: string, excludeId?: string): ConflictResult {
+  async checkTaskConflict(date: string, startTime: string, endTime: string, excludeId?: string): Promise<ConflictResult> {
     if (!startTime || !endTime) return { hasConflict: false, conflictWith: '' }
-    const tasks = this.getTasksByDate(date)
+    const tasks = await this.getTasksByDate(date)
     const startMin = this.timeToMinutes(startTime)
     const endMin = this.timeToMinutes(endTime)
 
@@ -515,7 +540,6 @@ class DataStore {
       if (!t.startTime || !t.endTime) continue
       const tStart = this.timeToMinutes(t.startTime)
       const tEnd = this.timeToMinutes(t.endTime)
-      // 有重叠即冲突
       if (startMin < tEnd && endMin > tStart) {
         return { hasConflict: true, conflictWith: t.title }
       }
@@ -523,18 +547,15 @@ class DataStore {
     return { hasConflict: false, conflictWith: '' }
   }
 
-  checkCourseConflict(state: CourseScheduleState, newCourse: Course, excludeId?: string): ConflictResult {
-    const courses = this.getCourses()
+  async checkCourseConflict(state: CourseScheduleState, newCourse: Course, excludeId?: string): Promise<ConflictResult> {
+    const courses = await this.getCourses()
     for (let i = 0; i < courses.length; i++) {
       const c = courses[i]
       if (excludeId && c.id === excludeId) continue
       if (c.dayOfWeek !== newCourse.dayOfWeek) continue
-      // 周次范围有交集
       if (newCourse.endWeek < c.startWeek || newCourse.startWeek > c.endWeek) continue
-      // 单双周过滤：单周课程与双周课程不冲突
       if (newCourse.weekType === WeekType.ODD && c.weekType === WeekType.EVEN) continue
       if (newCourse.weekType === WeekType.EVEN && c.weekType === WeekType.ODD) continue
-      // 节次有重叠
       const newEnd = newCourse.startSlot + newCourse.slotCount - 1
       const cEnd = c.startSlot + c.slotCount - 1
       if (newCourse.startSlot <= cEnd && newEnd >= c.startSlot) {
@@ -550,8 +571,8 @@ class DataStore {
   }
 
   // ===== Focus Stats Aggregation =====
-  getFocusStatsByRange(startDate: string, endDate: string): FocusStatsResult {
-    const all = this.getFocusRecords()
+  async getFocusStatsByRange(startDate: string, endDate: string): Promise<FocusStatsResult> {
+    const all = await this.getFocusRecords()
     const start = this.parseLocalDate(startDate).getTime()
     const end = this.parseLocalDate(endDate).getTime() + 24 * 60 * 60 * 1000
     let totalMinutes = 0
@@ -574,7 +595,7 @@ class DataStore {
     return { totalMinutes, sessions, completedSessions, dailyData }
   }
 
-  getFocusWeeklyStats(weeks: number = 4): FocusWeeklyStat[] {
+  async getFocusWeeklyStats(weeks: number = 4): Promise<FocusWeeklyStat[]> {
     const result: FocusWeeklyStat[] = []
     const now = new Date()
     for (let w = weeks - 1; w >= 0; w--) {
@@ -584,7 +605,7 @@ class DataStore {
       weekStart.setDate(weekStart.getDate() - 6)
       const startStr = formatDate(weekStart)
       const endStr = formatDate(weekEnd)
-      const stats = this.getFocusStatsByRange(startStr, endStr)
+      const stats = await this.getFocusStatsByRange(startStr, endStr)
       result.push({
         label: `${weekStart.getMonth() + 1}/${weekStart.getDate()}-${weekEnd.getMonth() + 1}/${weekEnd.getDate()}`,
         totalMinutes: stats.totalMinutes,
@@ -594,20 +615,47 @@ class DataStore {
     return result
   }
 
-  getFocusDailyStats(days: number = 7): FocusDailyStat[] {
+  async getFocusDailyStats(days: number = 7): Promise<FocusDailyStat[]> {
     const result: FocusDailyStat[] = []
     const now = new Date()
     for (let d = days - 1; d >= 0; d--) {
       const date = new Date(now)
       date.setDate(date.getDate() - d)
       const dateStr = formatDate(date)
-      const stats = this.getFocusStatsByRange(dateStr, dateStr)
+      const stats = await this.getFocusStatsByRange(dateStr, dateStr)
       result.push({
         label: `${date.getMonth() + 1}/${date.getDate()}`,
         minutes: stats.totalMinutes
       })
     }
     return result
+  }
+
+  // ===== Face Mood Records =====
+  async getFaceMoodRecords(): Promise<FaceMoodRecord[]> {
+    return this.get<FaceMoodRecord[]>(KEY_FACE_MOOD, [])
+  }
+
+  async saveFaceMoodRecord(record: FaceMoodRecord): Promise<void> {
+    const all = await this.getFaceMoodRecords()
+    all.push(record)
+    await this.put(KEY_FACE_MOOD, all)
+  }
+
+  // ===== Mood Prompt Tracking =====
+  async getLastMoodPromptDate(): Promise<string> {
+    return this.get<string>(KEY_LAST_MOOD_PROMPT, '')
+  }
+
+  async setLastMoodPromptDate(date: string): Promise<void> {
+    await this.put(KEY_LAST_MOOD_PROMPT, date)
+  }
+
+  async hasMoodRecordToday(): Promise<boolean> {
+    const today = formatDate(new Date())
+    const surveys = await this.getMoodSurveys()
+    const faceRecords = await this.getFaceMoodRecords()
+    return surveys.some(r => r.date === today) || faceRecords.some(r => r.date === today)
   }
 
   // ===== Utils =====

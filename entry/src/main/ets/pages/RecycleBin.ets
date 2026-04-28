@@ -10,36 +10,36 @@ struct RecycleBin {
   @State deletedTasks: Task[] = []
   @State emptyMsg: string = ''
 
-  aboutToAppear() {
-    this.settings = dataStore.getUserPrefs()
-    this.loadData()
+  async aboutToAppear() {
+    this.settings = await dataStore.getUserPrefs()
+    await this.loadData()
   }
 
-  onPageShow() {
-    this.loadData()
+  async onPageShow() {
+    await this.loadData()
   }
 
-  loadData() {
-    this.deletedTasks = dataStore.getDeletedTasks()
+  async loadData() {
+    this.deletedTasks = await dataStore.getDeletedTasks()
     this.emptyMsg = this.deletedTasks.length === 0 ? '回收站是空的' : ''
   }
 
-  restoreTask(taskId: string) {
-    dataStore.restoreTask(taskId)
-    this.loadData()
+  async restoreTask(taskId: string) {
+    await dataStore.restoreTask(taskId)
+    await this.loadData()
   }
 
-  permanentlyDelete(taskId: string) {
-    dataStore.permanentlyDeleteTask(taskId)
-    this.loadData()
+  async permanentlyDelete(taskId: string) {
+    await dataStore.permanentlyDeleteTask(taskId)
+    await this.loadData()
   }
 
-  clearAll() {
-    const all = dataStore.getDeletedTasks()
+  async clearAll() {
+    const all = await dataStore.getDeletedTasks()
     for (let i = 0; i < all.length; i++) {
-      dataStore.permanentlyDeleteTask(all[i].id)
+      await dataStore.permanentlyDeleteTask(all[i].id)
     }
-    this.loadData()
+    await this.loadData()
   }
 
   private baseFont(): number {
@@ -72,8 +72,8 @@ struct RecycleBin {
               .fontColor(UiTokens.paused)
           }
           .backgroundColor('transparent')
-          .onClick(() => {
-            this.clearAll()
+          .onClick(async () => {
+            await this.clearAll()
           })
         } else {
           Row().width(40)
@@ -132,8 +132,8 @@ struct RecycleBin {
                       .backgroundColor(UiTokens.brandSoft)
                       .borderRadius(UiTokens.radiusM)
                       .padding({ left: 12, right: 12 })
-                      .onClick(() => {
-                        this.restoreTask(task.id)
+                      .onClick(async () => {
+                        await this.restoreTask(task.id)
                       })
 
                     Button('删除')
@@ -143,8 +143,8 @@ struct RecycleBin {
                       .backgroundColor(UiTokens.bgHover)
                       .borderRadius(UiTokens.radiusM)
                       .padding({ left: 12, right: 12 })
-                      .onClick(() => {
-                        this.permanentlyDelete(task.id)
+                      .onClick(async () => {
+                        await this.permanentlyDelete(task.id)
                       })
                   }
                 }

@@ -39,16 +39,19 @@ struct CourseSchedulePage {
   @State calDAVSyncText: string = ''
   @State showSemesterPicker: boolean = false
   @State pickerDate: Date = new Date()
+  @State isCalDAVConfigured: boolean = false
 
-  aboutToAppear() {
-    this.state = dataStore.getCourseState()
-    this.state.courses = dataStore.getCourses()
+  async aboutToAppear() {
+    this.state = await dataStore.getCourseState()
+    this.state.courses = await dataStore.getCourses()
     this.selectedWeek = this.state.currentWeek
-    this.calDAVSyncText = CalDAVService.getLastSyncText()
+    this.calDAVSyncText = await CalDAVService.getLastSyncText()
+    this.isCalDAVConfigured = await CalDAVService.isConfigured()
   }
 
-  onPageShow() {
-    this.calDAVSyncText = CalDAVService.getLastSyncText()
+  async onPageShow() {
+    this.calDAVSyncText = await CalDAVService.getLastSyncText()
+    this.isCalDAVConfigured = await CalDAVService.isConfigured()
   }
 
   private coursesForCell(day: number, slot: number): Course[] {
@@ -114,7 +117,7 @@ struct CourseSchedulePage {
     this.showEditPanel = true
   }
 
-  private saveCourse() {
+  private async saveCourse() {
     if (!this.editName.trim()) {
       promptAction.showToast({ message: '请输入课程名称' })
       return
@@ -135,7 +138,7 @@ struct CourseSchedulePage {
       newCourse.id = this.editingCourse.id
     }
 
-    const conflict = dataStore.checkCourseConflict(this.state, newCourse, this.editingCourse ? this.editingCourse.id : undefined)
+    const conflict = await dataStore.checkCourseConflict(this.state, newCourse, this.editingCourse ? this.editingCourse.id : undefined)
     if (conflict.hasConflict) {
       promptAction.showToast({ message: `与「${conflict.conflictWith}」时间冲突` })
       return
@@ -153,19 +156,19 @@ struct CourseSchedulePage {
       c.startWeek = this.editStartWeek
       c.endWeek = this.editEndWeek
       c.color = this.editColor
-      dataStore.updateCourse(c)
+      await dataStore.updateCourse(c)
     } else {
-      dataStore.addCourse(newCourse)
+      await dataStore.addCourse(newCourse)
     }
-    this.state.courses = dataStore.getCourses()
+    this.state.courses = await dataStore.getCourses()
     this.showEditPanel = false
     promptAction.showToast({ message: '已保存' })
   }
 
-  private deleteCurrentCourse() {
+  private async deleteCurrentCourse() {
     if (this.editingCourse) {
-      dataStore.deleteCourse(this.editingCourse.id)
-      this.state.courses = dataStore.getCourses()
+      await dataStore.deleteCourse(this.editingCourse.id)
+      this.state.courses = await dataStore.getCourses()
       this.showEditPanel = false
       promptAction.showToast({ message: '已删除' })
     }
@@ -198,13 +201,13 @@ struct CourseSchedulePage {
     })
   }
 
-  private saveSemesterStartDate() {
+  private async saveSemesterStartDate() {
     const d = this.pickerDate
     const y = d.getFullYear()
     const m = String(d.getMonth() + 1).padStart(2, '0')
     const day = String(d.getDate()).padStart(2, '0')
     this.state.semesterStartDate = `${y}-${m}-${day}`
-    dataStore.saveCourseState(this.state)
+    await dataStore.saveCourseState(this.state)
     // Recalculate current week based on new start date
     const today = new Date()
     const parts = this.state.semesterStartDate.split('-').map(Number)
@@ -215,23 +218,23 @@ struct CourseSchedulePage {
     if (week > this.state.totalWeeks) week = this.state.totalWeeks
     this.state.currentWeek = week
     this.selectedWeek = week
-    dataStore.saveCourseState(this.state)
+    await dataStore.saveCourseState(this.state)
     this.showSemesterPicker = false
     promptAction.showToast({ message: '学期开始日期已保存' })
   }
 
-  private syncToCalDAV() {
+  private async syncToCalDAV() {
     if (this.state.courses.length === 0) {
       promptAction.showToast({ message: '没有课程可同步' })
       return
     }
-    if (!CalDAVService.isConfigured()) {
+    if (!await CalDAVService.isConfigured()) {
       promptAction.showToast({ message: 'CalDAV 未配置，请先在设置中配置' })
       return
     }
     promptAction.showToast({ message: '正在同步到 CalDAV...' })
-    CalDAVService.syncCoursesToCalDAV(this.state, (success, failed, msg) => {
-      this.calDAVSyncText = CalDAVService.getLastSyncText()
+    await CalDAVService.syncCoursesToCalDAV(this.state, async (success, failed, msg) => {
+      this.calDAVSyncText = await CalDAVService.getLastSyncText()
       promptAction.showToast({ message: msg, duration: 3000 })
     })
   }
@@ -471,7 +474,7 @@ struct CourseSchedulePage {
           }
           .width('100%')
 
-          if (CalDAVService.isConfigured()) {
+          if (this.isCalDAVConfigured) {
             Row() {
               Text(this.calDAVSyncText)
                 .fontSize(UiTokens.textS)
@@ -481,9 +484,9 @@ struct CourseSchedulePage {
               Text('清除记录')
                 .fontSize(UiTokens.textS)
                 .fontColor(UiTokens.brand)
-                .onClick(() => {
-                  CalDAVService.clearSyncState()
-                  this.calDAVSyncText = CalDAVService.getLastSyncText()
+                .onClick(async () => {
+                  await CalDAVService.clearSyncState()
+                  this.calDAVSyncText = await CalDAVService.getLastSyncText()
                   promptAction.showToast({ message: '同步记录已清除' })
                 })
             }
@@ -524,7 +527,7 @@ struct CourseSchedulePage {
                 Text('删除')
                   .fontSize(UiTokens.textS)
                   .fontColor(UiTokens.error)
-                  .onClick(() => this.deleteCurrentCourse())
+                  .onClick(async () => await this.deleteCurrentCourse())
               }
             }
             .width('100%')
@@ -791,7 +794,7 @@ struct CourseSchedulePage {
                 .fontColor(UiTokens.textInverse)
                 .backgroundColor(UiTokens.brand)
                 .borderRadius(UiTokens.radiusL)
-                .onClick(() => this.saveCourse())
+                .onClick(async () => await this.saveCourse())
             }
             .width('100%')
           }
@@ -942,7 +945,7 @@ struct CourseSchedulePage {
                 .fontColor('#FFFFFF')
                 .backgroundColor(UiTokens.brand)
                 .borderRadius(UiTokens.radiusL)
-                .onClick(() => this.saveSemesterStartDate())
+                .onClick(async () => await this.saveSemesterStartDate())
             }
             .width('100%')
           }

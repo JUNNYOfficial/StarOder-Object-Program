@@ -19,15 +19,15 @@ export struct TimerTab {
   @State showTaskPicker: boolean = false
   private timerId: number = -1
 
-  aboutToAppear() {
-    this.settings = dataStore.getUserPrefs()
+  async aboutToAppear() {
+    this.settings = await dataStore.getUserPrefs()
     this.resetTimer()
-    this.loadTodayTasks()
+    await this.loadTodayTasks()
   }
 
-  private loadTodayTasks() {
+  private async loadTodayTasks() {
     const today = todayStr()
-    const tasks = dataStore.getTasksByDate(today)
+    const tasks = (await dataStore.getTasksByDate(today))
       .filter(t => t.status !== 'DONE')
       .sort((a, b) => a.startTime.localeCompare(b.startTime))
     this.todayTasks = tasks
@@ -102,22 +102,22 @@ export struct TimerTab {
     }
   }
 
-  private stopTimer() {
+  private async stopTimer() {
     if (this.timerId >= 0) {
       clearInterval(this.timerId)
       this.timerId = -1
     }
-    this.saveRecord(false)
+    await this.saveRecord(false)
     this.resetTimer()
   }
 
-  private finishTimer() {
+  private async finishTimer() {
     if (this.timerId >= 0) {
       clearInterval(this.timerId)
       this.timerId = -1
     }
     const actualMinutes = Math.floor((this.totalSeconds - this.remainingSeconds) / 60)
-    this.saveRecord(true)
+    await this.saveRecord(true)
     this.completeMsg = `专注完成！本次专注了 ${actualMinutes} 分钟，做得好。`
     this.showCompleteMsg = true
     this.resetTimer()
@@ -126,7 +126,7 @@ export struct TimerTab {
     }, 5000)
   }
 
-  private saveRecord(completed: boolean) {
+  private async saveRecord(completed: boolean) {
     const config = getFocusModeConfig(this.selectedMode)
     const record = new FocusRecord(this.selectedTaskId, this.selectedMode, config.defaultMinutes)
     record.actualMinutes = Math.floor((this.totalSeconds - this.remainingSeconds) / 60)
@@ -134,7 +134,7 @@ export struct TimerTab {
     record.endTime = new Date().toISOString()
     record.completed = completed
     record.interrupted = !completed
-    dataStore.saveFocusRecord(record)
+    await dataStore.saveFocusRecord(record)
   }
 
   build() {

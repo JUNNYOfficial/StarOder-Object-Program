@@ -22,10 +22,10 @@ struct TimerPage {
   @State selectedTaskId: string = ''
   @State showTaskPicker: boolean = false
 
-  aboutToAppear() {
-    this.settings = dataStore.getUserPrefs()
+  async aboutToAppear() {
+    this.settings = await dataStore.getUserPrefs()
     this.resetTimer()
-    this.loadTodayTasks()
+    await this.loadTodayTasks()
   }
 
   aboutToDisappear() {
@@ -35,9 +35,9 @@ struct TimerPage {
     }
   }
 
-  private loadTodayTasks() {
+  private async loadTodayTasks() {
     const today = todayStr()
-    const tasks = dataStore.getTasksByDate(today)
+    const tasks = (await dataStore.getTasksByDate(today))
       .filter(t => t.status !== 'DONE')
       .sort((a, b) => a.startTime.localeCompare(b.startTime))
     this.todayTasks = tasks
@@ -123,7 +123,7 @@ struct TimerPage {
     }, 5000)
   }
 
-  private saveRecord(completed: boolean) {
+  private async saveRecord(completed: boolean) {
     const config = getFocusModeConfig(this.selectedMode)
     const record = new FocusRecord(this.selectedTaskId, this.selectedMode, config.defaultMinutes)
     record.actualMinutes = Math.floor((this.totalSeconds - this.remainingSeconds) / 60)
@@ -131,7 +131,7 @@ struct TimerPage {
     record.endTime = new Date().toISOString()
     record.completed = completed
     record.interrupted = !completed
-    dataStore.saveFocusRecord(record)
+    await dataStore.saveFocusRecord(record)
   }
 
   private selectedTaskTitle(): string {

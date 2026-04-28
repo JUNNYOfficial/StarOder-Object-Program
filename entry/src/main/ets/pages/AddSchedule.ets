@@ -31,8 +31,8 @@ struct AddSchedule {
   @State isEditMode: boolean = false
   @State editTaskId: string = ''
 
-  aboutToAppear() {
-    this.settings = dataStore.getUserPrefs()
+  async aboutToAppear() {
+    this.settings = await dataStore.getUserPrefs()
     const now = new Date()
     const h = now.getHours()
     if (h < 9) this.selectedTimeBlock = TimeBlock.MORNING
@@ -40,14 +40,14 @@ struct AddSchedule {
     else if (h < 18) this.selectedTimeBlock = TimeBlock.AFTERNOON
     else this.selectedTimeBlock = TimeBlock.EVENING
     this.initTemplates()
-    this.loadEditTask()
+    await this.loadEditTask()
   }
 
-  loadEditTask() {
+  async loadEditTask() {
     const params = router.getParams() as Record<string, string>
     const id = params?.['id']
     if (id) {
-      const task = dataStore.getTaskById(id)
+      const task = await dataStore.getTaskById(id)
       if (task) {
         this.isEditMode = true
         this.editTaskId = task.id
@@ -170,7 +170,7 @@ struct AddSchedule {
     return `${String(parts[0]).padStart(2, '0')}:${String(parts[1]).padStart(2, '0')}`
   }
 
-  saveTask() {
+  async saveTask() {
     if (!this.title.trim()) {
       promptAction.showToast({ message: '请输入日程标题' })
       return
@@ -200,14 +200,14 @@ struct AddSchedule {
         return
       }
       // 冲突检测
-      const conflict = dataStore.checkTaskConflict(normalizedDate, start, end, this.isEditMode ? this.editTaskId : undefined)
+      const conflict = await dataStore.checkTaskConflict(normalizedDate, start, end, this.isEditMode ? this.editTaskId : undefined)
       if (conflict.hasConflict) {
         promptAction.showToast({ message: `与「${conflict.conflictWith}」时间冲突` })
         return
       }
     }
     if (this.isEditMode) {
-      const all = dataStore.getActiveTasks()
+      const all = await dataStore.getActiveTasks()
       const idx = all.findIndex(t => t.id === this.editTaskId)
       if (idx >= 0) {
         all[idx].title = this.title.trim()
@@ -222,7 +222,7 @@ struct AddSchedule {
         all[idx].prepareItems = [...this.prepareItems]
         all[idx].subTasks = this.subTasks.map((title) => new SubTask(title, this.editTaskId))
         all[idx].updatedAt = Date.now()
-        dataStore.saveTasks(all)
+        await dataStore.saveTasks(all)
       }
     } else {
       const task = new Task(this.title.trim(), normalizedDate, start, end)
@@ -233,7 +233,7 @@ struct AddSchedule {
       task.repeatMode = this.selectedRepeat
       task.prepareItems = [...this.prepareItems]
       task.subTasks = this.subTasks.map((title) => new SubTask(title, task.id))
-      dataStore.addTask(task)
+      await dataStore.addTask(task)
       if (start && end) {
         const ok = setSystemReminder(task)
         if (!ok) {
@@ -723,8 +723,8 @@ struct AddSchedule {
             .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
             .borderRadius(UiTokens.radiusXL)
             .margin({ top: 8, bottom: 40 })
-            .onClick(() => {
-              this.saveTask()
+            .onClick(async () => {
+              await this.saveTask()
             })
         }
         .width('100%')

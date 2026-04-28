@@ -28,52 +28,52 @@ struct Index {
   @State yesterdaySummary: YesterdaySummary = new YesterdaySummary('', 0, 0, 0)
   @State showMoodPrompt: boolean = false
 
-  aboutToAppear() {
+  async aboutToAppear(): Promise<void> {
     const now = new Date()
     this.currentDate = formatDate(now)
     this.greeting = this.getGreeting(now)
-    this.loadData()
-    if (!dataStore.hasAgreedToTerms()) {
+    await this.loadData()
+    if (!(await dataStore.hasAgreedToTerms())) {
       this.showTermsDialog = true
     }
-    this.checkYesterdaySummary()
-    this.checkMoodPrompt()
+    await this.checkYesterdaySummary()
+    await this.checkMoodPrompt()
   }
 
-  private checkMoodPrompt(): void {
+  private async checkMoodPrompt(): Promise<void> {
     const today = todayStr()
     // 今天已经提示过，不再提示
-    if (dataStore.getLastMoodPromptDate() === today) {
+    if ((await dataStore.getLastMoodPromptDate()) === today) {
       return
     }
     // 今天已经有情绪记录，不再提示
-    if (dataStore.hasMoodRecordToday()) {
+    if (await dataStore.hasMoodRecordToday()) {
       return
     }
     // 30% 概率触发抽查
     if (Math.random() < 0.3) {
       this.showMoodPrompt = true
-      dataStore.setLastMoodPromptDate(today)
+      await dataStore.setLastMoodPromptDate(today)
     }
   }
 
-  private checkYesterdaySummary(): void {
-    if (dataStore.shouldShowYesterdaySummary()) {
-      this.yesterdaySummary = dataStore.getStoredYesterdaySummary()
+  private async checkYesterdaySummary(): Promise<void> {
+    if (await dataStore.shouldShowYesterdaySummary()) {
+      this.yesterdaySummary = await dataStore.getStoredYesterdaySummary()
       this.showYesterdaySummary = true
-      dataStore.setShouldShowYesterdaySummary(false)
+      await dataStore.setShouldShowYesterdaySummary(false)
     }
   }
 
-  onPageShow() {
-    this.loadData()
+  async onPageShow(): Promise<void> {
+    await this.loadData()
   }
 
-  loadData() {
-    this.settings = dataStore.getUserPrefs()
-    this.tasks = dataStore.getTasksByDate(this.currentDate)
+  async loadData(): Promise<void> {
+    this.settings = await dataStore.getUserPrefs()
+    this.tasks = await dataStore.getTasksByDate(this.currentDate)
     this.applyFilter()
-    this.courseState = dataStore.getCourseState()
+    this.courseState = await dataStore.getCourseState()
     this.todayCourses = this.getTodayCourses()
   }
 
@@ -109,19 +109,19 @@ struct Index {
     return result
   }
 
-  prevDay() {
+  async prevDay(): Promise<void> {
     this.currentDate = addDays(this.currentDate, -1)
-    this.loadData()
+    await this.loadData()
   }
 
-  nextDay() {
+  async nextDay(): Promise<void> {
     this.currentDate = addDays(this.currentDate, 1)
-    this.loadData()
+    await this.loadData()
   }
 
-  goToday() {
+  async goToday(): Promise<void> {
     this.currentDate = formatDate(new Date())
-    this.loadData()
+    await this.loadData()
   }
 
   applyFilter() {
@@ -149,9 +149,9 @@ struct Index {
     return '晚上好，准备结束今天吧'
   }
 
-  advanceStatus(task: Task) {
-    if (dataStore.advanceTaskStatus(task.id)) {
-      this.loadData()
+  async advanceStatus(task: Task): Promise<void> {
+    if (await dataStore.advanceTaskStatus(task.id)) {
+      await this.loadData()
     }
   }
 
@@ -182,7 +182,7 @@ struct Index {
               .height(32)
               .backgroundColor(UiTokens.bgHover)
               .borderRadius(UiTokens.radiusM)
-              .onClick(() => { this.prevDay() })
+              .onClick(async () => { await this.prevDay() })
 
               Text(this.currentDate)
                 .fontSize(this.settings.largeText ? UiTokens.text2XL : UiTokens.textXL)
@@ -198,7 +198,7 @@ struct Index {
               .height(32)
               .backgroundColor(UiTokens.bgHover)
               .borderRadius(UiTokens.radiusM)
-              .onClick(() => { this.nextDay() })
+              .onClick(async () => { await this.nextDay() })
 
               if (this.currentDate !== todayStr()) {
                 Button() {
@@ -210,7 +210,7 @@ struct Index {
                 .backgroundColor(UiTokens.brandSoft)
                 .padding({ left: 10, right: 10, top: 4, bottom: 4 })
                 .borderRadius(UiTokens.radiusM)
-                .onClick(() => { this.goToday() })
+                .onClick(async () => { await this.goToday() })
               }
             }
           }
@@ -400,8 +400,8 @@ struct Index {
                   onClickCard: () => {
                     router.pushUrl({ url: 'pages/ScheduleDetail', params: { id: task.id } })
                   },
-                  onToggleStatus: () => {
-                    this.advanceStatus(task)
+                  onToggleStatus: async () => {
+                    await this.advanceStatus(task)
                   }
                 })
               }
@@ -521,8 +521,8 @@ struct Index {
               .fontColor('#FFFFFF')
               .backgroundColor(UiTokens.brand)
               .borderRadius(UiTokens.radiusL)
-              .onClick(() => {
-                dataStore.setAgreedToTerms(true)
+              .onClick(async () => {
+                await dataStore.setAgreedToTerms(true)
                 this.showTermsDialog = false
               })
           }
@@ -709,14 +709,14 @@ struct Index {
       .height('100%')
       .backgroundColor(UiTokens.done)
       .borderRadius(UiTokens.radiusM)
-      .onClick(() => {
-        const all = dataStore.getActiveTasks()
+      .onClick(async () => {
+        const all = await dataStore.getActiveTasks()
         const idx = all.findIndex(t => t.id === task.id)
         if (idx >= 0) {
           all[idx].status = TaskStatus.DONE
           all[idx].updatedAt = Date.now()
-          dataStore.saveTasks(all)
-          this.loadData()
+          await dataStore.saveTasks(all)
+          await this.loadData()
         }
       })
 
@@ -729,9 +729,9 @@ struct Index {
       .height('100%')
       .backgroundColor(UiTokens.error)
       .borderRadius(UiTokens.radiusM)
-      .onClick(() => {
-        dataStore.softDeleteTask(task.id)
-        this.loadData()
+      .onClick(async () => {
+        await dataStore.softDeleteTask(task.id)
+        await this.loadData()
       })
     }
     .padding({ left: 4, right: UiTokens.pagePadding })

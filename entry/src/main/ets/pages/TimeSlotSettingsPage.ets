@@ -8,15 +8,15 @@ import { UiTokens } from '../design/UiTokens'
 struct TimeSlotSettingsPage {
   @State slots: TimeSlot[] = []
 
-  aboutToAppear() {
-    const state = dataStore.getCourseState()
+  async aboutToAppear() {
+    const state = await dataStore.getCourseState()
     this.slots = state.timeSlots.map(s => new TimeSlot(s.slotNumber, s.startTime, s.endTime))
   }
 
-  private saveSlots() {
-    const state = dataStore.getCourseState()
+  private async saveSlots() {
+    const state = await dataStore.getCourseState()
     state.timeSlots = this.slots.map(s => new TimeSlot(s.slotNumber, s.startTime, s.endTime))
-    dataStore.saveCourseState(state)
+    await dataStore.saveCourseState(state)
     promptAction.showToast({ message: '时间段已保存' })
     router.back()
   }
@@ -56,7 +56,7 @@ struct TimeSlotSettingsPage {
           .fontSize(UiTokens.textM)
           .fontColor(UiTokens.brand)
           .backgroundColor('transparent')
-          .onClick(() => this.saveSlots())
+          .onClick(async () => await this.saveSlots())
       }
       .width('100%')
       .height(48)

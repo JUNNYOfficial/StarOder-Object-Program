@@ -36,15 +36,15 @@ struct CalendarView {
   @State monthNames: string[] = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月']
   @State weekdayLabels: string[] = ['一', '二', '三', '四', '五', '六', '日']
 
-  aboutToAppear() {
-    this.settings = dataStore.getUserPrefs()
+  async aboutToAppear() {
+    this.settings = await dataStore.getUserPrefs()
     const now = new Date()
     this.currentYear = now.getFullYear()
     this.currentMonth = now.getMonth() + 1
     this.todayStr = formatDate(now)
     this.selectedDate = this.todayStr
-    this.generateCalendar()
-    this.loadDayTasks()
+    await this.generateCalendar()
+    await this.loadDayTasks()
   }
 
   private baseFont(): number {
@@ -55,13 +55,13 @@ struct CalendarView {
     return this.settings.largeText ? UiTokens.text2XL : UiTokens.textXL
   }
 
-  generateCalendar() {
+  async generateCalendar() {
     const firstDay = new Date(this.currentYear, this.currentMonth - 1, 1)
     const startWeekday = firstDay.getDay()
     const offset = (startWeekday + 6) % 7
     const daysInMonth = new Date(this.currentYear, this.currentMonth, 0).getDate()
 
-    const allTasks = dataStore.getActiveTasks()
+    const allTasks = await dataStore.getActiveTasks()
     const taskCountByDate: Record<string, number> = {}
     for (let i = 0; i < allTasks.length; i++) {
       const d = allTasks[i].date
@@ -84,48 +84,48 @@ struct CalendarView {
     this.calendarDays = days
   }
 
-  loadDayTasks() {
-    this.dayTasks = dataStore.getTasksByDate(this.selectedDate)
+  async loadDayTasks() {
+    this.dayTasks = await dataStore.getTasksByDate(this.selectedDate)
   }
 
-  prevMonth() {
+  async prevMonth() {
     if (this.currentMonth === 1) {
       this.currentMonth = 12
       this.currentYear = this.currentYear - 1
     } else {
       this.currentMonth = this.currentMonth - 1
     }
-    this.generateCalendar()
+    await this.generateCalendar()
   }
 
-  nextMonth() {
+  async nextMonth() {
     if (this.currentMonth === 12) {
       this.currentMonth = 1
       this.currentYear = this.currentYear + 1
     } else {
       this.currentMonth = this.currentMonth + 1
     }
-    this.generateCalendar()
+    await this.generateCalendar()
   }
 
-  goToday() {
+  async goToday() {
     const now = new Date()
     this.currentYear = now.getFullYear()
     this.currentMonth = now.getMonth() + 1
     this.selectedDate = this.todayStr
-    this.generateCalendar()
-    this.loadDayTasks()
+    await this.generateCalendar()
+    await this.loadDayTasks()
   }
 
-  selectDay(day: CalendarDay) {
+  async selectDay(day: CalendarDay) {
     if (!day.isCurrentMonth || day.day === 0) return
     this.selectedDate = day.date
-    this.loadDayTasks()
+    await this.loadDayTasks()
   }
 
-  advanceStatus(task: Task) {
-    if (dataStore.advanceTaskStatus(task.id)) {
-      this.loadDayTasks()
+  async advanceStatus(task: Task) {
+    if (await dataStore.advanceTaskStatus(task.id)) {
+      await this.loadDayTasks()
     }
   }
 
@@ -155,8 +155,8 @@ struct CalendarView {
             .fontWeight(FontWeight.Medium)
         }
         .backgroundColor('transparent')
-        .onClick(() => {
-          this.goToday()
+        .onClick(async () => {
+          await this.goToday()
         })
       }
       .width('100%')
@@ -179,8 +179,8 @@ struct CalendarView {
             .height(44)
             .backgroundColor(UiTokens.bgHover)
             .borderRadius(UiTokens.radiusL)
-            .onClick(() => {
-              this.prevMonth()
+            .onClick(async () => {
+              await this.prevMonth()
             })
 
             Text(`${this.currentYear}年 ${this.monthNames[this.currentMonth - 1]}`)
@@ -197,8 +197,8 @@ struct CalendarView {
             .height(44)
             .backgroundColor(UiTokens.bgHover)
             .borderRadius(UiTokens.radiusL)
-            .onClick(() => {
-              this.nextMonth()
+            .onClick(async () => {
+              await this.nextMonth()
             })
           }
           .width('100%')
@@ -274,8 +274,8 @@ struct CalendarView {
                   : 'transparent')
                 .borderRadius(UiTokens.radiusM)
               }
-              .onClick(() => {
-                this.selectDay(day)
+              .onClick(async () => {
+                await this.selectDay(day)
               })
             })
           }
@@ -319,8 +319,8 @@ struct CalendarView {
                     onClickCard: () => {
                       router.pushUrl({ url: 'pages/ScheduleDetail', params: { id: task.id } })
                     },
-                    onToggleStatus: () => {
-                      this.advanceStatus(task)
+                    onToggleStatus: async () => {
+                      await this.advanceStatus(task)
                     }
                   })
                 }, (task: Task) => task.id)

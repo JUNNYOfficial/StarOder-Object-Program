@@ -23,38 +23,38 @@ interface CalDAVSyncState {
   syncedUids: string[]
 }
 
-function getConfig(): CalDAVConfig {
+async function getConfig(): Promise<CalDAVConfig> {
   return {
-    serverUrl: dataStore.get<string>(KEY_CALDAV_SERVER, ''),
-    username: dataStore.get<string>(KEY_CALDAV_USER, ''),
-    password: dataStore.get<string>(KEY_CALDAV_PASS, ''),
-    calendarPath: dataStore.get<string>(KEY_CALDAV_PATH, '')
+    serverUrl: await dataStore.get<string>(KEY_CALDAV_SERVER, ''),
+    username: await dataStore.get<string>(KEY_CALDAV_USER, ''),
+    password: await dataStore.get<string>(KEY_CALDAV_PASS, ''),
+    calendarPath: await dataStore.get<string>(KEY_CALDAV_PATH, '')
   }
 }
 
-function setConfig(config: CalDAVConfig): void {
-  dataStore.put(KEY_CALDAV_SERVER, config.serverUrl)
-  dataStore.put(KEY_CALDAV_USER, config.username)
-  dataStore.put(KEY_CALDAV_PASS, config.password)
-  dataStore.put(KEY_CALDAV_PATH, config.calendarPath)
+async function setConfig(config: CalDAVConfig): Promise<void> {
+  await dataStore.put(KEY_CALDAV_SERVER, config.serverUrl)
+  await dataStore.put(KEY_CALDAV_USER, config.username)
+  await dataStore.put(KEY_CALDAV_PASS, config.password)
+  await dataStore.put(KEY_CALDAV_PATH, config.calendarPath)
 }
 
-function getSyncState(): CalDAVSyncState {
+async function getSyncState(): Promise<CalDAVSyncState> {
   const defaultState: CalDAVSyncState = { lastSyncTime: 0, syncedUids: [] }
-  return dataStore.get<CalDAVSyncState>(KEY_CALDAV_SYNC_STATE, defaultState)
+  return await dataStore.get<CalDAVSyncState>(KEY_CALDAV_SYNC_STATE, defaultState)
 }
 
-function setSyncState(state: CalDAVSyncState): void {
-  dataStore.put(KEY_CALDAV_SYNC_STATE, state)
+async function setSyncState(state: CalDAVSyncState): Promise<void> {
+  await dataStore.put(KEY_CALDAV_SYNC_STATE, state)
 }
 
-function clearSyncState(): void {
+async function clearSyncState(): Promise<void> {
   const emptyState: CalDAVSyncState = { lastSyncTime: 0, syncedUids: [] }
-  dataStore.put(KEY_CALDAV_SYNC_STATE, emptyState)
+  await dataStore.put(KEY_CALDAV_SYNC_STATE, emptyState)
 }
 
-function getLastSyncText(): string {
-  const state = getSyncState()
+async function getLastSyncText(): Promise<string> {
+  const state = await getSyncState()
   if (state.lastSyncTime === 0) {
     return '上次同步: 从未同步'
   }
@@ -271,11 +271,11 @@ function testConnection(config: CalDAVConfig, onResult: (success: boolean, msg: 
   })
 }
 
-function syncCoursesToCalDAV(
+async function syncCoursesToCalDAV(
   state: CourseScheduleState,
   onResult: (success: number, failed: number, msg: string) => void
-): void {
-  const config = getConfig()
+): Promise<void> {
+  const config = await getConfig()
   if (!config.serverUrl || !config.username || !config.password || !config.calendarPath) {
     onResult(0, 0, 'CalDAV 未配置，请先在设置中配置服务器信息')
     return
@@ -283,7 +283,7 @@ function syncCoursesToCalDAV(
 
   const auth = makeAuthHeader(config.username, config.password)
   const courses = state.courses
-  const prevState = getSyncState()
+  const prevState = await getSyncState()
 
   // 计算当前课程对应的 UID 集合
   const currentUids: string[] = []
@@ -313,12 +313,12 @@ function syncCoursesToCalDAV(
   let deleteFailed = 0
   let completed = 0
 
-  const checkDone = () => {
+  const checkDone = async () => {
     completed++
     if (completed >= totalTasks) {
       // 保存新的同步状态（只记录当前存在的课程 UID）
       const newState: CalDAVSyncState = { lastSyncTime: Date.now(), syncedUids: currentUids }
-      setSyncState(newState)
+      await setSyncState(newState)
       const failed = putFailed + deleteFailed
       onResult(putSuccess + deleteSuccess, failed,
         `上传成功 ${putSuccess} 个，清理旧事件 ${deleteSuccess} 个，失败 ${failed} 个`)
@@ -329,7 +329,7 @@ function syncCoursesToCalDAV(
   for (let i = 0; i < toDelete.length; i++) {
     const uid = toDelete[i]
     const eventUrl = `${config.calendarPath}/${uid}.ics`
-    doRequest(eventUrl, 'DELETE', { 'Authorization': auth }, '', (status, result, errMsg) => {
+    doRequest(eventUrl, 'DELETE', { 'Authorization': auth }, '', async (status, result, errMsg) => {
       if (errMsg) {
         console.error(TAG, `删除失败 ${uid}:`, errMsg)
         deleteFailed++
@@ -341,7 +341,7 @@ function syncCoursesToCalDAV(
         console.error(TAG, `删除失败 ${uid}, status=${status}`)
         deleteFailed++
       }
-      checkDone()
+      await checkDone()
     })
   }
 
@@ -351,7 +351,7 @@ function syncCoursesToCalDAV(
     const icsData = generateCourseICS(course, state)
     if (!icsData) {
       putFailed++
-      checkDone()
+      await checkDone()
       continue
     }
 
@@ -361,7 +361,7 @@ function syncCoursesToCalDAV(
     doRequest(eventUrl, 'PUT', {
       'Authorization': auth,
       'Content-Type': 'text/calendar; charset=utf-8'
-    }, icsData, (status, result, errMsg) => {
+    }, icsData, async (status, result, errMsg) => {
       if (errMsg) {
         console.error(TAG, `上传失败 ${course.name}:`, errMsg)
         putFailed++
@@ -372,26 +372,26 @@ function syncCoursesToCalDAV(
         console.error(TAG, `上传失败 ${course.name}, status=${status}`)
         putFailed++
       }
-      checkDone()
+      await checkDone()
     })
   }
 }
 
 class CalDAVServiceClass {
-  getConfig(): CalDAVConfig { return getConfig() }
-  setConfig(config: CalDAVConfig): void { setConfig(config) }
-  isConfigured(): boolean {
-    const c = getConfig()
+  async getConfig(): Promise<CalDAVConfig> { return await getConfig() }
+  async setConfig(config: CalDAVConfig): Promise<void> { await setConfig(config) }
+  async isConfigured(): Promise<boolean> {
+    const c = await getConfig()
     return c.serverUrl.length > 0 && c.username.length > 0 && c.password.length > 0 && c.calendarPath.length > 0
   }
   testConnection(config: CalDAVConfig, onResult: (success: boolean, msg: string) => void): void {
     testConnection(config, onResult)
   }
-  syncCoursesToCalDAV(state: CourseScheduleState, onResult: (success: number, failed: number, msg: string) => void): void {
-    syncCoursesToCalDAV(state, onResult)
+  async syncCoursesToCalDAV(state: CourseScheduleState, onResult: (success: number, failed: number, msg: string) => void): Promise<void> {
+    await syncCoursesToCalDAV(state, onResult)
   }
-  getLastSyncText(): string { return getLastSyncText() }
-  clearSyncState(): void { clearSyncState() }
+  async getLastSyncText(): Promise<string> { return await getLastSyncText() }
+  async clearSyncState(): Promise<void> { await clearSyncState() }
 }
 
 export const CalDAVService = new CalDAVServiceClass()

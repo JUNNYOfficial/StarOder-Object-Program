@@ -42,48 +42,48 @@ class FeishuEventItem {
   end_time: FeishuEventTime = new FeishuEventTime()
 }
 
-function getAppId(): string {
-  return dataStore.get<string>(KEY_FEISHU_APP_ID, '')
+async function getAppId(): Promise<string> {
+  return await dataStore.get<string>(KEY_FEISHU_APP_ID, '')
 }
 
-function setAppId(id: string): void {
-  dataStore.put(KEY_FEISHU_APP_ID, id)
+async function setAppId(id: string): Promise<void> {
+  await dataStore.put(KEY_FEISHU_APP_ID, id)
 }
 
-function getAppSecret(): string {
-  return dataStore.get<string>(KEY_FEISHU_APP_SECRET, '')
+async function getAppSecret(): Promise<string> {
+  return await dataStore.get<string>(KEY_FEISHU_APP_SECRET, '')
 }
 
-function setAppSecret(secret: string): void {
-  dataStore.put(KEY_FEISHU_APP_SECRET, secret)
+async function setAppSecret(secret: string): Promise<void> {
+  await dataStore.put(KEY_FEISHU_APP_SECRET, secret)
 }
 
-function isConfigured(): boolean {
-  return getAppId().length > 0 && getAppSecret().length > 0
+async function isConfigured(): Promise<boolean> {
+  return (await getAppId()).length > 0 && (await getAppSecret()).length > 0
 }
 
-function getToken(): string {
-  return dataStore.get<string>(KEY_FEISHU_TOKEN, '')
+async function getToken(): Promise<string> {
+  return await dataStore.get<string>(KEY_FEISHU_TOKEN, '')
 }
 
-function getTokenExpires(): number {
-  return dataStore.get<number>(KEY_FEISHU_EXPIRES, 0)
+async function getTokenExpires(): Promise<number> {
+  return await dataStore.get<number>(KEY_FEISHU_EXPIRES, 0)
 }
 
-function isAuthorized(): boolean {
-  const token = getToken()
+async function isAuthorized(): Promise<boolean> {
+  const token = await getToken()
   if (!token) return false
-  return Date.now() < getTokenExpires()
+  return Date.now() < await getTokenExpires()
 }
 
-function saveToken(token: string, expiresIn: number): void {
-  dataStore.put(KEY_FEISHU_TOKEN, token)
-  dataStore.put(KEY_FEISHU_EXPIRES, Date.now() + expiresIn * 1000)
+async function saveToken(token: string, expiresIn: number): Promise<void> {
+  await dataStore.put(KEY_FEISHU_TOKEN, token)
+  await dataStore.put(KEY_FEISHU_EXPIRES, Date.now() + expiresIn * 1000)
 }
 
-function clearAuth(): void {
-  dataStore.put(KEY_FEISHU_TOKEN, '')
-  dataStore.put(KEY_FEISHU_EXPIRES, 0)
+async function clearAuth(): Promise<void> {
+  await dataStore.put(KEY_FEISHU_TOKEN, '')
+  await dataStore.put(KEY_FEISHU_EXPIRES, 0)
 }
 
 function doPost(url: string, body: string, headers: Record<string, string>,
@@ -113,9 +113,9 @@ function testConnection(onResult: (success: boolean, msg: string) => void): void
   connectWithSecret(onResult)
 }
 
-function connectWithSecret(onResult: (success: boolean, msg: string) => void): void {
-  const appId = getAppId()
-  const appSecret = getAppSecret()
+async function connectWithSecret(onResult: (success: boolean, msg: string) => void): Promise<void> {
+  const appId = await getAppId()
+  const appSecret = await getAppSecret()
   if (!appId || !appSecret) {
     onResult(false, '请先配置飞书 App ID 和 App Secret')
     return
@@ -126,7 +126,7 @@ function connectWithSecret(onResult: (success: boolean, msg: string) => void): v
   const body = JSON.stringify({ app_id: appId, app_secret: appSecret })
 
   doPost(TENANT_TOKEN_URL, body, { 'Content-Type': 'application/json' },
-    (statusCode, resultStr, errMsg) => {
+    async (statusCode, resultStr, errMsg) => {
       if (errMsg) {
         onResult(false, errMsg)
         return
@@ -141,7 +141,7 @@ function connectWithSecret(onResult: (success: boolean, msg: string) => void): v
           onResult(false, '飞书未返回 token，请检查 App ID/Secret 是否正确')
           return
         }
-        saveToken(resp.tenant_access_token, resp.expire)
+        await saveToken(resp.tenant_access_token, resp.expire)
         onResult(true, '连接成功')
       } catch (e) {
         onResult(false, `解析响应失败: ${resultStr}`)
@@ -149,13 +149,13 @@ function connectWithSecret(onResult: (success: boolean, msg: string) => void): v
     })
 }
 
-function fetchCalendarEvents(onResult: (tasks: Task[], msg: string) => void): void {
-  const token = getToken()
-  if (!token || Date.now() >= getTokenExpires()) {
+async function fetchCalendarEvents(onResult: (tasks: Task[], msg: string) => void): Promise<void> {
+  const token = await getToken()
+  if (!token || Date.now() >= await getTokenExpires()) {
     // token 过期，自动刷新
-    connectWithSecret((success, msg) => {
+    connectWithSecret(async (success, msg) => {
       if (success) {
-        fetchCalendarEvents(onResult)
+        await fetchCalendarEvents(onResult)
       } else {
         onResult([], `Token 过期且刷新失败: ${msg}`)
       }
@@ -256,17 +256,17 @@ function inferTimeBlock(hour: number): TimeBlock {
 }
 
 class FeishuSyncServiceClass {
-  getAppId(): string { return getAppId() }
-  setAppId(id: string): void { setAppId(id) }
-  getAppSecret(): string { return getAppSecret() }
-  setAppSecret(secret: string): void { setAppSecret(secret) }
-  isConfigured(): boolean { return isConfigured() }
-  isAuthorized(): boolean { return isAuthorized() }
-  getToken(): string { return getToken() }
-  saveToken(token: string, expiresIn: number): void { saveToken(token, expiresIn) }
-  clearAuth(): void { clearAuth() }
+  async getAppId(): Promise<string> { return await getAppId() }
+  async setAppId(id: string): Promise<void> { await setAppId(id) }
+  async getAppSecret(): Promise<string> { return await getAppSecret() }
+  async setAppSecret(secret: string): Promise<void> { await setAppSecret(secret) }
+  async isConfigured(): Promise<boolean> { return await isConfigured() }
+  async isAuthorized(): Promise<boolean> { return await isAuthorized() }
+  async getToken(): Promise<string> { return await getToken() }
+  async saveToken(token: string, expiresIn: number): Promise<void> { await saveToken(token, expiresIn) }
+  async clearAuth(): Promise<void> { await clearAuth() }
   testConnection(onResult: (success: boolean, msg: string) => void): void { testConnection(onResult) }
-  fetchCalendarEvents(onResult: (tasks: Task[], msg: string) => void): void { fetchCalendarEvents(onResult) }
+  async fetchCalendarEvents(onResult: (tasks: Task[], msg: string) => void): Promise<void> { await fetchCalendarEvents(onResult) }
 }
 
 export const FeishuSyncService = new FeishuSyncServiceClass()

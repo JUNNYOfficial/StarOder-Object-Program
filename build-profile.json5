@@ -20,17 +20,30 @@
         "material": {
           "certpath": "/Users/junnyzhangqi/DevEcoStudioProjects/StarOrder_Cloud/signatures/StarOrder-Open.cer",
           "keyAlias": "releasekey",
-          "keyPassword": "Release@123",
+          "keyPassword": "0000001B4B5368717FBB5806ED345E3FF4EC0AFE8979AA8B13EA4A50DE62BC913BE2A05B91D49EAEEB3B4E",
           "profile": "/Users/junnyzhangqi/DevEcoStudioProjects/StarOrder_Cloud/signatures/release.p7b",
           "signAlg": "SHA256withECDSA",
           "storeFile": "/Users/junnyzhangqi/DevEcoStudioProjects/StarOrder_Cloud/signatures/release.p12",
-          "storePassword": "Release@123"
+          "storePassword": "0000001B0E1D58ABC9230628850833C38FC66A2429538DDB29C3DFA48383A13CA2D8BA20015ADAC9957F1F"
         }
       }
     ],
     "products": [
       {
         "name": "default",
+        "signingConfig": "default",
+        "targetSdkVersion": "6.1.0(23)",
+        "compatibleSdkVersion": "6.1.0(23)",
+        "runtimeOS": "HarmonyOS",
+        "buildOption": {
+          "strictMode": {
+            "caseSensitiveCheck": true,
+            "useNormalizedOHMUrl": true
+          }
+        }
+      },
+      {
+        "name": "release",
         "signingConfig": "release",
         "targetSdkVersion": "6.1.0(23)",
         "compatibleSdkVersion": "6.1.0(23)",

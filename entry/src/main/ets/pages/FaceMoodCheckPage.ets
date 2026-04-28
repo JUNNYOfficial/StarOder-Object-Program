@@ -18,8 +18,8 @@ struct FaceMoodCheckPage {
   @State userScore: number = 3
   @State showConfirm: boolean = false
 
-  aboutToAppear() {
-    this.settings = dataStore.getUserPrefs()
+  async aboutToAppear() {
+    this.settings = await dataStore.getUserPrefs()
   }
 
   private baseFont(): number {
@@ -65,7 +65,7 @@ struct FaceMoodCheckPage {
     }
   }
 
-  saveRecord() {
+  async saveRecord() {
     const now = new Date()
     const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
     const record = new FaceMoodRecord(todayStr(), timeStr, this.analysisResult?.score || 3, this.analysisResult?.confidence || 0)
@@ -73,7 +73,7 @@ struct FaceMoodCheckPage {
     record.imageUri = this.imageUri
     record.userConfirmed = true
     record.userAdjustedScore = this.userScore
-    dataStore.saveFaceMoodRecord(record)
+    await dataStore.saveFaceMoodRecord(record)
     router.back()
   }
 
@@ -196,7 +196,7 @@ struct FaceMoodCheckPage {
                   .fontColor(UiTokens.textInverse)
                   .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
                   .borderRadius(UiTokens.radiusXL)
-                  .onClick(() => { this.saveRecord() })
+                  .onClick(async () => { await this.saveRecord() })
               }
               .width('100%')
               .padding(UiTokens.cardPadding)

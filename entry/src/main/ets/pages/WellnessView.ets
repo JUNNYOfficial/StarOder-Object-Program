@@ -64,9 +64,9 @@ struct WellnessView {
   @State totalTasksThisWeek: number = 0
   @State completedTasksThisWeek: number = 0
 
-  aboutToAppear() {
-    this.settings = dataStore.getUserPrefs()
-    this.loadData()
+  async aboutToAppear() {
+    this.settings = await dataStore.getUserPrefs()
+    await this.loadData()
   }
 
   private baseFont(): number {
@@ -77,19 +77,19 @@ struct WellnessView {
     return this.settings.largeText ? UiTokens.text2XL : UiTokens.textXL
   }
 
-  private loadData() {
-    this.loadEnergyData()
-    this.loadFocusStats()
-    this.loadMoodData()
-    this.loadFocusTrends()
-    this.loadTaskCompletion()
+  private async loadData() {
+    await this.loadEnergyData()
+    await this.loadFocusStats()
+    await this.loadMoodData()
+    await this.loadFocusTrends()
+    await this.loadTaskCompletion()
     this.hasAnyData = this.totalFocusMinutes > 0 || this.moodRecords.length > 0 ||
       this.dayEnergies.filter(d => d.hasData).length > 0 ||
       this.dailyFocusData.some(d => d.minutes > 0)
   }
 
-  private loadEnergyData() {
-    const allEnergy = dataStore.getEnergyRecords()
+  private async loadEnergyData() {
+    const allEnergy = await dataStore.getEnergyRecords()
     const today = new Date()
     const days: DayEnergy[] = []
     for (let i = 6; i >= 0; i--) {
@@ -110,8 +110,8 @@ struct WellnessView {
     this.dayEnergies = days
   }
 
-  private loadFocusStats() {
-    const all = dataStore.getFocusRecords()
+  private async loadFocusStats() {
+    const all = await dataStore.getFocusRecords()
     let totalMinutes = 0
     let sessions = 0
     for (let i = 0; i < all.length; i++) {
@@ -124,8 +124,8 @@ struct WellnessView {
     this.completedFocusSessions = sessions
   }
 
-  private loadMoodData() {
-    const all = dataStore.getMoodSurveys()
+  private async loadMoodData() {
+    const all = await dataStore.getMoodSurveys()
     const recent: MoodSurveyRecord[] = []
     const startIdx = all.length > 5 ? all.length - 5 : 0
     for (let i = startIdx; i < all.length; i++) {
@@ -134,14 +134,14 @@ struct WellnessView {
     this.moodRecords = recent
   }
 
-  private loadFocusTrends() {
-    this.dailyFocusData = dataStore.getFocusDailyStats(7)
-    this.weeklyFocusData = dataStore.getFocusWeeklyStats(4)
+  private async loadFocusTrends() {
+    this.dailyFocusData = await dataStore.getFocusDailyStats(7)
+    this.weeklyFocusData = await dataStore.getFocusWeeklyStats(4)
     this.maxDailyMinutes = Math.max(1, ...this.dailyFocusData.map(d => d.minutes))
     this.maxWeeklyMinutes = Math.max(1, ...this.weeklyFocusData.map(d => d.totalMinutes))
   }
 
-  private loadTaskCompletion() {
+  private async loadTaskCompletion() {
     const now = new Date()
     const startOfWeek = new Date(now)
     const dayOfWeek = now.getDay() === 0 ? 7 : now.getDay()
@@ -151,7 +151,7 @@ struct WellnessView {
 
     let total = 0
     let completed = 0
-    const allTasks = dataStore.getActiveTasks()
+    const allTasks = await dataStore.getActiveTasks()
     for (let i = 0; i < allTasks.length; i++) {
       const t = allTasks[i]
       if (t.date >= startStr && t.date <= endStr) {
@@ -166,28 +166,28 @@ struct WellnessView {
     this.taskCompletionRate = total > 0 ? Math.round((completed / total) * 100) : 0
   }
 
-  saveEnergyRecord() {
+  async saveEnergyRecord() {
     const record = new EnergyRecord(todayStr(), this.energyRating)
     record.note = this.energyNote.trim()
-    dataStore.saveEnergyRecord(record)
+    await dataStore.saveEnergyRecord(record)
     this.energyNote = ''
     this.energyRating = 3
     this.showEnergyInput = false
-    this.loadData()
+    await this.loadData()
   }
 
-  saveMoodRecord() {
+  async saveMoodRecord() {
     const now = new Date()
     const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
     const record = new MoodSurveyRecord(todayStr(), timeStr, this.moodRating)
     record.trigger = this.moodTrigger.trim()
     record.context = this.moodContext.trim()
-    dataStore.saveMoodSurvey(record)
+    await dataStore.saveMoodSurvey(record)
     this.moodTrigger = ''
     this.moodContext = ''
     this.moodRating = 3
     this.showMoodInput = false
-    this.loadData()
+    await this.loadData()
   }
 
   build() {
@@ -677,7 +677,7 @@ struct WellnessView {
                     .fontColor(UiTokens.textInverse)
                     .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
                     .borderRadius(UiTokens.radiusXL)
-                    .onClick(() => { this.saveEnergyRecord() })
+                    .onClick(async () => { await this.saveEnergyRecord() })
                 }
                 .width('100%')
                 .padding(UiTokens.cardPadding)
@@ -732,7 +732,7 @@ struct WellnessView {
                     .fontColor(UiTokens.textInverse)
                     .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
                     .borderRadius(UiTokens.radiusXL)
-                    .onClick(() => { this.saveMoodRecord() })
+                    .onClick(async () => { await this.saveMoodRecord() })
                 }
                 .width('100%')
                 .padding(UiTokens.cardPadding)

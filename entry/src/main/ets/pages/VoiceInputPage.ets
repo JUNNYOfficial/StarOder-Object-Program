@@ -12,8 +12,8 @@ struct VoiceInputPage {
   @State parsedResult: ParsedSchedule | null = null
   @State showResult: boolean = false
 
-  aboutToAppear() {
-    this.settings = dataStore.getUserPrefs()
+  async aboutToAppear() {
+    this.settings = await dataStore.getUserPrefs()
   }
 
   private baseFont(): number {
@@ -33,12 +33,12 @@ struct VoiceInputPage {
     this.showResult = true
   }
 
-  saveParsedTask() {
+  async saveParsedTask() {
     if (!this.parsedResult) {
       return
     }
     const task = createTaskFromParsed(this.parsedResult)
-    dataStore.addTask(task)
+    await dataStore.addTask(task)
     const ok = setSystemReminder(task)
     if (!ok) {
       promptAction.showToast({ message: '当前版本暂不支持系统提醒' })
@@ -144,8 +144,8 @@ struct VoiceInputPage {
                 .fontColor(UiTokens.textInverse)
                 .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
                 .borderRadius(UiTokens.radiusXL)
-                .onClick(() => {
-                  this.saveParsedTask()
+                .onClick(async () => {
+                  await this.saveParsedTask()
                 })
             }
             .width('100%')

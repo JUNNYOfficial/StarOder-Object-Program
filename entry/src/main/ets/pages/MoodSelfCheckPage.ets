@@ -14,15 +14,15 @@ struct MoodSelfCheckPage {
   @State focusRating: number = 3
   @State note: string = ''
 
-  aboutToAppear() {
-    this.settings = dataStore.getUserPrefs()
+  async aboutToAppear() {
+    this.settings = await dataStore.getUserPrefs()
   }
 
   private baseFont(): number {
     return this.settings.largeText ? UiTokens.textL : UiTokens.textM
   }
 
-  saveCheck() {
+  async saveCheck() {
     const now = new Date()
     const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
 
@@ -30,11 +30,11 @@ struct MoodSelfCheckPage {
     moodRecord.trigger = `能量:${this.energyRating} 焦虑:${this.anxietyRating} 专注:${this.focusRating}`
     moodRecord.context = '自查'
     moodRecord.note = this.note.trim()
-    dataStore.saveMoodSurvey(moodRecord)
+    await dataStore.saveMoodSurvey(moodRecord)
 
     const energyRecord = new EnergyRecord(todayStr(), this.energyRating)
     energyRecord.note = `自查同步：情绪${this.moodRating}`
-    dataStore.saveEnergyRecord(energyRecord)
+    await dataStore.saveEnergyRecord(energyRecord)
 
     router.back()
   }
@@ -130,7 +130,7 @@ struct MoodSelfCheckPage {
             .fontColor(UiTokens.textInverse)
             .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
             .borderRadius(UiTokens.radiusXL)
-            .onClick(() => { this.saveCheck() })
+            .onClick(async () => { await this.saveCheck() })
         }
         .width('100%')
         .padding(UiTokens.pagePadding)

@@ -14,8 +14,8 @@ struct CourseImportPage {
   @State importMsg: string = ''
   @State baseDate: string = ''
 
-  aboutToAppear() {
-    this.settings = dataStore.getUserPrefs()
+  async aboutToAppear() {
+    this.settings = await dataStore.getUserPrefs()
     this.baseDate = this.todayStr()
   }
 
@@ -45,8 +45,8 @@ struct CourseImportPage {
     this.importMsg = `解析到 ${this.courses.length} 门课程`
   }
 
-  importCourses() {
-    const count = generateTasksFromCourses(this.courses, this.baseDate)
+  async importCourses() {
+    const count = await generateTasksFromCourses(this.courses, this.baseDate)
     this.importMsg = `成功导入 ${count} 个日程`
     setTimeout(() => {
       router.back()

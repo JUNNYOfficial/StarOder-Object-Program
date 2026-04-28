@@ -11,6 +11,8 @@ export struct SettingsTab {
   @State exportDataStr: string = ''
   @State importDataStr: string = ''
   @State dataMsg: string = ''
+  @State exportPassword: string = ''
+  @State importPassword: string = ''
   @State caldavConfig: CalDAVConfig = { serverUrl: '', username: '', password: '', calendarPath: '' }
   @State caldavMsg: string = ''
   @State feishuAppId: string = ''
@@ -18,35 +20,35 @@ export struct SettingsTab {
   @State feishuMsg: string = ''
   @State showSyncSection: boolean = false
 
-  aboutToAppear() {
-    this.settings = dataStore.getUserPrefs()
-    this.caldavConfig = CalDAVService.getConfig()
-    this.feishuAppId = FeishuSyncService.getAppId()
-    this.feishuAppSecret = FeishuSyncService.getAppSecret()
+  async aboutToAppear() {
+    this.settings = await dataStore.getUserPrefs()
+    this.caldavConfig = await CalDAVService.getConfig()
+    this.feishuAppId = await FeishuSyncService.getAppId()
+    this.feishuAppSecret = await FeishuSyncService.getAppSecret()
   }
 
-  toggleHighContrast() {
+  async toggleHighContrast() {
     this.settings.highContrast = !this.settings.highContrast
-    dataStore.saveUserPrefs(this.settings)
+    await dataStore.saveUserPrefs(this.settings)
   }
 
-  toggleLargeText() {
+  async toggleLargeText() {
     this.settings.largeText = !this.settings.largeText
-    dataStore.saveUserPrefs(this.settings)
+    await dataStore.saveUserPrefs(this.settings)
   }
 
-  toggleReduceMotion() {
+  async toggleReduceMotion() {
     this.settings.reduceAnimations = !this.settings.reduceAnimations
-    dataStore.saveUserPrefs(this.settings)
+    await dataStore.saveUserPrefs(this.settings)
   }
 
-  togglePrepareHints() {
+  async togglePrepareHints() {
     this.settings.showPrepareHints = !this.settings.showPrepareHints
-    dataStore.saveUserPrefs(this.settings)
+    await dataStore.saveUserPrefs(this.settings)
   }
 
-  saveCalDAVConfig() {
-    CalDAVService.setConfig(this.caldavConfig)
+  async saveCalDAVConfig() {
+    await CalDAVService.setConfig(this.caldavConfig)
     this.caldavMsg = '配置已保存'
   }
 
@@ -58,9 +60,9 @@ export struct SettingsTab {
     })
   }
 
-  saveFeishuConfig() {
-    FeishuSyncService.setAppId(this.feishuAppId.trim())
-    FeishuSyncService.setAppSecret(this.feishuAppSecret.trim())
+  async saveFeishuConfig() {
+    await FeishuSyncService.setAppId(this.feishuAppId.trim())
+    await FeishuSyncService.setAppSecret(this.feishuAppSecret.trim())
     this.feishuMsg = '配置已保存'
   }
 
@@ -71,34 +73,35 @@ export struct SettingsTab {
     })
   }
 
-  syncFeishuEvents() {
+  async syncFeishuEvents() {
     this.feishuMsg = '正在同步飞书日程...'
-    FeishuSyncService.fetchCalendarEvents((tasks: Task[], msg: string) => {
+    FeishuSyncService.fetchCalendarEvents(async (tasks: Task[], msg: string) => {
       if (tasks.length === 0) {
         this.feishuMsg = msg
         return
       }
-      const result = dataStore.syncExternalTasks(tasks, 'feishu')
+      const result = await dataStore.syncExternalTasks(tasks, 'feishu')
       this.feishuMsg = `同步成功：新增 ${result.added} 个，更新 ${result.updated} 个日程`
     })
   }
 
-  exportDataFn() {
-    this.exportDataStr = dataStore.exportAll()
-    this.dataMsg = '数据已导出到下方文本框，请复制保存'
+  async exportDataFn() {
+    this.exportDataStr = await dataStore.exportAll(this.exportPassword)
+    this.dataMsg = this.exportPassword ? '数据已加密导出，请复制保存' : '数据已导出到下方文本框，请复制保存'
   }
 
-  importDataFn() {
+  async importDataFn() {
     if (!this.importDataStr.trim()) {
       this.dataMsg = '请先粘贴备份数据'
       return
     }
     try {
-      dataStore.importAll(this.importDataStr.trim(), 'overwrite')
+      await dataStore.importAll(this.importDataStr.trim(), 'overwrite', this.importPassword)
       this.dataMsg = '数据恢复成功'
       this.importDataStr = ''
+      this.importPassword = ''
     } catch (e) {
-      this.dataMsg = '恢复失败，请检查数据格式'
+      this.dataMsg = '恢复失败，请检查数据格式或密码'
     }
   }
 
@@ -512,26 +515,28 @@ export struct SettingsTab {
             .width('100%')
 
           Column({ space: UiTokens.gapM }) {
-            Row({ space: UiTokens.gapM }) {
-              Button('导出备份')
-                .layoutWeight(1)
-                .height(44)
-                .fontSize(this.baseFont())
-                .fontColor(UiTokens.textInverse)
-                .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
-                .borderRadius(UiTokens.radiusXL)
-                .onClick(() => { this.exportDataFn() })
+            Text('导出备份')
+              .fontSize(this.baseFont())
+              .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+              .width('100%')
 
-              Button('恢复备份')
-                .layoutWeight(1)
-                .height(44)
-                .fontSize(this.baseFont())
-                .fontColor(UiTokens.textInverse)
-                .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
-                .borderRadius(UiTokens.radiusXL)
-                .onClick(() => { this.importDataFn() })
-            }
-            .width('100%')
+            TextInput({ placeholder: '设置导出密码（可选，留空则不加密）', text: $$this.exportPassword })
+              .width('100%')
+              .height(44)
+              .fontSize(this.baseFont())
+              .backgroundColor(UiTokens.bgHover)
+              .placeholderColor(this.settings.highContrast ? '#999999' : UiTokens.textTertiary)
+              .borderRadius(UiTokens.radiusL)
+              .type(InputType.Password)
+
+            Button('导出')
+              .width('100%')
+              .height(44)
+              .fontSize(this.baseFont())
+              .fontColor(UiTokens.textInverse)
+              .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
+              .borderRadius(UiTokens.radiusXL)
+              .onClick(async () => { await this.exportDataFn() })
 
             if (this.exportDataStr) {
               TextArea({ text: $$this.exportDataStr })
@@ -543,6 +548,22 @@ export struct SettingsTab {
                 .enabled(false)
             }
 
+            Divider().color(UiTokens.divider).margin({ top: 8, bottom: 8 })
+
+            Text('恢复备份')
+              .fontSize(this.baseFont())
+              .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+              .width('100%')
+
+            TextInput({ placeholder: '恢复密码（如果导出时设了密码）', text: $$this.importPassword })
+              .width('100%')
+              .height(44)
+              .fontSize(this.baseFont())
+              .backgroundColor(UiTokens.bgHover)
+              .placeholderColor(this.settings.highContrast ? '#999999' : UiTokens.textTertiary)
+              .borderRadius(UiTokens.radiusL)
+              .type(InputType.Password)
+
             TextArea({ placeholder: '在此粘贴备份数据以恢复...', text: $$this.importDataStr })
               .width('100%')
               .height(80)
@@ -550,6 +571,15 @@ export struct SettingsTab {
               .backgroundColor(UiTokens.bgHover)
               .placeholderColor(this.settings.highContrast ? '#999999' : UiTokens.textTertiary)
               .borderRadius(UiTokens.radiusL)
+
+            Button('恢复')
+              .width('100%')
+              .height(44)
+              .fontSize(this.baseFont())
+              .fontColor(UiTokens.textInverse)
+              .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
+              .borderRadius(UiTokens.radiusXL)
+              .onClick(async () => { await this.importDataFn() })
 
             if (this.dataMsg) {
               Text(this.dataMsg)

@@ -9,8 +9,8 @@ import { SettingsTab } from '../components/SettingsTab'
 struct Settings {
   @State settings: UserPreferences = new UserPreferences()
 
-  aboutToAppear() {
-    this.settings = dataStore.getUserPrefs()
+  async aboutToAppear() {
+    this.settings = await dataStore.getUserPrefs()
   }
 
   private baseFont(): number {

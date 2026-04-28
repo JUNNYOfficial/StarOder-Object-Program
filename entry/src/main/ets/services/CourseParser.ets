@@ -379,7 +379,7 @@ function isPureNumber(text: string): boolean {
 
 // ===== 生成日程任务 =====
 
-export function generateTasksFromCourses(courses: CourseItem[], baseDate: string): number {
+export async function generateTasksFromCourses(courses: CourseItem[], baseDate: string): Promise<number> {
   let count = 0
   const base = new Date(baseDate)
   for (let i = 0; i < courses.length; i++) {
@@ -394,7 +394,7 @@ export function generateTasksFromCourses(courses: CourseItem[], baseDate: string
     task.type = inferCourseType(c.name)
     task.intensity = TaskIntensity.MEDIUM
     task.timeBlock = inferTimeBlockFromHour(parseInt(c.startTime.split(':')[0]))
-    dataStore.addTask(task)
+    await dataStore.addTask(task)
     count = count + 1
   }
   return count

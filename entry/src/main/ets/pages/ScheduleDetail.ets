@@ -10,15 +10,15 @@ struct ScheduleDetail {
   @State task: Task | null = null
   @State settings: UserPreferences = new UserPreferences()
 
-  aboutToAppear() {
-    this.settings = dataStore.getUserPrefs()
+  async aboutToAppear() {
+    this.settings = await dataStore.getUserPrefs()
     const params = router.getParams() as Record<string, string>
     const id = params?.['id']
     if (id) {
-      let found = dataStore.getActiveTasks().find(t => t.id === id)
+      let found = (await dataStore.getActiveTasks()).find(t => t.id === id)
       if (!found) {
         // 可能是重复任务实例（id 格式为 originalId_YYYY-MM-DD），回退到原始任务
-        found = dataStore.getTaskById(id)
+        found = await dataStore.getTaskById(id)
       }
       if (found) {
         this.task = found
@@ -68,9 +68,9 @@ struct ScheduleDetail {
     }
   }
 
-  toggleSubTask(subTaskId: string) {
+  async toggleSubTask(subTaskId: string) {
     if (!this.task) return
-    const all = dataStore.getActiveTasks()
+    const all = await dataStore.getActiveTasks()
     // 重复任务实例的 id 格式为 originalId_YYYY-MM-DD，需要找到原始任务
     let taskId = this.task.id
     const underscoreIdx = taskId.lastIndexOf('_')
@@ -85,7 +85,7 @@ struct ScheduleDetail {
       const tIdx = all[sIdx].subTasks.findIndex(t => t.id === subTaskId)
       if (tIdx >= 0) {
         all[sIdx].subTasks[tIdx].completed = !all[sIdx].subTasks[tIdx].completed
-        dataStore.saveTasks(all)
+        await dataStore.saveTasks(all)
         // 同步当前显示的 task 实例中的子任务状态
         const currentStIdx = this.task.subTasks.findIndex(t => t.id === subTaskId)
         if (currentStIdx >= 0) {
@@ -95,19 +95,19 @@ struct ScheduleDetail {
     }
   }
 
-  advanceStatus() {
+  async advanceStatus() {
     if (!this.task) return
-    if (dataStore.advanceTaskStatus(this.task.id)) {
-      const updated = dataStore.getTaskById(this.task.id)
+    if (await dataStore.advanceTaskStatus(this.task.id)) {
+      const updated = await dataStore.getTaskById(this.task.id)
       if (updated) {
         this.task.status = updated.status
       }
     }
   }
 
-  deleteTask() {
+  async deleteTask() {
     if (!this.task) return
-    dataStore.softDeleteTask(this.task.id)
+    await dataStore.softDeleteTask(this.task.id)
     router.back()
   }
 
@@ -150,8 +150,8 @@ struct ScheduleDetail {
                 .fontColor(UiTokens.paused)
             }
             .backgroundColor('transparent')
-            .onClick(() => {
-              this.deleteTask()
+            .onClick(async () => {
+              await this.deleteTask()
             })
           } else {
             Text(this.sourceLabel())
@@ -288,8 +288,8 @@ struct ScheduleDetail {
                       subTask: subTask,
                       settings: this.settings,
                       index: index,
-                      onToggle: () => {
-                        this.toggleSubTask(subTask.id)
+                      onToggle: async () => {
+                        await this.toggleSubTask(subTask.id)
                       }
                     })
                   })
@@ -310,8 +310,8 @@ struct ScheduleDetail {
               .backgroundColor(this.settings.highContrast ? UiTokens.hcText : this.statusColor())
               .borderRadius(UiTokens.radiusXL)
               .margin({ top: 8, bottom: 32 })
-              .onClick(() => {
-                this.advanceStatus()
+              .onClick(async () => {
+                await this.advanceStatus()
               })
           }
           .width('100%')
