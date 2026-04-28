@@ -394,6 +394,7 @@ export struct DayTimeline {
 
   private get courseTimelineItems(): TimelineCourseItem[] {
     const result: TimelineCourseItem[] = []
+    if (!this.courses || !this.courseTimeSlots) return result
     if (this.courses.length === 0 || this.courseTimeSlots.length === 0) return result
 
     const startHour = this.startHour
@@ -439,6 +440,7 @@ export struct DayTimeline {
 
   private get allDayTasks(): Task[] {
     const result: Task[] = []
+    if (!this.tasks) return result
     for (let i = 0; i < this.tasks.length; i++) {
       const task = this.tasks[i]
       if (!task.startTime || !task.endTime) {
@@ -451,7 +453,7 @@ export struct DayTimeline {
   private get transitionBanner(): TransitionBannerInfo {
     const result = new TransitionBannerInfo()
 
-    if (!this.today) return result
+    if (!this.today || !this.tasks) return result
 
     // 找当前进行中的任务
     let ongoingTask: Task | null = null
@@ -479,6 +481,7 @@ export struct DayTimeline {
     let nextStartMins = Infinity
 
     for (let i = 0; i < this.tasks.length; i++) {
+      if (!this.tasks) break
       const task = this.tasks[i]
       if (!task.startTime || task.id === ongoingTask.id) continue
       const tStart = timeToMinutes(task.startTime)

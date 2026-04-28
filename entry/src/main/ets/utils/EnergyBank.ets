@@ -24,6 +24,7 @@ export class EnergyCostResult {
 
 export function calculateDayEnergy(tasks: Task[]): EnergyCostResult {
   const result = new EnergyCostResult()
+  if (!tasks) return result
   for (let i = 0; i < tasks.length; i++) {
     const cost = getTaskEnergyCost(tasks[i].type, tasks[i].intensity)
     if (cost > 0) {

@@ -79,13 +79,17 @@ struct Index {
   }
 
   async loadData(): Promise<void> {
-    this.settings = await dataStore.getUserPrefs()
-    this.tasks = await dataStore.getTasksByDate(this.currentDate)
-    this.applyFilter()
-    this.courseState = await dataStore.getCourseState()
-    this.todayCourses = this.getTodayCourses()
-    const energyRecords = await dataStore.getEnergyRecords()
-    this.energySummary = getTodayEnergySummary(this.tasks, energyRecords)
+    try {
+      this.settings = await dataStore.getUserPrefs()
+      this.tasks = await dataStore.getTasksByDate(this.currentDate)
+      this.applyFilter()
+      this.courseState = await dataStore.getCourseState()
+      this.todayCourses = this.getTodayCourses()
+      const energyRecords = await dataStore.getEnergyRecords()
+      this.energySummary = getTodayEnergySummary(this.tasks, energyRecords)
+    } catch (e) {
+      console.error('loadData failed:', JSON.stringify(e))
+    }
   }
 
   private getCurrentWeek(state: CourseScheduleState): number {
@@ -103,7 +107,7 @@ struct Index {
 
   private getTodayCourses(): Course[] {
     const state = this.courseState
-    if (state.courses.length === 0) return []
+    if (!state.courses || state.courses.length === 0) return []
     const currentWeek = this.getCurrentWeek(state)
     const now = new Date()
     const dayOfWeek = now.getDay() === 0 ? 7 : now.getDay()

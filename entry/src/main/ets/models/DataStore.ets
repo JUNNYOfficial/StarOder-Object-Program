@@ -435,6 +435,12 @@ class DataStore {
     if (!state.timeSlots || state.timeSlots.length === 0) {
       state.timeSlots = DEFAULT_TIME_SLOTS.map(s => new TimeSlot(s.slotNumber, s.startTime, s.endTime))
     }
+    if (!state.courses) {
+      state.courses = []
+    }
+    if (!state.semesterStartDate) {
+      state.semesterStartDate = ''
+    }
     return state
   }
 

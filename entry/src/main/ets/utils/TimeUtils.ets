@@ -138,6 +138,8 @@ export function getDayTimeRange(tasks: Task[]): DayTimeRange {
   let minHour = 6   // 默认早上6点
   let maxHour = 23  // 默认晚上11点
 
+  if (!tasks) return new DayTimeRange(minHour, maxHour)
+
   for (let i = 0; i < tasks.length; i++) {
     const task = tasks[i]
     if (task.startTime) {
