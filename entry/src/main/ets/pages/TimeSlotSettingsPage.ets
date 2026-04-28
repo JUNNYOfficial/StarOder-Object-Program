@@ -1,6 +1,6 @@
 import { router, promptAction } from '@kit.ArkUI'
 import { dataStore } from '../models/DataStore'
-import { TimeSlot, CourseScheduleState } from '../models/CourseModels'
+import { TimeSlot } from '../models/CourseModels'
 import { UiTokens } from '../design/UiTokens'
 
 @Entry

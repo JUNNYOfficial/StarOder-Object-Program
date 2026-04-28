@@ -1,4 +1,4 @@
-import { router, promptAction } from '@kit.ArkUI'
+import { router } from '@kit.ArkUI'
 import { UserPreferences, FocusMode, FocusRecord, getFocusModeConfig, Task } from '../models/DataModels'
 import { dataStore } from '../models/DataStore'
 import { UiTokens } from '../design/UiTokens'

@@ -15,7 +15,11 @@ struct ScheduleDetail {
     const params = router.getParams() as Record<string, string>
     const id = params?.['id']
     if (id) {
-      const found = dataStore.getActiveTasks().find(t => t.id === id)
+      let found = dataStore.getActiveTasks().find(t => t.id === id)
+      if (!found) {
+        // 可能是重复任务实例（id 格式为 originalId_YYYY-MM-DD），回退到原始任务
+        found = dataStore.getTaskById(id)
+      }
       if (found) {
         this.task = found
       }
@@ -57,13 +61,26 @@ struct ScheduleDetail {
   toggleSubTask(subTaskId: string) {
     if (!this.task) return
     const all = dataStore.getActiveTasks()
-    const sIdx = all.findIndex(t => t.id === this.task!.id)
+    // 重复任务实例的 id 格式为 originalId_YYYY-MM-DD，需要找到原始任务
+    let taskId = this.task.id
+    const underscoreIdx = taskId.lastIndexOf('_')
+    if (underscoreIdx > 0) {
+      const suffix = taskId.substring(underscoreIdx + 1)
+      if (suffix.length === 10 && suffix.charAt(4) === '-' && suffix.charAt(7) === '-') {
+        taskId = taskId.substring(0, underscoreIdx)
+      }
+    }
+    const sIdx = all.findIndex(t => t.id === taskId)
     if (sIdx >= 0) {
       const tIdx = all[sIdx].subTasks.findIndex(t => t.id === subTaskId)
       if (tIdx >= 0) {
         all[sIdx].subTasks[tIdx].completed = !all[sIdx].subTasks[tIdx].completed
         dataStore.saveTasks(all)
-        this.task = all[sIdx]
+        // 同步当前显示的 task 实例中的子任务状态
+        const currentStIdx = this.task.subTasks.findIndex(t => t.id === subTaskId)
+        if (currentStIdx >= 0) {
+          this.task.subTasks[currentStIdx].completed = all[sIdx].subTasks[tIdx].completed
+        }
       }
     }
   }
@@ -71,7 +88,10 @@ struct ScheduleDetail {
   advanceStatus() {
     if (!this.task) return
     if (dataStore.advanceTaskStatus(this.task.id)) {
-      this.task = dataStore.getActiveTasks().find(t => t.id === this.task!.id) || this.task
+      const updated = dataStore.getTaskById(this.task.id)
+      if (updated) {
+        this.task.status = updated.status
+      }
     }
   }
 

@@ -100,9 +100,21 @@ class DataStore {
     }
   }
 
+  private resolveOriginalTaskId(taskId: string): string {
+    const underscoreIdx = taskId.lastIndexOf('_')
+    if (underscoreIdx > 0) {
+      const suffix = taskId.substring(underscoreIdx + 1)
+      if (suffix.length === 10 && suffix.charAt(4) === '-' && suffix.charAt(7) === '-') {
+        return taskId.substring(0, underscoreIdx)
+      }
+    }
+    return taskId
+  }
+
   softDeleteTask(taskId: string): void {
+    const originalId = this.resolveOriginalTaskId(taskId)
     const all = this.getTasks()
-    const idx = all.findIndex(t => t.id === taskId)
+    const idx = all.findIndex(t => t.id === originalId)
     if (idx >= 0) {
       all[idx].deleted = true
       all[idx].deletedAt = Date.now()
@@ -112,8 +124,9 @@ class DataStore {
   }
 
   restoreTask(taskId: string): void {
+    const originalId = this.resolveOriginalTaskId(taskId)
     const all = this.getTasks()
-    const idx = all.findIndex(t => t.id === taskId)
+    const idx = all.findIndex(t => t.id === originalId)
     if (idx >= 0) {
       all[idx].deleted = false
       all[idx].deletedAt = 0
@@ -123,8 +136,9 @@ class DataStore {
   }
 
   permanentlyDeleteTask(taskId: string): void {
+    const originalId = this.resolveOriginalTaskId(taskId)
     const all = this.getTasks()
-    const filtered = all.filter(t => t.id !== taskId)
+    const filtered = all.filter(t => t.id !== originalId)
     this.saveTasks(filtered)
   }
 
@@ -134,6 +148,11 @@ class DataStore {
 
   getActiveTasks(): Task[] {
     return this.getTasks().filter(t => !t.deleted)
+  }
+
+  getTaskById(taskId: string): Task | undefined {
+    const originalId = this.resolveOriginalTaskId(taskId)
+    return this.getActiveTasks().find(t => t.id === originalId)
   }
 
   getTasksByDate(date: string): Task[] {
@@ -178,6 +197,7 @@ class DataStore {
         clone.prepareItems = t.prepareItems ? [...t.prepareItems] : []
         clone.subTasks = t.subTasks ? t.subTasks.map(s => {
           const st = new SubTask(s.title, clone.id)
+          st.id = s.id
           st.completed = s.completed
           return st
         }) : []
@@ -370,8 +390,9 @@ class DataStore {
 
   // ===== Task Status Advancement =====
   advanceTaskStatus(taskId: string): boolean {
+    const originalId = this.resolveOriginalTaskId(taskId)
     const all = this.getActiveTasks()
-    const idx = all.findIndex(t => t.id === taskId)
+    const idx = all.findIndex(t => t.id === originalId)
     if (idx < 0) return false
     const statusOrder = [TaskStatus.TODO, TaskStatus.STARTED, TaskStatus.MOSTLY, TaskStatus.DONE]
     const currentIdx = statusOrder.indexOf(all[idx].status)

@@ -4,6 +4,8 @@ import { ScheduleCard } from './ScheduleCard'
 import { UiTokens } from '../design/UiTokens'
 import { router } from '@kit.ArkUI'
 import { CourseScheduleState, Course, WeekType } from '../models/CourseModels'
+import { formatDate, formatYMD } from '../utils/DateUtils'
+import { getCourseTimeText } from '../utils/UiHelper'
 
 class CalendarDay {
   date: string

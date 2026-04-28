@@ -47,7 +47,7 @@ struct AddSchedule {
     const params = router.getParams() as Record<string, string>
     const id = params?.['id']
     if (id) {
-      const task = dataStore.getActiveTasks().find(t => t.id === id)
+      const task = dataStore.getTaskById(id)
       if (task) {
         this.isEditMode = true
         this.editTaskId = task.id

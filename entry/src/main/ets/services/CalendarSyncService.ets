@@ -1,9 +1,8 @@
 import { calendarManager } from '@kit.CalendarKit'
 import { BusinessError } from '@kit.BasicServicesKit'
 import { abilityAccessCtrl, Permissions } from '@kit.AbilityKit'
-import { Course, TimeSlot, WeekType, CourseScheduleState } from '../models/CourseModels'
-import { Task } from '../models/DataModels'
-import { formatDate, formatTime } from '../utils/DateUtils'
+import { Course, WeekType, CourseScheduleState } from '../models/CourseModels'
+
 
 const TAG = '[CalendarSync]'
 
@@ -200,65 +199,6 @@ class CalendarSyncServiceClass {
       })
   }
 
-  // ===== Import from System Calendar =====
-  importEventsFromCalendar(
-    context: Context,
-    startTime: number,
-    endTime: number,
-    onResult: (tasks: Task[], msg: string) => void
-  ): void {
-    this.init(context, (granted) => {
-      if (!granted) {
-        onResult([], '需要日历读取权限')
-        return
-      }
-      if (!this.calendarMgr) {
-        onResult([], '日历管理器未初始化')
-        return
-      }
-      this.calendarMgr.getCalendar()
-        .then((calendar: calendarManager.Calendar) => {
-          try {
-            const events = calendar.getEvents(startTime, endTime)
-            const tasks = this.convertEventsToTasks(events)
-            onResult(tasks, `读取到 ${tasks.length} 个日程`)
-          } catch (e) {
-            console.error(TAG, '读取日程失败:', JSON.stringify(e))
-            onResult([], '读取系统日程失败')
-          }
-        })
-        .catch((err: BusinessError) => {
-          console.error(TAG, '获取默认日历失败:', JSON.stringify(err))
-          onResult([], '获取系统日历失败')
-        })
-    })
-  }
-
-  private convertEventsToTasks(events: calendarManager.Event[]): Task[] {
-    const tasks: Task[] = []
-    for (let i = 0; i < events.length; i++) {
-      const e = events[i]
-      const title = e.title
-      const startMs = e.startTime
-      const endMs = e.endTime
-      if (!title || !startMs || !endMs) {
-        continue
-      }
-      const startDate = new Date(startMs)
-      const endDate = new Date(endMs)
-      const dateStr = formatDate(startDate)
-      const startTimeStr = formatTime(startDate)
-      const endTimeStr = formatTime(endDate)
-      const task = new Task(String(title), dateStr, startTimeStr, endTimeStr)
-      const desc = e.description
-      if (desc) {
-        task.notes = String(desc)
-      }
-      task.source = 'calendar'
-      tasks.push(task)
-    }
-    return tasks
-  }
 
   private getCurrentSemesterStart(): Date {
     const now = new Date()

@@ -2,7 +2,7 @@ import { router } from '@kit.ArkUI'
 import { UserPreferences, MoodSurveyRecord, EnergyRecord, Task, TaskStatus } from '../models/DataModels'
 import { dataStore } from '../models/DataStore'
 import { UiTokens } from '../design/UiTokens'
-import { todayStr } from '../utils/DateUtils'
+import { todayStr, formatDate } from '../utils/DateUtils'
 
 class DayEnergy {
   date: string

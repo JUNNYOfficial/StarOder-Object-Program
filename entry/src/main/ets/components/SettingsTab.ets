@@ -2,7 +2,8 @@ import { router, promptAction } from '@kit.ArkUI'
 import { UserPreferences } from '../models/DataModels'
 import { dataStore } from '../models/DataStore'
 import { UiTokens } from '../design/UiTokens'
-import { pasteboard } from '@kit.BasicServicesKit'
+import { CalDAVService, CalDAVConfig } from '../services/CalDAVService'
+import { FeishuSyncService } from '../services/FeishuSyncService'
 
 @Component
 export struct SettingsTab {
@@ -10,9 +11,18 @@ export struct SettingsTab {
   @State exportDataStr: string = ''
   @State importDataStr: string = ''
   @State dataMsg: string = ''
+  @State caldavConfig: CalDAVConfig = { serverUrl: '', username: '', password: '', calendarPath: '' }
+  @State caldavMsg: string = ''
+  @State feishuAppId: string = ''
+  @State feishuAppSecret: string = ''
+  @State feishuMsg: string = ''
+  @State showSyncSection: boolean = false
 
   aboutToAppear() {
     this.settings = dataStore.getUserPrefs()
+    this.caldavConfig = CalDAVService.getConfig()
+    this.feishuAppId = FeishuSyncService.getAppId()
+    this.feishuAppSecret = FeishuSyncService.getAppSecret()
   }
 
   toggleHighContrast() {
@@ -33,6 +43,32 @@ export struct SettingsTab {
   togglePrepareHints() {
     this.settings.showPrepareHints = !this.settings.showPrepareHints
     dataStore.saveUserPrefs(this.settings)
+  }
+
+  saveCalDAVConfig() {
+    CalDAVService.setConfig(this.caldavConfig)
+    this.caldavMsg = '配置已保存'
+  }
+
+  testCalDAVConnection() {
+    this.caldavMsg = '正在测试连接...'
+    CalDAVService.testConnection(this.caldavConfig, (success: boolean, msg: string) => {
+      this.caldavMsg = msg
+      promptAction.showToast({ message: msg })
+    })
+  }
+
+  saveFeishuConfig() {
+    FeishuSyncService.setAppId(this.feishuAppId.trim())
+    FeishuSyncService.setAppSecret(this.feishuAppSecret.trim())
+    this.feishuMsg = '配置已保存'
+  }
+
+  testFeishuConnection() {
+    this.feishuMsg = '正在连接飞书...'
+    FeishuSyncService.testConnection((success: boolean, msg: string) => {
+      this.feishuMsg = msg
+    })
   }
 
   exportDataFn() {
@@ -240,6 +276,209 @@ export struct SettingsTab {
             offsetX: 0,
             offsetY: 2
           })
+        }
+        .width('100%')
+
+        // External sync (collapsible)
+        Column({ space: UiTokens.gapM }) {
+          Row() {
+            Text('外部日历同步')
+              .fontSize(this.sectionTitle())
+              .fontWeight(FontWeight.Medium)
+              .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+              .layoutWeight(1)
+
+            Text(this.showSyncSection ? '∧' : '∨')
+              .fontSize(this.baseFont())
+              .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textTertiary)
+          }
+          .width('100%')
+          .padding(14)
+          .backgroundColor(UiTokens.bgCard)
+          .borderRadius(UiTokens.radiusXL)
+          .justifyContent(FlexAlign.SpaceBetween)
+          .alignItems(VerticalAlign.Center)
+          .onClick(() => {
+            this.showSyncSection = !this.showSyncSection
+          })
+
+          if (this.showSyncSection) {
+            // CalDAV sync
+            Column({ space: UiTokens.gapM }) {
+              Text('CalDAV 同步')
+                .fontSize(this.sectionTitle())
+                .fontWeight(FontWeight.Medium)
+                .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+                .width('100%')
+
+              Column({ space: UiTokens.gapM }) {
+                Text('服务器地址')
+                  .fontSize(this.baseFont())
+                  .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+                  .width('100%')
+                TextInput({ placeholder: 'https://dav.example.com/calendars/', text: $$this.caldavConfig.serverUrl })
+                  .width('100%')
+                  .height(40)
+                  .fontSize(this.baseFont())
+                  .backgroundColor(UiTokens.bgHover)
+                  .placeholderColor(this.settings.highContrast ? '#999999' : UiTokens.textTertiary)
+                  .borderRadius(UiTokens.radiusL)
+
+                Text('用户名')
+                  .fontSize(this.baseFont())
+                  .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+                  .width('100%')
+                TextInput({ placeholder: 'user@example.com', text: $$this.caldavConfig.username })
+                  .width('100%')
+                  .height(40)
+                  .fontSize(this.baseFont())
+                  .backgroundColor(UiTokens.bgHover)
+                  .placeholderColor(this.settings.highContrast ? '#999999' : UiTokens.textTertiary)
+                  .borderRadius(UiTokens.radiusL)
+
+                Text('密码')
+                  .fontSize(this.baseFont())
+                  .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+                  .width('100%')
+                TextInput({ placeholder: '应用专用密码或账户密码', text: $$this.caldavConfig.password })
+                  .width('100%')
+                  .height(40)
+                  .fontSize(this.baseFont())
+                  .backgroundColor(UiTokens.bgHover)
+                  .placeholderColor(this.settings.highContrast ? '#999999' : UiTokens.textTertiary)
+                  .borderRadius(UiTokens.radiusL)
+                  .type(InputType.Password)
+
+                Text('日历路径')
+                  .fontSize(this.baseFont())
+                  .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+                  .width('100%')
+                TextInput({ placeholder: 'https://dav.example.com/calendars/user/calendar/', text: $$this.caldavConfig.calendarPath })
+                  .width('100%')
+                  .height(40)
+                  .fontSize(this.baseFont())
+                  .backgroundColor(UiTokens.bgHover)
+                  .placeholderColor(this.settings.highContrast ? '#999999' : UiTokens.textTertiary)
+                  .borderRadius(UiTokens.radiusL)
+
+                Row({ space: UiTokens.gapM }) {
+                  Button('保存配置')
+                    .layoutWeight(1)
+                    .height(40)
+                    .fontSize(this.baseFont())
+                    .fontColor(UiTokens.textInverse)
+                    .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
+                    .borderRadius(UiTokens.radiusXL)
+                    .onClick(() => { this.saveCalDAVConfig() })
+
+                  Button('测试连接')
+                    .layoutWeight(1)
+                    .height(40)
+                    .fontSize(this.baseFont())
+                    .fontColor(UiTokens.textInverse)
+                    .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
+                    .borderRadius(UiTokens.radiusXL)
+                    .onClick(() => { this.testCalDAVConnection() })
+                }
+                .width('100%')
+
+                if (this.caldavMsg) {
+                  Text(this.caldavMsg)
+                    .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                    .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textSecondary)
+                    .width('100%')
+                    .textAlign(TextAlign.Center)
+                }
+          }
+          .width('100%')
+          .padding(UiTokens.cardPadding)
+          .backgroundColor(UiTokens.bgCard)
+          .borderRadius(UiTokens.radiusXL)
+          .shadow({
+            radius: this.settings.highContrast ? 0 : 8,
+            color: '#0A000000',
+            offsetX: 0,
+            offsetY: 2
+          })
+        }
+        .width('100%')
+
+            // Feishu sync
+            Column({ space: UiTokens.gapM }) {
+              Text('飞书日历同步')
+                .fontSize(this.sectionTitle())
+                .fontWeight(FontWeight.Medium)
+                .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+                .width('100%')
+
+              Column({ space: UiTokens.gapM }) {
+                Text('App ID')
+                  .fontSize(this.baseFont())
+                  .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+                  .width('100%')
+                TextInput({ placeholder: 'cli_xxxxxxxxxxxxxxxx', text: $$this.feishuAppId })
+                  .width('100%')
+                  .height(40)
+                  .fontSize(this.baseFont())
+                  .backgroundColor(UiTokens.bgHover)
+                  .placeholderColor(this.settings.highContrast ? '#999999' : UiTokens.textTertiary)
+                  .borderRadius(UiTokens.radiusL)
+
+                Text('App Secret')
+                  .fontSize(this.baseFont())
+                  .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+                  .width('100%')
+                TextInput({ placeholder: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', text: $$this.feishuAppSecret })
+                  .width('100%')
+                  .height(40)
+                  .fontSize(this.baseFont())
+                  .backgroundColor(UiTokens.bgHover)
+                  .placeholderColor(this.settings.highContrast ? '#999999' : UiTokens.textTertiary)
+                  .borderRadius(UiTokens.radiusL)
+                  .type(InputType.Password)
+
+                Row({ space: UiTokens.gapM }) {
+                  Button('保存配置')
+                    .layoutWeight(1)
+                    .height(40)
+                    .fontSize(this.baseFont())
+                    .fontColor(UiTokens.textInverse)
+                    .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
+                    .borderRadius(UiTokens.radiusXL)
+                    .onClick(() => { this.saveFeishuConfig() })
+
+                  Button('测试连接')
+                    .layoutWeight(1)
+                    .height(40)
+                    .fontSize(this.baseFont())
+                    .fontColor(UiTokens.textInverse)
+                    .backgroundColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
+                    .borderRadius(UiTokens.radiusXL)
+                    .onClick(() => { this.testFeishuConnection() })
+                }
+                .width('100%')
+
+                if (this.feishuMsg) {
+                  Text(this.feishuMsg)
+                    .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                    .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textSecondary)
+                    .width('100%')
+                    .textAlign(TextAlign.Center)
+                }
+              }
+              .width('100%')
+              .padding(UiTokens.cardPadding)
+              .backgroundColor(UiTokens.bgCard)
+              .borderRadius(UiTokens.radiusXL)
+              .shadow({
+                radius: this.settings.highContrast ? 0 : 8,
+                color: '#0A000000',
+                offsetX: 0,
+                offsetY: 2
+              })
+            }
+            .width('100%')
+          }
         }
         .width('100%')
 
