@@ -1,4 +1,5 @@
 import { Task, getTypeConfig, UserPreferences, TypeConfig } from '../models/DataModels'
+import { Course, TimeSlot } from '../models/CourseModels'
 import { UiTokens } from '../design/UiTokens'
 import {
   timeToMinutes, getTaskTimeInfo, getCurrentMinutes, isToday,
@@ -30,6 +31,18 @@ class TimelineTaskItem {
     this.offset = offset
     this.height = height
     this.columnIndex = columnIndex
+  }
+}
+
+class TimelineCourseItem {
+  course: Course
+  offset: number
+  height: number
+
+  constructor(course: Course, offset: number, height: number) {
+    this.course = course
+    this.offset = offset
+    this.height = height
   }
 }
 
@@ -212,7 +225,10 @@ export struct DayTimeline {
   @Prop tasks: Task[]
   @Prop settings: UserPreferences
   @Prop currentDate: string
+  @Prop courses: Course[] = []
+  @Prop courseTimeSlots: TimeSlot[] = []
   onClickTask: (task: Task) => void = () => {}
+  onClickCourse: (course: Course) => void = () => {}
 
   @State nowMinutes: number = getCurrentMinutes()
   private timer: number = -1
@@ -357,6 +373,51 @@ export struct DayTimeline {
     }
 
     return items
+  }
+
+  private get courseTimelineItems(): TimelineCourseItem[] {
+    const result: TimelineCourseItem[] = []
+    if (this.courses.length === 0 || this.courseTimeSlots.length === 0) return result
+
+    const startHour = this.startHour
+
+    for (let i = 0; i < this.courses.length; i++) {
+      const course = this.courses[i]
+      const slots = this.courseTimeSlots
+
+      if (course.startSlot < 1 || course.startSlot > slots.length) continue
+      const startSlot = slots[course.startSlot - 1]
+      const endSlotIdx = course.startSlot + course.slotCount - 2
+      if (endSlotIdx < 0 || endSlotIdx >= slots.length) continue
+      const endSlot = slots[endSlotIdx]
+      if (!startSlot || !endSlot) continue
+
+      const startMins = timeToMinutes(startSlot.startTime)
+      const endMins = timeToMinutes(endSlot.endTime)
+      if (endMins <= startMins) continue
+
+      const taskStartHour = Math.floor(startMins / 60)
+      const taskStartMinute = startMins % 60
+      const duration = endMins - startMins
+
+      let offset = (taskStartHour - startHour) * HOUR_HEIGHT + taskStartMinute
+      let height = Math.max(MIN_TASK_HEIGHT, duration)
+
+      if (offset < 0) {
+        height += offset
+        offset = 0
+      }
+      if (offset + height > this.totalHeight) {
+        height = this.totalHeight - offset
+      }
+      if (height < MIN_TASK_HEIGHT) {
+        height = MIN_TASK_HEIGHT
+      }
+
+      result.push(new TimelineCourseItem(course, offset, height))
+    }
+
+    return result
   }
 
   private get allDayTasks(): Task[] {
@@ -536,6 +597,45 @@ export struct DayTimeline {
                 .width('48%')
                 .height(item.height)
             }, (item: TimelineTaskItem) => item.task.id)
+
+            // 课程卡片
+            ForEach(this.courseTimelineItems, (item: TimelineCourseItem) => {
+              Column({ space: 2 }) {
+                Text(item.course.name)
+                  .fontSize(this.settings.largeText ? UiTokens.textL : UiTokens.textM)
+                  .fontWeight(FontWeight.Medium)
+                  .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
+                  .maxLines(1)
+                  .textOverflow({ overflow: TextOverflow.Ellipsis })
+                  .width('100%')
+
+                if (item.course.classroom || item.course.teacher) {
+                  Text(`${item.course.classroom || ''}${item.course.teacher ? ' | ' + item.course.teacher : ''}`)
+                    .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                    .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textSecondary)
+                    .maxLines(1)
+                    .textOverflow({ overflow: TextOverflow.Ellipsis })
+                    .width('100%')
+                }
+
+                Text(`${this.courseTimeSlots[item.course.startSlot - 1].startTime} - ${this.courseTimeSlots[item.course.startSlot + item.course.slotCount - 2].endTime}`)
+                  .fontSize(UiTokens.textXS)
+                  .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textTertiary)
+                  .width('100%')
+              }
+              .width('100%')
+              .padding(8)
+              .backgroundColor(item.course.color + '18')
+              .borderRadius(UiTokens.radiusM)
+              .border({
+                width: 1,
+                color: item.course.color + '40'
+              })
+              .position({ x: 0, y: item.offset })
+              .width('100%')
+              .height(item.height)
+              .onClick(() => this.onClickCourse(item.course))
+            }, (item: TimelineCourseItem) => item.course.id)
           }
           .layoutWeight(1)
           .height(this.totalHeight)

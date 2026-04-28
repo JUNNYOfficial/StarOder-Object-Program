@@ -30,6 +30,7 @@ struct Index {
   @State showMoodPrompt: boolean = false
   @State currentTimeStr: string = ''
   @State showTimeline: boolean = true
+  @State showBadDayDialog: boolean = false
   private clockTimer: number = -1
 
   async aboutToAppear(): Promise<void> {
@@ -170,10 +171,26 @@ struct Index {
     return '晚上好，准备结束今天吧'
   }
 
+  private getUndoneTaskCount(): number {
+    let count = 0
+    for (let i = 0; i < this.filteredTasks.length; i++) {
+      if (this.filteredTasks[i].status !== TaskStatus.DONE) {
+        count++
+      }
+    }
+    return count
+  }
+
   async advanceStatus(task: Task): Promise<void> {
     if (await dataStore.advanceTaskStatus(task.id)) {
       await this.loadData()
     }
+  }
+
+  private async postponeToday(): Promise<void> {
+    const moved = await dataStore.postponeTodayTasks()
+    promptAction.showToast({ message: `已把 ${moved} 个任务移到明天，今天好好休息` })
+    await this.loadData()
   }
 
   build() {
@@ -272,6 +289,26 @@ struct Index {
             }
             .width('100%')
             .padding({ left: UiTokens.pagePadding, right: UiTokens.pagePadding, top: 8, bottom: 4 })
+
+            // 坏日子保护按钮（仅今天显示）
+            if (this.currentDate === todayStr()) {
+              Row() {
+                Button() {
+                  Text('🤍 今天状态不好')
+                    .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                    .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textSecondary)
+                }
+                .height(36)
+                .backgroundColor(UiTokens.bgHover)
+                .borderRadius(UiTokens.radiusM)
+                .padding({ left: 12, right: 12 })
+                .onClick(() => {
+                  this.showBadDayDialog = true
+                })
+              }
+              .width('100%')
+              .padding({ left: UiTokens.pagePadding, right: UiTokens.pagePadding, top: 2, bottom: 6 })
+            }
 
             if (this.todayCourses.length > 0) {
               Column({ space: UiTokens.gapS }) {
@@ -438,8 +475,13 @@ struct Index {
                 tasks: this.filteredTasks,
                 settings: this.settings,
                 currentDate: this.currentDate,
+                courses: this.todayCourses,
+                courseTimeSlots: this.courseState.timeSlots,
                 onClickTask: (task: Task) => {
                   router.pushUrl({ url: 'pages/ScheduleDetail', params: { id: task.id } })
+                },
+                onClickCourse: () => {
+                  router.pushUrl({ url: 'pages/CourseSchedulePage' })
                 }
               })
             } else {
@@ -652,6 +694,76 @@ struct Index {
             .onClick(() => {
               this.showMoodPrompt = false
             })
+        }
+        .width('100%')
+        .padding(UiTokens.pagePadding)
+        .backgroundColor(UiTokens.bgCard)
+        .borderRadius({ topLeft: 24, topRight: 24 })
+      }
+      .width('100%')
+      .height('100%')
+      .justifyContent(FlexAlign.End)
+    }
+
+    if (this.showBadDayDialog) {
+      Column() {
+        Column()
+          .width('100%')
+          .layoutWeight(1)
+          .backgroundColor('rgba(0,0,0,0.4)')
+          .onClick(() => {
+            this.showBadDayDialog = false
+          })
+
+        Column({ space: UiTokens.gapM }) {
+          Text('🤍 今天状态不好')
+            .fontSize(UiTokens.textXL)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(UiTokens.textPrimary)
+            .width('100%')
+            .textAlign(TextAlign.Center)
+
+          Text('没有关系，每个人都会有这样的日子。')
+            .fontSize(UiTokens.textS)
+            .fontColor(UiTokens.textSecondary)
+            .width('100%')
+            .textAlign(TextAlign.Center)
+
+          Text('我会帮你把今天未完成的任务全部移到明天，不会有任何惩罚标记。')
+            .fontSize(UiTokens.textS)
+            .fontColor(UiTokens.textSecondary)
+            .width('100%')
+            .textAlign(TextAlign.Center)
+
+          Text(`今天未完成任务：${this.getUndoneTaskCount()} 个`)
+            .fontSize(this.settings.largeText ? UiTokens.textL : UiTokens.textM)
+            .fontColor(UiTokens.brand)
+            .width('100%')
+            .textAlign(TextAlign.Center)
+
+          Row({ space: UiTokens.gapS }) {
+            Button('取消')
+              .layoutWeight(1)
+              .height(44)
+              .fontColor(UiTokens.textSecondary)
+              .backgroundColor(UiTokens.bgHover)
+              .borderRadius(UiTokens.radiusL)
+              .onClick(() => {
+                this.showBadDayDialog = false
+              })
+
+            Button('确认移动')
+              .layoutWeight(1)
+              .height(44)
+              .fontColor('#FFFFFF')
+              .backgroundColor(UiTokens.brand)
+              .borderRadius(UiTokens.radiusL)
+              .onClick(async () => {
+                this.showBadDayDialog = false
+                await this.postponeToday()
+              })
+          }
+          .width('100%')
         }
         .width('100%')
         .padding(UiTokens.pagePadding)

@@ -3,7 +3,7 @@ import {
   Task, SubTask, EnergyRecord, MoodSurveyRecord, FocusRecord, UserPreferences, TaskStatus, RepeatMode, YesterdaySummary, FaceMoodRecord
 } from './DataModels'
 import { Course, TimeSlot, CourseScheduleState, DEFAULT_TIME_SLOTS, WeekType } from './CourseModels'
-import { formatDate } from '../utils/DateUtils'
+import { formatDate, todayStr, addDays } from '../utils/DateUtils'
 import { CryptoService } from '../services/CryptoService'
 
 interface ConflictResult {
@@ -288,6 +288,34 @@ class DataStore {
     if (cleaned.length !== all.length) {
       await this.saveTasks(cleaned)
     }
+  }
+
+  /**
+   * 坏日子保护：将今天所有未完成的非重复任务后移到明天
+   * 返回移动的任务数量
+   */
+  async postponeTodayTasks(): Promise<number> {
+    const today = todayStr()
+    const tomorrow = addDays(today, 1)
+    const all = await this.getActiveTasks()
+    let movedCount = 0
+
+    for (let i = 0; i < all.length; i++) {
+      const task = all[i]
+      if (task.date !== today) continue
+      if (task.status === TaskStatus.DONE) continue
+      if (task.repeatMode !== RepeatMode.NONE) continue
+
+      all[i].date = tomorrow
+      all[i].updatedAt = Date.now()
+      movedCount++
+    }
+
+    if (movedCount > 0) {
+      await this.saveTasks(all)
+    }
+
+    return movedCount
   }
 
   // ===== Energy Records =====
