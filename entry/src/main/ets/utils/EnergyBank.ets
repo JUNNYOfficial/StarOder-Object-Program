@@ -17,18 +17,22 @@ export function getTaskEnergyCost(type: TaskType, intensity: TaskIntensity): num
 /**
  * 计算一天的任务能量消耗和恢复
  */
-export function calculateDayEnergy(tasks: Task[]): { spent: number; recovered: number } {
-  let spent = 0
-  let recovered = 0
+export class EnergyCostResult {
+  spent: number = 0
+  recovered: number = 0
+}
+
+export function calculateDayEnergy(tasks: Task[]): EnergyCostResult {
+  const result = new EnergyCostResult()
   for (let i = 0; i < tasks.length; i++) {
     const cost = getTaskEnergyCost(tasks[i].type, tasks[i].intensity)
     if (cost > 0) {
-      spent += cost
+      result.spent += cost
     } else {
-      recovered += Math.abs(cost)
+      result.recovered += Math.abs(cost)
     }
   }
-  return { spent, recovered }
+  return result
 }
 
 /**
@@ -74,7 +78,7 @@ export class EnergySummary {
  */
 export function getTodayEnergySummary(tasks: Task[], records: EnergyRecord[]): EnergySummary {
   const budget = getEnergyBudgetFromRecords(records)
-  const { spent, recovered } = calculateDayEnergy(tasks)
+  const costResult = calculateDayEnergy(tasks)
 
   let socialCount = 0
   for (let i = 0; i < tasks.length; i++) {
@@ -83,5 +87,5 @@ export function getTodayEnergySummary(tasks: Task[], records: EnergyRecord[]): E
     }
   }
 
-  return new EnergySummary(budget, spent, recovered, socialCount)
+  return new EnergySummary(budget, costResult.spent, costResult.recovered, socialCount)
 }

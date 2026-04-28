@@ -19,7 +19,7 @@ export class CryptoService {
     CryptoService.keyInitPromise = (async () => {
       let deviceSeed: string
       try {
-        deviceSeed = `${deviceInfo.productModel || ''}_${deviceInfo.brand || ''}_${deviceInfo.marketName || ''}_${deviceInfo.deviceType || ''}_${deviceInfo.manufacture || ''}`
+        deviceSeed = `${deviceInfo.productModel || ''}_${deviceInfo.brand || ''}_${deviceInfo.deviceType || ''}`
       } catch (e) {
         deviceSeed = 'fallback_device_seed'
       }
