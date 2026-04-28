@@ -1,5 +1,6 @@
 {
   "apiType": "stageMode",
+  "buildMode": "release",
   "buildOption": {
     "resOptions": {
       "copyCodeResource": {
@@ -8,6 +9,16 @@
     }
   },
   "buildOptionSet": [
+    {
+      "name": "debug",
+      "arkOptions": {
+        "obfuscation": {
+          "ruleOptions": {
+            "enable": false
+          }
+        }
+      }
+    },
     {
       "name": "release",
       "arkOptions": {
@@ -20,7 +31,7 @@
           }
         }
       }
-    },
+    }
   ],
   "targets": [
     {
