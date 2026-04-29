@@ -38,7 +38,7 @@ struct TimerPage {
   private async loadTodayTasks() {
     const today = todayStr()
     const tasks = (await dataStore.getTasksByDate(today))
-      .filter(t => t.status !== 'DONE')
+      .filter(t => t && t.status !== 'DONE')
       .sort((a, b) => a.startTime.localeCompare(b.startTime))
     this.todayTasks = tasks
   }
@@ -136,7 +136,7 @@ struct TimerPage {
 
   private selectedTaskTitle(): string {
     if (!this.selectedTaskId) return '未关联任务'
-    const task = this.todayTasks.find(t => t.id === this.selectedTaskId)
+    const task = this.todayTasks.find(t => t && t.id === this.selectedTaskId)
     return task ? task.title : '未关联任务'
   }
 

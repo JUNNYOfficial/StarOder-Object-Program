@@ -31,7 +31,7 @@ struct Index {
   @State yesterdaySummary: YesterdaySummary = new YesterdaySummary('', 0, 0, 0)
   @State showMoodPrompt: boolean = false
   @State currentTimeStr: string = ''
-  @State viewMode: number = 1 // 0=list, 1=timeline, 2=visual
+  @State viewMode: number = 0 // 0=list, 1=timeline, 2=visual
   @State showBadDayDialog: boolean = false
   @State energySummary: EnergySummary = new EnergySummary(8, 0, 0, 0)
   private clockTimer: number = -1
@@ -81,14 +81,30 @@ struct Index {
   async loadData(): Promise<void> {
     try {
       this.settings = await dataStore.getUserPrefs()
+    } catch (e) {
+      console.error('loadData getUserPrefs failed:', JSON.stringify(e))
+      this.settings = new UserPreferences()
+    }
+    try {
       this.tasks = await dataStore.getTasksByDate(this.currentDate)
-      this.applyFilter()
+    } catch (e) {
+      console.error('loadData getTasksByDate failed:', JSON.stringify(e))
+      this.tasks = []
+    }
+    this.applyFilter()
+    try {
       this.courseState = await dataStore.getCourseState()
-      this.todayCourses = this.getTodayCourses()
+    } catch (e) {
+      console.error('loadData getCourseState failed:', JSON.stringify(e))
+      this.courseState = new CourseScheduleState()
+    }
+    this.todayCourses = this.getTodayCourses()
+    try {
       const energyRecords = await dataStore.getEnergyRecords()
       this.energySummary = getTodayEnergySummary(this.tasks, energyRecords)
     } catch (e) {
-      console.error('loadData failed:', JSON.stringify(e))
+      console.error('loadData getEnergyRecords failed:', JSON.stringify(e))
+      this.energySummary = new EnergySummary(8, 0, 0, 0)
     }
   }
 
@@ -114,6 +130,7 @@ struct Index {
     const result: Course[] = []
     for (let i = 0; i < state.courses.length; i++) {
       const c = state.courses[i]
+      if (!c) continue
       if (c.dayOfWeek !== dayOfWeek) continue
       if (currentWeek < c.startWeek || currentWeek > c.endWeek) continue
       if (c.weekType === WeekType.ODD && currentWeek % 2 === 0) continue
@@ -146,8 +163,9 @@ struct Index {
       const q = this.searchQuery.toLowerCase()
       const result: Task[] = []
       for (let i = 0; i < this.tasks.length; i++) {
-        if (this.tasks[i].title.toLowerCase().includes(q)) {
-          result.push(this.tasks[i])
+        const t = this.tasks[i]
+        if (t && t.title.toLowerCase().includes(q)) {
+          result.push(t)
         }
       }
       this.filteredTasks = result
@@ -183,7 +201,8 @@ struct Index {
   private getUndoneTaskCount(): number {
     let count = 0
     for (let i = 0; i < this.filteredTasks.length; i++) {
-      if (this.filteredTasks[i].status !== TaskStatus.DONE) {
+      const t = this.filteredTasks[i]
+      if (t && t.status !== TaskStatus.DONE) {
         count++
       }
     }
@@ -485,7 +504,7 @@ struct Index {
                 settings: this.settings,
                 currentDate: this.currentDate,
                 courses: this.todayCourses,
-                courseTimeSlots: this.courseState.timeSlots,
+                courseTimeSlots: this.courseState.timeSlots || [],
                 energySummary: this.energySummary,
                 onClickTask: (task: Task) => {
                   router.pushUrl({ url: 'pages/ScheduleDetail', params: { id: task.id } })
@@ -897,7 +916,7 @@ struct Index {
       .borderRadius(UiTokens.radiusM)
       .onClick(async () => {
         const all = await dataStore.getActiveTasks()
-        const idx = all.findIndex(t => t.id === task.id)
+        const idx = all.findIndex(t => t && t.id === task.id)
         if (idx >= 0) {
           all[idx].status = TaskStatus.DONE
           all[idx].updatedAt = Date.now()

@@ -15,7 +15,7 @@ struct ScheduleDetail {
     const params = router.getParams() as Record<string, string>
     const id = params?.['id']
     if (id) {
-      let found = (await dataStore.getActiveTasks()).find(t => t.id === id)
+      let found = (await dataStore.getActiveTasks()).find(t => t && t.id === id)
       if (!found) {
         // 可能是重复任务实例（id 格式为 originalId_YYYY-MM-DD），回退到原始任务
         found = await dataStore.getTaskById(id)
@@ -80,14 +80,14 @@ struct ScheduleDetail {
         taskId = taskId.substring(0, underscoreIdx)
       }
     }
-    const sIdx = all.findIndex(t => t.id === taskId)
+    const sIdx = all.findIndex(t => t && t.id === taskId)
     if (sIdx >= 0) {
-      const tIdx = all[sIdx].subTasks.findIndex(t => t.id === subTaskId)
+      const tIdx = all[sIdx].subTasks.findIndex(t => t && t.id === subTaskId)
       if (tIdx >= 0) {
         all[sIdx].subTasks[tIdx].completed = !all[sIdx].subTasks[tIdx].completed
         await dataStore.saveTasks(all)
         // 同步当前显示的 task 实例中的子任务状态
-        const currentStIdx = this.task.subTasks.findIndex(t => t.id === subTaskId)
+        const currentStIdx = this.task.subTasks.findIndex(t => t && t.id === subTaskId)
         if (currentStIdx >= 0) {
           this.task.subTasks[currentStIdx].completed = all[sIdx].subTasks[tIdx].completed
         }

@@ -142,6 +142,7 @@ export function getDayTimeRange(tasks: Task[]): DayTimeRange {
 
   for (let i = 0; i < tasks.length; i++) {
     const task = tasks[i]
+    if (!task) continue
     if (task.startTime) {
       const h = parseInt(task.startTime.split(':')[0])
       if (!isNaN(h) && h < minHour) minHour = h

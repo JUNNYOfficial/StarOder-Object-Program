@@ -35,6 +35,8 @@ struct CalendarView {
   @State dayTasks: Task[] = []
   @State monthNames: string[] = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月']
   @State weekdayLabels: string[] = ['一', '二', '三', '四', '五', '六', '日']
+  @State gridRowCount: number = 6
+  @State gridHeight: number = 360
 
   async aboutToAppear() {
     this.settings = await dataStore.getUserPrefs()
@@ -53,6 +55,14 @@ struct CalendarView {
 
   private largeFont(): number {
     return this.settings.largeText ? UiTokens.text2XL : UiTokens.textXL
+  }
+
+  private getGridRowsTemplate(): string {
+    const parts: string[] = []
+    for (let i = 0; i < this.gridRowCount; i++) {
+      parts.push('1fr')
+    }
+    return parts.join(' ')
   }
 
   async generateCalendar() {
@@ -81,6 +91,8 @@ struct CalendarView {
     while (days.length < 42) {
       days.push(new CalendarDay('', 0, false, false, 0))
     }
+    this.gridRowCount = Math.ceil((offset + daysInMonth) / 7)
+    this.gridHeight = this.gridRowCount * 60
     this.calendarDays = days
   }
 
@@ -167,7 +179,7 @@ struct CalendarView {
       .backgroundColor(UiTokens.bgCard)
 
       Scroll() {
-        Column({ space: UiTokens.gapXL }) {
+        Column({ space: 0 }) {
           // Month navigator
           Row() {
             Button() {
@@ -217,6 +229,7 @@ struct CalendarView {
             })
           }
           .width('100%')
+          .margin({ bottom: 4 })
 
           // Calendar grid
           Grid() {
@@ -281,8 +294,9 @@ struct CalendarView {
           }
           .width('100%')
           .columnsTemplate('1fr 1fr 1fr 1fr 1fr 1fr 1fr')
-          .rowsTemplate('1fr 1fr 1fr 1fr 1fr 1fr')
-          .height(360)
+          .rowsTemplate(this.getGridRowsTemplate())
+          .height(this.gridHeight)
+          .margin({ bottom: UiTokens.gapM })
 
           // Selected date tasks
           Column({ space: UiTokens.gapM }) {
@@ -329,6 +343,7 @@ struct CalendarView {
             }
           }
           .width('100%')
+          .margin({ top: UiTokens.gapM })
           .padding({ bottom: 32 })
         }
         .width('100%')

@@ -208,7 +208,7 @@ struct AddSchedule {
     }
     if (this.isEditMode) {
       const all = await dataStore.getActiveTasks()
-      const idx = all.findIndex(t => t.id === this.editTaskId)
+      const idx = all.findIndex(t => t && t.id === this.editTaskId)
       if (idx >= 0) {
         all[idx].title = this.title.trim()
         all[idx].type = this.selectedType

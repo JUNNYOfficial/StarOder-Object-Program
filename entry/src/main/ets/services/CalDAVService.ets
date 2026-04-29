@@ -164,9 +164,9 @@ function generateCourseICS(course: Course, state: CourseScheduleState): string {
   const eventDate = new Date(baseDate)
   eventDate.setDate(eventDate.getDate() + firstWeekOffset)
 
-  const startSlot = state.timeSlots.find(s => s.slotNumber === course.startSlot)
+  const startSlot = state.timeSlots.find(s => s && s.slotNumber === course.startSlot)
   const endSlotNum = course.startSlot + course.slotCount - 1
-  const endSlot = state.timeSlots.find(s => s.slotNumber === endSlotNum)
+  const endSlot = state.timeSlots.find(s => s && s.slotNumber === endSlotNum)
 
   if (!startSlot || !endSlot) return ''
 

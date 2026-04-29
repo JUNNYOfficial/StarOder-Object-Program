@@ -52,26 +52,26 @@ export default class EntryAbility extends UIAbility {
     try {
       const today = formatDate(new Date())
       const tasks = await dataStore.getTasksByDate(today)
-      const todoCount = tasks.filter(t => t.status !== TaskStatus.DONE).length
+      const todoCount = tasks.filter(t => t && t.status !== TaskStatus.DONE).length
 
       let nextTask = ''
       let nextTime = ''
       const now = new Date()
       const nowMinutes = now.getHours() * 60 + now.getMinutes()
       const upcoming: TaskWithMinutes[] = tasks
-        .filter(t => t.startTime)
+        .filter(t => t && t.startTime)
         .map(t => {
           const parts = (t.startTime as string).split(':').map(Number)
           const item: TaskWithMinutes = { task: t, minutes: parts[0] * 60 + parts[1] }
           return item
         })
-        .filter(t => t.minutes > nowMinutes)
+        .filter(t => t && t.minutes > nowMinutes)
         .sort((a, b) => a.minutes - b.minutes)
 
       if (upcoming.length > 0) {
         nextTask = upcoming[0].task.title
         nextTime = upcoming[0].task.startTime || ''
-      } else if (tasks.length > 0) {
+      } else if (tasks.length > 0 && tasks[0]) {
         nextTask = tasks[0].title
         nextTime = tasks[0].startTime || ''
       }

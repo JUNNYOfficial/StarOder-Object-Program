@@ -12,8 +12,9 @@ export struct VisualScheduleView {
   private blockTasks(block: TimeBlock): Task[] {
     const result: Task[] = []
     for (let i = 0; i < this.tasks.length; i++) {
-      if (this.tasks[i].timeBlock === block) {
-        result.push(this.tasks[i])
+      const t = this.tasks[i]
+      if (t && t.timeBlock === block) {
+        result.push(t)
       }
     }
     return result
@@ -21,7 +22,8 @@ export struct VisualScheduleView {
 
   private hasBlockTasks(block: TimeBlock): boolean {
     for (let i = 0; i < this.tasks.length; i++) {
-      if (this.tasks[i].timeBlock === block) {
+      const t = this.tasks[i]
+      if (t && t.timeBlock === block) {
         return true
       }
     }

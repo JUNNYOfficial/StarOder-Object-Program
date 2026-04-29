@@ -97,61 +97,61 @@ struct TimelineTaskCard {
     return this.settings.largeText ? UiTokens.textM : UiTokens.textS
   }
 
-  private get info(): TaskTimeInfo {
+  private getInfo(): TaskTimeInfo {
     return getTaskTimeInfo(this.currentDate, this.task.startTime, this.task.endTime)
   }
 
-  private get typeConfig(): TypeConfig {
+  private getTypeconfig(): TypeConfig {
     return getTypeConfig(this.task.type)
   }
 
-  private get transitionInfo(): TransitionInfo {
+  private getTransitioninfo(): TransitionInfo {
     return getTransitionInfo(this.task)
   }
 
-  private get labelColor(): string {
-    const trans = this.transitionInfo
+  private getLabelcolor(): string {
+    const trans = this.getTransitioninfo()
     if (trans.isUrgent) return TRANSITION_URGENT
     if (trans.isWarning) return TRANSITION_WARN
-    const info = this.info
-    if (info.isOngoing) return this.typeConfig.color
+    const info = this.getInfo()
+    if (info.isOngoing) return this.getTypeconfig().color
     if (info.isEnded) return UiTokens.textTertiary
     return UiTokens.brand
   }
 
-  private get cardBg(): string {
+  private getCardbg(): string {
     if (this.settings.highContrast) return UiTokens.hcBg
-    const trans = this.transitionInfo
+    const trans = this.getTransitioninfo()
     if (trans.isUrgent) return TRANSITION_URGENT_BG
     if (trans.isWarning) return TRANSITION_WARN_BG
-    const info = this.info
-    if (info.isOngoing) return this.typeConfig.softColor
+    const info = this.getInfo()
+    if (info.isOngoing) return this.getTypeconfig().softColor
     if (info.isEnded) return UiTokens.bgHover
     return UiTokens.bgCard
   }
 
-  private get taskBorderWidth(): number {
-    const trans = this.transitionInfo
+  private getTaskborderwidth(): number {
+    const trans = this.getTransitioninfo()
     if (trans.isUrgent) return 2
     if (trans.isWarning) return 1.5
-    if (this.info.isOngoing) return 1.5
+    if (this.getInfo().isOngoing) return 1.5
     return 0.5
   }
 
-  private get taskBorderColor(): string {
-    const trans = this.transitionInfo
+  private getTaskbordercolor(): string {
+    const trans = this.getTransitioninfo()
     if (trans.isUrgent) return TRANSITION_URGENT
     if (trans.isWarning) return TRANSITION_WARN
-    if (this.info.isOngoing) return this.typeConfig.color
+    if (this.getInfo().isOngoing) return this.getTypeconfig().color
     if (this.settings.highContrast) return UiTokens.hcBorder
     return UiTokens.divider
   }
 
-  private get timeLabel(): string {
-    const trans = this.transitionInfo
+  private getTimelabel(): string {
+    const trans = this.getTransitioninfo()
     if (trans.isUrgent) return `还有 ${trans.minutesToEnd} 分钟 · 即将切换`
     if (trans.isWarning) return `还有 ${trans.minutesToEnd} 分钟 · 准备切换`
-    return this.info.relativeLabel
+    return this.getInfo().relativeLabel
   }
 
   build() {
@@ -166,9 +166,9 @@ struct TimelineTaskCard {
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
 
-        Text(this.timeLabel)
+        Text(this.getTimelabel())
           .fontSize(UiTokens.textXS)
-          .fontColor(this.settings.highContrast ? UiTokens.hcText : this.labelColor)
+          .fontColor(this.settings.highContrast ? UiTokens.hcText : this.getLabelcolor())
           .fontWeight(FontWeight.Medium)
       }
       .width('100%')
@@ -203,7 +203,7 @@ struct TimelineTaskCard {
       }
 
       // 进行中任务：时间流逝进度条
-      if (this.info.isOngoing) {
+      if (this.getInfo().isOngoing) {
         Stack() {
           Row()
             .width('100%')
@@ -211,9 +211,9 @@ struct TimelineTaskCard {
             .backgroundColor(this.settings.highContrast ? '#CCCCCC' : UiTokens.divider)
             .borderRadius(2)
           Row()
-            .width(`${this.info.progressPercent}%`)
+            .width(`${this.getInfo().progressPercent}%`)
             .height(3)
-            .backgroundColor(this.settings.highContrast ? UiTokens.hcText : this.typeConfig.color)
+            .backgroundColor(this.settings.highContrast ? UiTokens.hcText : this.getTypeconfig().color)
             .borderRadius(2)
         }
         .width('100%')
@@ -222,13 +222,13 @@ struct TimelineTaskCard {
     }
     .width('100%')
     .padding(8)
-    .backgroundColor(this.cardBg)
+    .backgroundColor(this.getCardbg())
     .borderRadius(UiTokens.radiusM)
     .border({
-      width: this.taskBorderWidth,
-      color: this.taskBorderColor
+      width: this.getTaskborderwidth(),
+      color: this.getTaskbordercolor()
     })
-    .opacity(this.info.isEnded ? 0.55 : 1)
+    .opacity(this.getInfo().isEnded ? 0.55 : 1)
     .onClick(() => this.onClickCard())
   }
 }
@@ -250,20 +250,27 @@ export struct DayTimeline {
   @State nowMinutes: number = getCurrentMinutes()
   private timer: number = -1
   private scroller: Scroller = new Scroller()
+  private isActive: boolean = false
 
   aboutToAppear(): void {
+    this.isActive = true
     this.updateNow()
     // 每 30 秒更新一次，刷新相对时间和指针位置
     this.timer = setInterval(() => {
-      this.updateNow()
+      if (this.isActive) {
+        this.updateNow()
+      }
     }, 30000)
     // 首次显示时自动滚动到"现在"位置
     setTimeout(() => {
-      this.scrollToNow()
+      if (this.isActive) {
+        this.scrollToNow()
+      }
     }, 300)
   }
 
   aboutToDisappear(): void {
+    this.isActive = false
     if (this.timer !== -1) {
       clearInterval(this.timer)
       this.timer = -1
@@ -275,9 +282,9 @@ export struct DayTimeline {
   }
 
   private scrollToNow(): void {
-    if (this.nowOffset < 0) return
+    if (this.getNowoffset() < 0) return
     // 把"现在指针"滚动到屏幕中间偏上，留出 120dp 上方空间
-    const targetOffset = Math.max(0, this.nowOffset - 120)
+    const targetOffset = Math.max(0, this.getNowoffset() - 120)
     this.scroller.scrollTo({
       xOffset: 0,
       yOffset: targetOffset,
@@ -285,53 +292,53 @@ export struct DayTimeline {
     })
   }
 
-  private get timeRange(): DayTimeRange {
+  private getTimerange(): DayTimeRange {
     return getDayTimeRange(this.tasks)
   }
 
-  private get startHour(): number {
-    return this.timeRange.startHour
+  private getStarthour(): number {
+    return this.getTimerange().startHour
   }
 
-  private get endHour(): number {
-    return this.timeRange.endHour
+  private getEndhour(): number {
+    return this.getTimerange().endHour
   }
 
-  private get totalHeight(): number {
-    return (this.endHour - this.startHour) * HOUR_HEIGHT
+  private getTotalheight(): number {
+    return (this.getEndhour() - this.getStarthour()) * HOUR_HEIGHT
   }
 
-  private get hours(): number[] {
+  private getHours(): number[] {
     const result: number[] = []
-    for (let h = this.startHour; h <= this.endHour; h++) {
+    for (let h = this.getStarthour(); h <= this.getEndhour(); h++) {
       result.push(h)
     }
     return result
   }
 
-  private get today(): boolean {
+  private getToday(): boolean {
     return isToday(this.currentDate)
   }
 
-  private get nowOffset(): number {
-    if (!this.today) return -9999
+  private getNowoffset(): number {
+    if (!this.getToday()) return -9999
     const h = Math.floor(this.nowMinutes / 60)
     const m = this.nowMinutes % 60
-    if (h >= this.startHour && h <= this.endHour) {
-      return (h - this.startHour) * HOUR_HEIGHT + m
+    if (h >= this.getStarthour() && h <= this.getEndhour()) {
+      return (h - this.getStarthour()) * HOUR_HEIGHT + m
     }
     return -9999
   }
 
-  private get timelineItems(): TimelineTaskItem[] {
-    const startHour = this.startHour
-    const endHour = this.endHour
-    const totalHeight = this.totalHeight
+  private getTimelineitems(): TimelineTaskItem[] {
+    const startHour = this.getStarthour()
+    const endHour = this.getEndhour()
+    const totalHeight = this.getTotalheight()
     const rawItems: RawTimelineItem[] = []
 
     for (let i = 0; i < this.tasks.length; i++) {
       const task = this.tasks[i]
-      if (!task.startTime || !task.endTime) continue
+      if (!task || !task.startTime || !task.endTime) continue
 
       const startMins = timeToMinutes(task.startTime)
       const endMins = timeToMinutes(task.endTime)
@@ -392,15 +399,16 @@ export struct DayTimeline {
     return items
   }
 
-  private get courseTimelineItems(): TimelineCourseItem[] {
+  private getCoursetimelineitems(): TimelineCourseItem[] {
     const result: TimelineCourseItem[] = []
     if (!this.courses || !this.courseTimeSlots) return result
     if (this.courses.length === 0 || this.courseTimeSlots.length === 0) return result
 
-    const startHour = this.startHour
+    const startHour = this.getStarthour()
 
     for (let i = 0; i < this.courses.length; i++) {
       const course = this.courses[i]
+      if (!course) continue
       const slots = this.courseTimeSlots
 
       if (course.startSlot < 1 || course.startSlot > slots.length) continue
@@ -425,8 +433,8 @@ export struct DayTimeline {
         height += offset
         offset = 0
       }
-      if (offset + height > this.totalHeight) {
-        height = this.totalHeight - offset
+      if (offset + height > this.getTotalheight()) {
+        height = this.getTotalheight() - offset
       }
       if (height < MIN_TASK_HEIGHT) {
         height = MIN_TASK_HEIGHT
@@ -438,30 +446,31 @@ export struct DayTimeline {
     return result
   }
 
-  private get allDayTasks(): Task[] {
+  private getAlldaytasks(): Task[] {
     const result: Task[] = []
     if (!this.tasks) return result
     for (let i = 0; i < this.tasks.length; i++) {
       const task = this.tasks[i]
-      if (!task.startTime || !task.endTime) {
+      if (!task || !task.startTime || !task.endTime) {
         result.push(task)
       }
     }
     return result
   }
 
-  private get transitionBanner(): TransitionBannerInfo {
+  private getTransitionbanner(): TransitionBannerInfo {
     const result = new TransitionBannerInfo()
 
-    if (!this.today || !this.tasks) return result
+    if (!this.getToday() || !this.tasks) return result
 
     // 找当前进行中的任务
     let ongoingTask: Task | null = null
     let ongoingEndMins = 0
 
     for (let i = 0; i < this.tasks.length; i++) {
+      if (!this.tasks) break
       const task = this.tasks[i]
-      if (!task.startTime || !task.endTime) continue
+      if (!task || !task.startTime || !task.endTime) continue
       const startMins = timeToMinutes(task.startTime)
       const endMins = timeToMinutes(task.endTime)
       if (this.nowMinutes >= startMins && this.nowMinutes < endMins) {
@@ -483,7 +492,7 @@ export struct DayTimeline {
     for (let i = 0; i < this.tasks.length; i++) {
       if (!this.tasks) break
       const task = this.tasks[i]
-      if (!task.startTime || task.id === ongoingTask.id) continue
+      if (!task || !task.startTime || task.id === ongoingTask.id) continue
       const tStart = timeToMinutes(task.startTime)
       if (tStart >= ongoingEndMins && tStart < nextStartMins) {
         nextStartMins = tStart
@@ -509,6 +518,15 @@ export struct DayTimeline {
 
     result.show = true
     return result
+  }
+
+  private getCourseTimeText(course: Course): string {
+    if (!this.courseTimeSlots || this.courseTimeSlots.length === 0) return ''
+    const startIdx = course.startSlot - 1
+    const endIdx = course.startSlot + course.slotCount - 2
+    if (startIdx < 0 || startIdx >= this.courseTimeSlots.length) return ''
+    if (endIdx < 0 || endIdx >= this.courseTimeSlots.length) return ''
+    return `${this.courseTimeSlots[startIdx].startTime} - ${this.courseTimeSlots[endIdx].endTime}`
   }
 
   build() {
@@ -569,14 +587,14 @@ export struct DayTimeline {
         .padding({ left: UiTokens.pagePadding, right: UiTokens.pagePadding, top: 8, bottom: 4 })
 
         // 全天事项（无精确时间的任务）
-        if (this.allDayTasks.length > 0) {
+        if (this.getAlldaytasks().length > 0) {
           Column({ space: UiTokens.gapS }) {
             Text('全天事项')
               .fontSize(UiTokens.textXS)
               .fontColor(UiTokens.textTertiary)
               .width('100%')
 
-            ForEach(this.allDayTasks, (task: Task) => {
+            ForEach(this.getAlldaytasks(), (task: Task) => {
               Row({ space: 6 }) {
                 Circle({ width: 6, height: 6 })
                   .fill(this.settings.highContrast ? UiTokens.hcText : getTypeConfig(task.type).color)
@@ -606,18 +624,20 @@ export struct DayTimeline {
         Row() {
           // 左侧：小时标签列
           Column() {
-            ForEach(this.hours, (hour: number) => {
-              Row() {
-                Text(`${String(hour).padStart(2, '0')}:00`)
-                  .fontSize(UiTokens.textXS)
-                  .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textTertiary)
-                  .fontWeight(FontWeight.Medium)
-              }
-              .width('100%')
-              .height(HOUR_HEIGHT)
-              .alignItems(VerticalAlign.Top)
-              .padding({ top: 2 })
-            }, (hour: number) => hour.toString())
+            if (this.getHours() && this.getHours().length > 0) {
+              ForEach(this.getHours(), (hour: number) => {
+                Row() {
+                  Text(`${String(hour).padStart(2, '0')}:00`)
+                    .fontSize(UiTokens.textXS)
+                    .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textTertiary)
+                    .fontWeight(FontWeight.Medium)
+                }
+                .width('100%')
+                .height(HOUR_HEIGHT)
+                .alignItems(VerticalAlign.Top)
+                .padding({ top: 2 })
+              }, (hour: number) => hour.toString())
+            }
           }
           .width(44)
 
@@ -625,24 +645,26 @@ export struct DayTimeline {
           Stack() {
             // 小时虚线背景
             Column() {
-              ForEach(this.hours, (hour: number) => {
-                Row() {
-                  // 空内容，只保留底部虚线边框
-                }
-                .width('100%')
-                .height(HOUR_HEIGHT)
-                .border({
-                  width: { bottom: 1 },
-                  color: this.settings.highContrast ? '#555555' : UiTokens.divider,
-                  style: BorderStyle.Dashed
-                })
-              }, (hour: number) => hour.toString())
+              if (this.getHours() && this.getHours().length > 0) {
+                ForEach(this.getHours(), (hour: number) => {
+                  Row() {
+                    // 空内容，只保留底部虚线边框
+                  }
+                  .width('100%')
+                  .height(HOUR_HEIGHT)
+                  .border({
+                    width: { bottom: 1 },
+                    color: this.settings.highContrast ? '#555555' : UiTokens.divider,
+                    style: BorderStyle.Dashed
+                  })
+                }, (hour: number) => hour.toString())
+              }
             }
             .width('100%')
-            .height(this.totalHeight)
+            .height(this.getTotalheight())
 
             // 现在指针（红色横线 + 圆点）
-            if (this.nowOffset >= 0) {
+            if (this.getNowoffset() >= 0) {
               Row({ space: 0 }) {
                 Circle({ width: 10, height: 10 })
                   .fill(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)
@@ -655,72 +677,76 @@ export struct DayTimeline {
               }
               .width('100%')
               .height(2)
-              .position({ x: 0, y: this.nowOffset })
+              .position({ x: 0, y: this.getNowoffset() })
               .zIndex(10)
             }
 
             // 任务卡片（按时间绝对定位）
-            ForEach(this.timelineItems, (item: TimelineTaskItem) => {
-              TimelineTaskCard({
-                task: item.task,
-                settings: this.settings,
-                currentDate: this.currentDate,
-                onClickCard: () => this.onClickTask(item.task)
-              })
-                .position({ x: item.columnIndex === 0 ? 0 : '50%', y: item.offset })
-                .width('48%')
-                .height(item.height)
-            }, (item: TimelineTaskItem) => item.task.id)
+            if (this.getTimelineitems() && this.getTimelineitems().length > 0) {
+              ForEach(this.getTimelineitems(), (item: TimelineTaskItem) => {
+                TimelineTaskCard({
+                  task: item.task,
+                  settings: this.settings,
+                  currentDate: this.currentDate,
+                  onClickCard: () => this.onClickTask(item.task)
+                })
+                  .position({ x: item.columnIndex === 0 ? 0 : '50%', y: item.offset })
+                  .width('48%')
+                  .height(item.height)
+              }, (item: TimelineTaskItem) => item.task.id)
+            }
 
             // 课程卡片
-            ForEach(this.courseTimelineItems, (item: TimelineCourseItem) => {
-              Column({ space: 2 }) {
-                Text(item.course.name)
-                  .fontSize(this.settings.largeText ? UiTokens.textL : UiTokens.textM)
-                  .fontWeight(FontWeight.Medium)
-                  .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
-                  .maxLines(1)
-                  .textOverflow({ overflow: TextOverflow.Ellipsis })
-                  .width('100%')
-
-                if (item.course.classroom || item.course.teacher) {
-                  Text(`${item.course.classroom || ''}${item.course.teacher ? ' | ' + item.course.teacher : ''}`)
-                    .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
-                    .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textSecondary)
+            if (this.getCoursetimelineitems() && this.getCoursetimelineitems().length > 0) {
+              ForEach(this.getCoursetimelineitems(), (item: TimelineCourseItem) => {
+                Column({ space: 2 }) {
+                  Text(item.course.name)
+                    .fontSize(this.settings.largeText ? UiTokens.textL : UiTokens.textM)
+                    .fontWeight(FontWeight.Medium)
+                    .fontColor(this.settings.highContrast ? UiTokens.hcText : UiTokens.textPrimary)
                     .maxLines(1)
                     .textOverflow({ overflow: TextOverflow.Ellipsis })
                     .width('100%')
-                }
 
-                Text(`${this.courseTimeSlots[item.course.startSlot - 1].startTime} - ${this.courseTimeSlots[item.course.startSlot + item.course.slotCount - 2].endTime}`)
-                  .fontSize(UiTokens.textXS)
-                  .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textTertiary)
-                  .width('100%')
-              }
-              .width('100%')
-              .padding(8)
-              .backgroundColor(item.course.color + '18')
-              .borderRadius(UiTokens.radiusM)
-              .border({
-                width: 1,
-                color: item.course.color + '40'
-              })
-              .position({ x: 0, y: item.offset })
-              .width('100%')
-              .height(item.height)
-              .onClick(() => this.onClickCourse(item.course))
-            }, (item: TimelineCourseItem) => item.course.id)
+                  if (item.course.classroom || item.course.teacher) {
+                    Text(`${item.course.classroom || ''}${item.course.teacher ? ' | ' + item.course.teacher : ''}`)
+                      .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
+                      .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textSecondary)
+                      .maxLines(1)
+                      .textOverflow({ overflow: TextOverflow.Ellipsis })
+                      .width('100%')
+                  }
+
+                  Text(this.getCourseTimeText(item.course))
+                    .fontSize(UiTokens.textXS)
+                    .fontColor(this.settings.highContrast ? '#555555' : UiTokens.textTertiary)
+                    .width('100%')
+                }
+                .width('100%')
+                .padding(8)
+                .backgroundColor(item.course.color + '18')
+                .borderRadius(UiTokens.radiusM)
+                .border({
+                  width: 1,
+                  color: item.course.color + '40'
+                })
+                .position({ x: 0, y: item.offset })
+                .width('100%')
+                .height(item.height)
+                .onClick(() => this.onClickCourse(item.course))
+              }, (item: TimelineCourseItem) => item.course.id)
+            }
           }
           .layoutWeight(1)
-          .height(this.totalHeight)
+          .height(this.getTotalheight())
           .padding({ left: TIMELINE_PAD, right: TIMELINE_PAD })
         }
         .width('100%')
 
         // 过渡预警提示条
-        if (this.transitionBanner.show) {
+        if (this.getTransitionbanner().show) {
           Row() {
-            Text(this.transitionBanner.message)
+            Text(this.getTransitionbanner().message)
               .fontSize(UiTokens.textXS)
               .fontColor(UiTokens.textSecondary)
               .maxLines(2)
@@ -728,13 +754,13 @@ export struct DayTimeline {
           }
           .width('100%')
           .padding({ top: 8, bottom: 8, left: 12, right: 12 })
-          .backgroundColor(this.transitionBanner.bgColor)
+          .backgroundColor(this.getTransitionbanner().bgColor)
           .borderRadius(UiTokens.radiusM)
           .margin({ bottom: 4 })
         }
 
         // 底部状态栏
-        if (this.today) {
+        if (this.getToday()) {
           Row() {
             Circle({ width: 6, height: 6 })
               .fill(this.settings.highContrast ? UiTokens.hcText : UiTokens.brand)

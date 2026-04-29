@@ -34,9 +34,9 @@ export function getExtraLargeFont(largeText: boolean): number {
 }
 
 export function getCourseTimeText(course: Course, timeSlots: TimeSlot[]): string {
-  const startSlot = timeSlots.find(s => s.slotNumber === course.startSlot)
+  const startSlot = timeSlots.find(s => s && s.slotNumber === course.startSlot)
   const endSlotNum = course.startSlot + course.slotCount - 1
-  const endSlot = timeSlots.find(s => s.slotNumber === endSlotNum)
+  const endSlot = timeSlots.find(s => s && s.slotNumber === endSlotNum)
   if (startSlot && endSlot) {
     return `${startSlot.startTime}-${endSlot.endTime}`
   }

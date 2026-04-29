@@ -38,6 +38,8 @@ export struct CalendarTab {
   @State courseState: CourseScheduleState = new CourseScheduleState()
   @State monthNames: string[] = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月']
   @State weekdayLabels: string[] = ['一', '二', '三', '四', '五', '六', '日']
+  @State gridRowCount: number = 6
+  @State gridHeight: number = 360
 
   async aboutToAppear() {
     this.settings = await dataStore.getUserPrefs()
@@ -59,6 +61,14 @@ export struct CalendarTab {
     return this.settings.largeText ? UiTokens.text2XL : UiTokens.textXL
   }
 
+  private getGridRowsTemplate(): string {
+    const parts: string[] = []
+    for (let i = 0; i < this.gridRowCount; i++) {
+      parts.push('1fr')
+    }
+    return parts.join(' ')
+  }
+
   async generateCalendar() {
     const firstDay = new Date(this.currentYear, this.currentMonth - 1, 1)
     const startWeekday = firstDay.getDay()
@@ -68,7 +78,9 @@ export struct CalendarTab {
     const allTasks = await dataStore.getActiveTasks()
     const taskCountByDate: Record<string, number> = {}
     for (let i = 0; i < allTasks.length; i++) {
-      const d = allTasks[i].date
+      const t = allTasks[i]
+      if (!t) continue
+      const d = t.date
       const prev = taskCountByDate[d]
       taskCountByDate[d] = prev ? prev + 1 : 1
     }
@@ -86,6 +98,7 @@ export struct CalendarTab {
           let courseCount = 0
           for (let i = 0; i < this.courseState.courses.length; i++) {
             const c = this.courseState.courses[i]
+            if (!c) continue
             if (c.dayOfWeek !== dayOfWeek) continue
             if (week < c.startWeek || week > c.endWeek) continue
             if (c.weekType === WeekType.ODD && week % 2 === 0) continue
@@ -112,6 +125,8 @@ export struct CalendarTab {
     while (days.length < 42) {
       days.push(new CalendarDay('', 0, false, false, 0))
     }
+    this.gridRowCount = Math.ceil((offset + daysInMonth) / 7)
+    this.gridHeight = this.gridRowCount * 60
     this.calendarDays = days
   }
 
@@ -122,7 +137,7 @@ export struct CalendarTab {
 
   async advanceStatus(task: Task) {
     const all = await dataStore.getActiveTasks()
-    const idx = all.findIndex(t => t.id === task.id)
+    const idx = all.findIndex(t => t && t.id === task.id)
     if (idx >= 0) {
       const statusOrder = [TaskStatus.TODO, TaskStatus.STARTED, TaskStatus.MOSTLY, TaskStatus.DONE]
       const currentIdx = statusOrder.indexOf(all[idx].status)
@@ -145,6 +160,7 @@ export struct CalendarTab {
     const result: Course[] = []
     for (let i = 0; i < state.courses.length; i++) {
       const c = state.courses[i]
+      if (!c) continue
       if (c.dayOfWeek !== dayOfWeek) continue
       if (week < c.startWeek || week > c.endWeek) continue
       if (c.weekType === WeekType.ODD && week % 2 === 0) continue
@@ -192,7 +208,7 @@ export struct CalendarTab {
 
   build() {
     Scroll() {
-      Column({ space: UiTokens.gapXL }) {
+      Column({ space: 0 }) {
         // Month navigator
         Row() {
           Button() {
@@ -242,6 +258,7 @@ export struct CalendarTab {
           })
         }
         .width('100%')
+        .margin({ bottom: 4 })
 
         // Calendar grid
         Grid() {
@@ -306,8 +323,9 @@ export struct CalendarTab {
         }
         .width('100%')
         .columnsTemplate('1fr 1fr 1fr 1fr 1fr 1fr 1fr')
-        .rowsTemplate('1fr 1fr 1fr 1fr 1fr 1fr')
-        .height(360)
+        .rowsTemplate(this.getGridRowsTemplate())
+        .height(this.gridHeight)
+        .margin({ bottom: UiTokens.gapM })
 
         // Selected date tasks
         Column({ space: UiTokens.gapM }) {
@@ -400,6 +418,7 @@ export struct CalendarTab {
           }
         }
         .width('100%')
+        .margin({ top: UiTokens.gapM })
         .padding({ bottom: 32 })
       }
       .width('100%')

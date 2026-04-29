@@ -40,7 +40,7 @@ export struct ScheduleCard {
   }
 
   private completedCount(): number {
-    return this.task.subTasks.filter(s => s.completed).length
+    return this.task.subTasks.filter(s => s && s.completed).length
   }
 
   private subTaskTotal(): number {

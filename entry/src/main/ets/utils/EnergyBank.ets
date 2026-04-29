@@ -26,7 +26,9 @@ export function calculateDayEnergy(tasks: Task[]): EnergyCostResult {
   const result = new EnergyCostResult()
   if (!tasks) return result
   for (let i = 0; i < tasks.length; i++) {
-    const cost = getTaskEnergyCost(tasks[i].type, tasks[i].intensity)
+    const t = tasks[i]
+    if (!t) continue
+    const cost = getTaskEnergyCost(t.type, t.intensity)
     if (cost > 0) {
       result.spent += cost
     } else {
@@ -47,7 +49,9 @@ export function getEnergyBudgetFromRecords(records: EnergyRecord[]): number {
   const recent = records.slice(-3)
   let sum = 0
   for (let i = 0; i < recent.length; i++) {
-    sum += recent[i].rating
+    const r = recent[i]
+    if (!r) continue
+    sum += r.rating
   }
   const avg = sum / recent.length
   return Math.round(5 + avg * 1.5)
@@ -83,7 +87,9 @@ export function getTodayEnergySummary(tasks: Task[], records: EnergyRecord[]): E
 
   let socialCount = 0
   for (let i = 0; i < tasks.length; i++) {
-    if (tasks[i].type === TaskType.SOCIAL) {
+    const t = tasks[i]
+    if (!t) continue
+    if (t.type === TaskType.SOCIAL) {
       socialCount++
     }
   }

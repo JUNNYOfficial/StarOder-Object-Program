@@ -91,7 +91,7 @@ class DataStore {
     }
 
     this.pref.putSync(KEY_ENC_MIGRATED, 'true')
-    this.pref.flush()
+    await this.pref.flush()
   }
 
   // ===== Generic helpers =====
@@ -101,28 +101,41 @@ class DataStore {
       const plain = JSON.stringify(value)
       const encrypted = await CryptoService.encryptLocal(plain)
       this.pref.putSync(key, encrypted)
-      this.pref.flush()
+      await this.pref.flush()
     } catch (e) {
       console.error(`Save ${key} failed:`, JSON.stringify(e))
     }
   }
 
-  async get<T>(key: string, defaultValue: T): Promise<T> {
+  private async getWithRetry<T>(key: string, defaultValue: T, attempt: number = 0): Promise<T> {
     if (!this.pref) return defaultValue
     try {
       const raw = this.pref.getSync(key, '') as string
       if (!raw) return defaultValue
       const decrypted = await CryptoService.decryptLocal(raw)
-      return JSON.parse(decrypted) as T
+      const parsed = JSON.parse(decrypted) as T
+      if (parsed === null || parsed === undefined) return defaultValue
+      return parsed
     } catch (e) {
+      const errCode = (e as Record<string, number | string>).code
+      const codeNum = typeof errCode === 'string' ? parseInt(errCode) : errCode
+      if (codeNum === 17630001 && attempt < 2) {
+        await new Promise<void>(resolve => setTimeout(resolve, 100))
+        return this.getWithRetry(key, defaultValue, attempt + 1)
+      }
       console.error(`Get ${key} failed:`, JSON.stringify(e))
       return defaultValue
     }
   }
 
+  async get<T>(key: string, defaultValue: T): Promise<T> {
+    return this.getWithRetry(key, defaultValue)
+  }
+
   // ===== Tasks =====
   async getTasks(): Promise<Task[]> {
-    return this.get<Task[]>(KEY_TASKS, [])
+    const result = await this.get<Task[]>(KEY_TASKS, [])
+    return Array.isArray(result) ? result : []
   }
 
   async saveTasks(tasks: Task[]): Promise<void> {
@@ -135,10 +148,12 @@ class DataStore {
     let updated = 0
     for (let i = 0; i < newTasks.length; i++) {
       const newTask = newTasks[i]
+      if (!newTask) continue
       newTask.source = source
-      const existingIdx = all.findIndex(t => t.externalId === newTask.externalId && t.source === source)
+      const existingIdx = all.findIndex(t => t && t.externalId === newTask.externalId && t.source === source)
       if (existingIdx >= 0) {
         const existing = all[existingIdx]
+        if (!existing) continue
         existing.title = newTask.title
         existing.date = newTask.date
         existing.startTime = newTask.startTime
@@ -165,7 +180,7 @@ class DataStore {
 
   async updateTask(task: Task): Promise<void> {
     const all = await this.getTasks()
-    const idx = all.findIndex(t => t.id === task.id)
+    const idx = all.findIndex(t => t && t.id === task.id)
     if (idx >= 0) {
       task.updatedAt = Date.now()
       all[idx] = task
@@ -187,7 +202,7 @@ class DataStore {
   async softDeleteTask(taskId: string): Promise<void> {
     const originalId = this.resolveOriginalTaskId(taskId)
     const all = await this.getTasks()
-    const idx = all.findIndex(t => t.id === originalId)
+    const idx = all.findIndex(t => t && t.id === originalId)
     if (idx >= 0) {
       all[idx].deleted = true
       all[idx].deletedAt = Date.now()
@@ -199,7 +214,7 @@ class DataStore {
   async restoreTask(taskId: string): Promise<void> {
     const originalId = this.resolveOriginalTaskId(taskId)
     const all = await this.getTasks()
-    const idx = all.findIndex(t => t.id === originalId)
+    const idx = all.findIndex(t => t && t.id === originalId)
     if (idx >= 0) {
       all[idx].deleted = false
       all[idx].deletedAt = 0
@@ -211,25 +226,25 @@ class DataStore {
   async permanentlyDeleteTask(taskId: string): Promise<void> {
     const originalId = this.resolveOriginalTaskId(taskId)
     const all = await this.getTasks()
-    const filtered = all.filter(t => t.id !== originalId)
+    const filtered = all.filter(t => t && t.id !== originalId)
     await this.saveTasks(filtered)
   }
 
   async getDeletedTasks(): Promise<Task[]> {
-    return (await this.getTasks()).filter(t => t.deleted)
+    return (await this.getTasks()).filter(t => t && t.deleted)
   }
 
   async getActiveTasks(): Promise<Task[]> {
-    return (await this.getTasks()).filter(t => !t.deleted)
+    return (await this.getTasks()).filter(t => t && !t.deleted)
   }
 
   async getTaskById(taskId: string): Promise<Task | undefined> {
     const originalId = this.resolveOriginalTaskId(taskId)
-    return (await this.getActiveTasks()).find(t => t.id === originalId)
+    return (await this.getActiveTasks()).find(t => t && t.id === originalId)
   }
 
   async getTasksByDate(date: string): Promise<Task[]> {
-    const direct = (await this.getActiveTasks()).filter(t => t.date === date)
+    const direct = (await this.getActiveTasks()).filter(t => t && t.date === date)
     const recurring = await this.expandRecurringTasks(date)
     return [...direct, ...recurring]
       .sort((a, b) => a.startTime.localeCompare(b.startTime))
@@ -242,7 +257,7 @@ class DataStore {
 
     for (let i = 0; i < all.length; i++) {
       const t = all[i]
-      if (t.repeatMode === RepeatMode.NONE) continue
+      if (!t || t.repeatMode === RepeatMode.NONE) continue
 
       const origin = this.parseLocalDate(t.date)
       if (target.getTime() < origin.getTime()) continue
@@ -285,7 +300,7 @@ class DataStore {
   async cleanExpiredDeletedTasks(days: number = 3): Promise<void> {
     const all = await this.getTasks()
     const cutoff = Date.now() - days * 24 * 60 * 60 * 1000
-    const cleaned = all.filter(t => !(t.deleted && t.deletedAt > 0 && t.deletedAt < cutoff))
+    const cleaned = all.filter(t => t && !(t.deleted && t.deletedAt > 0 && t.deletedAt < cutoff))
     if (cleaned.length !== all.length) {
       await this.saveTasks(cleaned)
     }
@@ -303,7 +318,7 @@ class DataStore {
 
     for (let i = 0; i < all.length; i++) {
       const task = all[i]
-      if (task.date !== today) continue
+      if (!task || task.date !== today) continue
       if (task.status === TaskStatus.DONE) continue
       if (task.repeatMode !== RepeatMode.NONE) continue
 
@@ -321,7 +336,8 @@ class DataStore {
 
   // ===== Energy Records =====
   async getEnergyRecords(): Promise<EnergyRecord[]> {
-    return this.get<EnergyRecord[]>(KEY_ENERGY, [])
+    const result = await this.get<EnergyRecord[]>(KEY_ENERGY, [])
+    return Array.isArray(result) ? result : []
   }
 
   async saveEnergyRecord(record: EnergyRecord): Promise<void> {
@@ -331,12 +347,13 @@ class DataStore {
   }
 
   async getEnergyRecordsByDate(date: string): Promise<EnergyRecord[]> {
-    return (await this.getEnergyRecords()).filter(r => r.date === date)
+    return (await this.getEnergyRecords()).filter(r => r && r.date === date)
   }
 
   // ===== Mood Surveys =====
   async getMoodSurveys(): Promise<MoodSurveyRecord[]> {
-    return this.get<MoodSurveyRecord[]>(KEY_MOOD, [])
+    const result = await this.get<MoodSurveyRecord[]>(KEY_MOOD, [])
+    return Array.isArray(result) ? result : []
   }
 
   async saveMoodSurvey(record: MoodSurveyRecord): Promise<void> {
@@ -346,12 +363,13 @@ class DataStore {
   }
 
   async getMoodSurveyCountByDate(date: string): Promise<number> {
-    return (await this.getMoodSurveys()).filter(r => r.date === date).length
+    return (await this.getMoodSurveys()).filter(r => r && r.date === date).length
   }
 
   // ===== Focus Records =====
   async getFocusRecords(): Promise<FocusRecord[]> {
-    return this.get<FocusRecord[]>(KEY_FOCUS, [])
+    const result = await this.get<FocusRecord[]>(KEY_FOCUS, [])
+    return Array.isArray(result) ? result : []
   }
 
   async saveFocusRecord(record: FocusRecord): Promise<void> {
@@ -363,16 +381,17 @@ class DataStore {
   async getTodayFocusMinutes(): Promise<number> {
     const today = formatDate(new Date())
     return (await this.getFocusRecords())
-      .filter(r => {
-        const localDate = formatDate(new Date(r.startTime))
-        return localDate === today
-      })
-      .reduce((sum, r) => sum + r.actualMinutes, 0)
+      .filter(r => r && r.startTime && formatDate(new Date(r.startTime)) === today)
+      .reduce((sum, r) => sum + (r && r.actualMinutes || 0), 0)
   }
 
   // ===== User Preferences =====
   async getUserPrefs(): Promise<UserPreferences> {
-    return this.get<UserPreferences>(KEY_PREFS, new UserPreferences())
+    const result = await this.get<UserPreferences>(KEY_PREFS, new UserPreferences())
+    if (!result || typeof result !== 'object' || Array.isArray(result)) {
+      return new UserPreferences()
+    }
+    return result
   }
 
   async saveUserPrefs(prefs: UserPreferences): Promise<void> {
@@ -403,7 +422,7 @@ class DataStore {
       plainStr = cipherStr
     }
     try {
-      const raw = JSON.parse(plainStr) as Record<string, object>
+      const raw: Record<string, object> = JSON.parse(plainStr)
       if (mode === 'overwrite') {
         if (raw.tasks) await this.saveTasks(raw.tasks as Task[])
         if (raw.energyRecords) await this.put(KEY_ENERGY, raw.energyRecords)
@@ -415,10 +434,10 @@ class DataStore {
       } else {
         if (raw.tasks) {
           const existing = await this.getTasks()
-          const existingIds = new Set(existing.map(t => t.id))
-          const newTasks = (raw.tasks as Task[]).filter(t => !existingIds.has(t.id))
+          const existingIds = new Set(existing.map(t => t && t.id).filter(id => !!id))
+          const newTasks = (raw.tasks as Task[]).filter(t => t && !existingIds.has(t.id))
           for (let i = 0; i < newTasks.length; i++) {
-            existing.push(newTasks[i])
+            if (newTasks[i]) existing.push(newTasks[i])
           }
           await this.saveTasks(existing)
         }
@@ -431,14 +450,17 @@ class DataStore {
 
   // ===== Course Schedule =====
   async getCourseState(): Promise<CourseScheduleState> {
-    const state = await this.get<CourseScheduleState>(KEY_COURSE_STATE, new CourseScheduleState())
-    if (!state.timeSlots || state.timeSlots.length === 0) {
+    let state = await this.get<CourseScheduleState>(KEY_COURSE_STATE, new CourseScheduleState())
+    if (!state || typeof state !== 'object' || Array.isArray(state)) {
+      state = new CourseScheduleState()
+    }
+    if (!state.timeSlots || !Array.isArray(state.timeSlots) || state.timeSlots.length === 0) {
       state.timeSlots = DEFAULT_TIME_SLOTS.map(s => new TimeSlot(s.slotNumber, s.startTime, s.endTime))
     }
-    if (!state.courses) {
+    if (!state.courses || !Array.isArray(state.courses)) {
       state.courses = []
     }
-    if (!state.semesterStartDate) {
+    if (!state.semesterStartDate || typeof state.semesterStartDate !== 'string') {
       state.semesterStartDate = ''
     }
     return state
@@ -449,7 +471,8 @@ class DataStore {
   }
 
   async getCourses(): Promise<Course[]> {
-    return this.get<Course[]>(KEY_COURSES, [])
+    const result = await this.get<Course[]>(KEY_COURSES, [])
+    return Array.isArray(result) ? result : []
   }
 
   async saveCourses(courses: Course[]): Promise<void> {
@@ -464,7 +487,7 @@ class DataStore {
 
   async updateCourse(course: Course): Promise<void> {
     const courses = await this.getCourses()
-    const idx = courses.findIndex(c => c.id === course.id)
+    const idx = courses.findIndex(c => c && c.id === course.id)
     if (idx >= 0) {
       courses[idx] = course
       await this.saveCourses(courses)
@@ -472,7 +495,7 @@ class DataStore {
   }
 
   async deleteCourse(id: string): Promise<void> {
-    const courses = (await this.getCourses()).filter(c => c.id !== id)
+    const courses = (await this.getCourses()).filter(c => c && c.id !== id)
     await this.saveCourses(courses)
   }
 
@@ -520,7 +543,7 @@ class DataStore {
   async advanceTaskStatus(taskId: string): Promise<boolean> {
     const originalId = this.resolveOriginalTaskId(taskId)
     const all = await this.getActiveTasks()
-    const idx = all.findIndex(t => t.id === originalId)
+    const idx = all.findIndex(t => t && t.id === originalId)
     if (idx < 0) return false
     const statusOrder = [TaskStatus.TODO, TaskStatus.STARTED, TaskStatus.MOSTLY, TaskStatus.DONE]
     const currentIdx = statusOrder.indexOf(all[idx].status)
@@ -536,9 +559,11 @@ class DataStore {
     let totalTasks = 0
     let completedTasks = 0
     for (let i = 0; i < tasks.length; i++) {
-      if (!tasks[i].deleted) {
+      const t = tasks[i]
+      if (!t) continue
+      if (!t.deleted) {
         totalTasks++
-        if (tasks[i].status === TaskStatus.DONE) {
+        if (t.status === TaskStatus.DONE) {
           completedTasks++
         }
       }
@@ -548,7 +573,7 @@ class DataStore {
     const allFocus = await this.getFocusRecords()
     for (let i = 0; i < allFocus.length; i++) {
       const r = allFocus[i]
-      if (!r.startTime) continue
+      if (!r || !r.startTime) continue
       const localDate = formatDate(new Date(r.startTime))
       if (localDate === yesterday) {
         focusMinutes += r.actualMinutes
@@ -562,7 +587,7 @@ class DataStore {
     if (!this.pref) return
     try {
       this.pref.clearSync()
-      this.pref.flush()
+      await this.pref.flush()
     } catch (e) {
       console.error('Clear all failed:', JSON.stringify(e))
     }
@@ -577,6 +602,7 @@ class DataStore {
 
     for (let i = 0; i < tasks.length; i++) {
       const t = tasks[i]
+      if (!t) continue
       if (excludeId && t.id === excludeId) continue
       if (!t.startTime || !t.endTime) continue
       const tStart = this.timeToMinutes(t.startTime)
@@ -592,6 +618,7 @@ class DataStore {
     const courses = await this.getCourses()
     for (let i = 0; i < courses.length; i++) {
       const c = courses[i]
+      if (!c) continue
       if (excludeId && c.id === excludeId) continue
       if (c.dayOfWeek !== newCourse.dayOfWeek) continue
       if (newCourse.endWeek < c.startWeek || newCourse.startWeek > c.endWeek) continue
@@ -623,7 +650,7 @@ class DataStore {
 
     for (let i = 0; i < all.length; i++) {
       const r = all[i]
-      if (!r.startTime) continue
+      if (!r || !r.startTime) continue
       const rTime = new Date(r.startTime).getTime()
       if (rTime >= start && rTime < end) {
         totalMinutes += r.actualMinutes
@@ -674,7 +701,8 @@ class DataStore {
 
   // ===== Face Mood Records =====
   async getFaceMoodRecords(): Promise<FaceMoodRecord[]> {
-    return this.get<FaceMoodRecord[]>(KEY_FACE_MOOD, [])
+    const result = await this.get<FaceMoodRecord[]>(KEY_FACE_MOOD, [])
+    return Array.isArray(result) ? result : []
   }
 
   async saveFaceMoodRecord(record: FaceMoodRecord): Promise<void> {
@@ -696,7 +724,7 @@ class DataStore {
     const today = formatDate(new Date())
     const surveys = await this.getMoodSurveys()
     const faceRecords = await this.getFaceMoodRecords()
-    return surveys.some(r => r.date === today) || faceRecords.some(r => r.date === today)
+    return surveys.some(r => r && r.date === today) || faceRecords.some(r => r && r.date === today)
   }
 
   // ===== Utils =====

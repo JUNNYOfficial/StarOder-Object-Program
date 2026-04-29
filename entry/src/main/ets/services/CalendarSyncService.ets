@@ -138,11 +138,11 @@ class CalendarSyncServiceClass {
     course: Course,
     state: CourseScheduleState
   ): void {
-    const startSlot = state.timeSlots.find(s => s.slotNumber === course.startSlot)
+    const startSlot = state.timeSlots.find(s => s && s.slotNumber === course.startSlot)
     if (!startSlot) return
 
     const endSlotNum = course.startSlot + course.slotCount - 1
-    const endSlot = state.timeSlots.find(s => s.slotNumber === endSlotNum)
+    const endSlot = state.timeSlots.find(s => s && s.slotNumber === endSlotNum)
     if (!endSlot) return
 
     const baseDate = state.semesterStartDate
