@@ -1,0 +1,12 @@
+{
+  "module": {
+    "name": "feature_schedule",
+    "type": "shared",
+    "description": "$string:shared_desc",
+    "deviceTypes": [
+      "phone"
+    ],
+    "deliveryWithInstall": false,
+    "pages": "$profile:main_pages"
+  }
+}

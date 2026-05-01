@@ -86,7 +86,7 @@ struct ScheduleQuickForm {
           postCardAction(this, {
             action: 'router',
             abilityName: 'EntryAbility',
-            params: { url: 'pages/AddSchedule' }
+            params: { url: '@bundle:com.atomicservice.6917603804064535609/feature_schedule/ets/pages/AddSchedule' }
           })
         })
 
@@ -104,7 +104,7 @@ struct ScheduleQuickForm {
           postCardAction(this, {
             action: 'router',
             abilityName: 'EntryAbility',
-            params: { url: 'pages/TimerPage' }
+            params: { url: '@bundle:com.atomicservice.6917603804064535609/feature_schedule/ets/pages/TimerPage' }
           })
         })
 
@@ -122,7 +122,7 @@ struct ScheduleQuickForm {
           postCardAction(this, {
             action: 'router',
             abilityName: 'EntryAbility',
-            params: { url: 'pages/VoiceInputPage' }
+            params: { url: '@bundle:com.atomicservice.6917603804064535609/feature_schedule/ets/pages/VoiceInputPage' }
           })
         })
       }

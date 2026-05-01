@@ -1,0 +1,11 @@
+{
+  "name": "feature_wellness",
+  "version": "1.0.0",
+  "description": "StarOrder wellness and mood feature module",
+  "main": "Index.ets",
+  "author": "",
+  "license": "",
+  "dependencies": {
+    "commons": "file:../commons"
+  }
+}

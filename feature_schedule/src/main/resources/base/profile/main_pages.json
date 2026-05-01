@@ -1,0 +1,12 @@
+{
+  "src": [
+    "pages/AddSchedule",
+    "pages/ScheduleDetail",
+    "pages/RecycleBin",
+    "pages/VoiceInputPage",
+    "pages/CalendarView",
+    "pages/TimerPage",
+    "pages/UserAgreementPage",
+    "pages/PrivacyPolicyPage"
+  ]
+}

@@ -1,17 +1,17 @@
 import { router, promptAction } from '@kit.ArkUI'
-import { Task, TaskStatus, UserPreferences, YesterdaySummary } from '../models/DataModels'
-import { dataStore } from '../models/DataStore'
-import { ScheduleCard } from '../components/ScheduleCard'
+import { Task, TaskStatus, UserPreferences, YesterdaySummary } from 'commons'
+import { dataStore } from 'commons'
+import { ScheduleCard } from 'commons'
 import { CalendarTab } from '../components/CalendarTab'
 import { TimerTab } from '../components/TimerTab'
 import { SettingsTab } from '../components/SettingsTab'
-import { UiTokens } from '../design/UiTokens'
-import { addDays, todayStr, formatDate, formatTime } from '../utils/DateUtils'
-import { getCourseTimeText } from '../utils/UiHelper'
+import { UiTokens } from 'commons'
+import { addDays, todayStr, formatDate, formatTime } from 'commons'
+import { getCourseTimeText } from 'commons'
 import { DayTimeline } from '../components/DayTimeline'
 import { VisualScheduleView } from '../components/VisualScheduleView'
-import { CourseScheduleState, Course, WeekType } from '../models/CourseModels'
-import { EnergySummary, getTodayEnergySummary } from '../utils/EnergyBank'
+import { CourseScheduleState, Course, WeekType } from 'commons'
+import { EnergySummary, getTodayEnergySummary } from 'commons'
 
 @Entry
 @Component
@@ -385,7 +385,7 @@ struct Index {
                   .borderRadius(UiTokens.radiusL)
                   .border({ width: 1, color: course.color + '40' })
                   .onClick(() => {
-                    router.pushUrl({ url: 'pages/CourseSchedulePage' })
+                    router.pushUrl({ url: '@bundle:com.atomicservice.6917603804064535609/feature_course/ets/pages/CourseSchedulePage' })
                   })
                 }, (course: Course) => course.id)
               }
@@ -489,7 +489,7 @@ struct Index {
                   .borderRadius(UiTokens.radiusL)
                   .border({ width: 1, color: course.color + '40' })
                   .onClick(() => {
-                    router.pushUrl({ url: 'pages/CourseSchedulePage' })
+                    router.pushUrl({ url: '@bundle:com.atomicservice.6917603804064535609/feature_course/ets/pages/CourseSchedulePage' })
                   })
                 }, (course: Course) => course.id)
               }
@@ -507,10 +507,10 @@ struct Index {
                 courseTimeSlots: this.courseState.timeSlots || [],
                 energySummary: this.energySummary,
                 onClickTask: (task: Task) => {
-                  router.pushUrl({ url: 'pages/ScheduleDetail', params: { id: task.id } })
+                  router.pushUrl({ url: '@bundle:com.atomicservice.6917603804064535609/feature_schedule/ets/pages/ScheduleDetail', params: { id: task.id } })
                 },
                 onClickCourse: () => {
-                  router.pushUrl({ url: 'pages/CourseSchedulePage' })
+                  router.pushUrl({ url: '@bundle:com.atomicservice.6917603804064535609/feature_course/ets/pages/CourseSchedulePage' })
                 }
               })
             } else if (this.viewMode === 2 && this.currentDate === todayStr()) {
@@ -518,7 +518,7 @@ struct Index {
                 tasks: this.filteredTasks,
                 settings: this.settings,
                 onClickTask: (task: Task) => {
-                  router.pushUrl({ url: 'pages/ScheduleDetail', params: { id: task.id } })
+                  router.pushUrl({ url: '@bundle:com.atomicservice.6917603804064535609/feature_schedule/ets/pages/ScheduleDetail', params: { id: task.id } })
                 }
               })
             } else {
@@ -529,7 +529,7 @@ struct Index {
                       task: task,
                       settings: this.settings,
                       onClickCard: () => {
-                        router.pushUrl({ url: 'pages/ScheduleDetail', params: { id: task.id } })
+                        router.pushUrl({ url: '@bundle:com.atomicservice.6917603804064535609/feature_schedule/ets/pages/ScheduleDetail', params: { id: task.id } })
                       },
                       onToggleStatus: async () => {
                         await this.advanceStatus(task)
@@ -586,7 +586,7 @@ struct Index {
         .justifyContent(FlexAlign.Center)
         .alignItems(HorizontalAlign.Center)
         .onClick(() => {
-          router.pushUrl({ url: 'pages/AddSchedule' })
+          router.pushUrl({ url: '@bundle:com.atomicservice.6917603804064535609/feature_schedule/ets/pages/AddSchedule' })
         })
 
         this.NavItem('专注', 2)
@@ -627,13 +627,13 @@ struct Index {
               .fontSize(UiTokens.textS)
               .fontColor(UiTokens.brand)
               .onClick(() => {
-                router.pushUrl({ url: 'pages/UserAgreementPage' })
+                router.pushUrl({ url: '@bundle:com.atomicservice.6917603804064535609/feature_schedule/ets/pages/UserAgreementPage' })
               })
             Text('《隐私政策》')
               .fontSize(UiTokens.textS)
               .fontColor(UiTokens.brand)
               .onClick(() => {
-                router.pushUrl({ url: 'pages/PrivacyPolicyPage' })
+                router.pushUrl({ url: '@bundle:com.atomicservice.6917603804064535609/feature_schedule/ets/pages/PrivacyPolicyPage' })
               })
           }
           .width('100%')
@@ -706,7 +706,7 @@ struct Index {
               .borderRadius(UiTokens.radiusL)
               .onClick(() => {
                 this.showMoodPrompt = false
-                router.pushUrl({ url: 'pages/FaceMoodCheckPage' })
+                router.pushUrl({ url: '@bundle:com.atomicservice.6917603804064535609/feature_wellness/ets/pages/FaceMoodCheckPage' })
               })
 
             Button('手动自查')
@@ -717,7 +717,7 @@ struct Index {
               .borderRadius(UiTokens.radiusL)
               .onClick(() => {
                 this.showMoodPrompt = false
-                router.pushUrl({ url: 'pages/MoodSelfCheckPage' })
+                router.pushUrl({ url: '@bundle:com.atomicservice.6917603804064535609/feature_wellness/ets/pages/MoodSelfCheckPage' })
               })
           }
           .width('100%')

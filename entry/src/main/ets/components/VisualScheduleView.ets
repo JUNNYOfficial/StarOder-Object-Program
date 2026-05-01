@@ -1,7 +1,7 @@
-import { Task, TimeBlock, getTimeBlockConfig } from '../models/DataModels'
-import { UserPreferences } from '../models/DataModels'
-import { VisualTaskCard } from './VisualTaskCard'
-import { UiTokens } from '../design/UiTokens'
+import { Task, TimeBlock, getTimeBlockConfig } from 'commons'
+import { UserPreferences } from 'commons'
+import { VisualTaskCard } from 'commons'
+import { UiTokens } from 'commons'
 
 @Component
 export struct VisualScheduleView {

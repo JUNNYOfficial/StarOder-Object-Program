@@ -1,7 +1,7 @@
 import { router } from '@kit.ArkUI'
-import { UserPreferences } from '../models/DataModels'
-import { dataStore } from '../models/DataStore'
-import { UiTokens } from '../design/UiTokens'
+import { UserPreferences } from 'commons'
+import { dataStore } from 'commons'
+import { UiTokens } from 'commons'
 import { SettingsTab } from '../components/SettingsTab'
 
 @Entry

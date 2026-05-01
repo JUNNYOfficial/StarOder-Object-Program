@@ -83,6 +83,26 @@
           ]
         }
       ]
+    },
+    {
+      "name": "commons",
+      "srcPath": "./commons"
+    },
+    {
+      "name": "feature_course",
+      "srcPath": "./feature_course"
+    },
+    {
+      "name": "feature_schedule",
+      "srcPath": "./feature_schedule"
+    },
+    {
+      "name": "feature_wellness",
+      "srcPath": "./feature_wellness"
+    },
+    {
+      "name": "feature_sync",
+      "srcPath": "./feature_sync"
     }
   ]
 }

@@ -1,20 +1,7 @@
 {
   "src": [
     "pages/Index",
-    "pages/AddSchedule",
-    "pages/ScheduleDetail",
     "pages/Settings",
-    "pages/CalendarView",
-    "pages/TimerPage",
-    "pages/WellnessView",
-    "pages/VoiceInputPage",
-    "pages/CourseImportPage",
-    "pages/CourseSchedulePage",
-    "pages/TimeSlotSettingsPage",
-    "pages/RecycleBin",
-    "pages/PrivacyPolicyPage",
-    "pages/UserAgreementPage",
-    "pages/FaceMoodCheckPage",
-    "pages/MoodSelfCheckPage"
+    "pages/form/ScheduleQuickForm"
   ]
 }

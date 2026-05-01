@@ -1,11 +1,11 @@
-import { Task, UserPreferences, TaskStatus } from '../models/DataModels'
-import { dataStore } from '../models/DataStore'
-import { ScheduleCard } from './ScheduleCard'
-import { UiTokens } from '../design/UiTokens'
+import { Task, UserPreferences, TaskStatus } from 'commons'
+import { dataStore } from 'commons'
+import { ScheduleCard } from 'commons'
+import { UiTokens } from 'commons'
 import { router } from '@kit.ArkUI'
-import { CourseScheduleState, Course, WeekType } from '../models/CourseModels'
-import { formatDate, formatYMD } from '../utils/DateUtils'
-import { getCourseTimeText } from '../utils/UiHelper'
+import { CourseScheduleState, Course, WeekType } from 'commons'
+import { formatDate, formatYMD } from 'commons'
+import { getCourseTimeText } from 'commons'
 
 class CalendarDay {
   date: string
@@ -396,7 +396,7 @@ export struct CalendarTab {
                   .border({ width: 1, color: course.color + '40' })
                   .margin({ bottom: 8 })
                   .onClick(() => {
-                    router.pushUrl({ url: 'pages/CourseSchedulePage' })
+                    router.pushUrl({ url: '@bundle:com.atomicservice.6917603804064535609/feature_course/ets/pages/CourseSchedulePage' })
                   })
                 })
               }
@@ -406,7 +406,7 @@ export struct CalendarTab {
                   task: task,
                   settings: this.settings,
                   onClickCard: () => {
-                    router.pushUrl({ url: 'pages/ScheduleDetail', params: { id: task.id } })
+                    router.pushUrl({ url: '@bundle:com.atomicservice.6917603804064535609/feature_schedule/ets/pages/ScheduleDetail', params: { id: task.id } })
                   },
                   onToggleStatus: () => {
                     this.advanceStatus(task)

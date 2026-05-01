@@ -1,0 +1,11 @@
+{
+  "module": {
+    "name": "feature_sync",
+    "type": "shared",
+    "description": "$string:shared_desc",
+    "deviceTypes": [
+      "phone"
+    ],
+    "deliveryWithInstall": false
+  }
+}

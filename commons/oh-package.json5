@@ -1,0 +1,9 @@
+{
+  "name": "commons",
+  "version": "1.0.0",
+  "description": "StarOrder common models, utils and components",
+  "main": "Index.ets",
+  "author": "",
+  "license": "",
+  "dependencies": {}
+}

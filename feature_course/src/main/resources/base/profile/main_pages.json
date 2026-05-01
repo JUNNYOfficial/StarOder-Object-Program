@@ -1,0 +1,7 @@
+{
+  "src": [
+    "pages/CourseSchedulePage",
+    "pages/CourseImportPage",
+    "pages/TimeSlotSettingsPage"
+  ]
+}

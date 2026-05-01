@@ -5,6 +5,8 @@
   "main": "",
   "author": "",
   "license": "",
-  "dependencies": {}
+  "dependencies": {
+    "commons": "file:../commons",
+    "feature_sync": "file:../feature_sync"
+  }
 }
-

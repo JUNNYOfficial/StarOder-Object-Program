@@ -1,9 +1,9 @@
 import { router, promptAction } from '@kit.ArkUI'
-import { Task, UserPreferences } from '../models/DataModels'
-import { dataStore } from '../models/DataStore'
-import { UiTokens } from '../design/UiTokens'
-import { CalDAVService, CalDAVConfig } from '../services/CalDAVService'
-import { FeishuSyncService } from '../services/FeishuSyncService'
+import { Task, UserPreferences } from 'commons'
+import { dataStore } from 'commons'
+import { UiTokens } from 'commons'
+import { CalDAVService, CalDAVConfig } from 'commons'
+import { FeishuSyncService } from 'feature_sync'
 
 @Component
 export struct SettingsTab {
@@ -249,7 +249,7 @@ export struct SettingsTab {
             .justifyContent(FlexAlign.SpaceBetween)
             .alignItems(VerticalAlign.Center)
             .onClick(() => {
-              router.pushUrl({ url: 'pages/CourseSchedulePage' })
+              router.pushUrl({ url: '@bundle:com.atomicservice.6917603804064535609/feature_course/ets/pages/CourseSchedulePage' })
             })
 
             Divider().strokeWidth(0.5).color(UiTokens.divider).margin({ left: 14 })
@@ -269,7 +269,7 @@ export struct SettingsTab {
             .justifyContent(FlexAlign.SpaceBetween)
             .alignItems(VerticalAlign.Center)
             .onClick(() => {
-              router.pushUrl({ url: 'pages/CourseImportPage' })
+              router.pushUrl({ url: '@bundle:com.atomicservice.6917603804064535609/feature_course/ets/pages/CourseImportPage' })
             })
           }
           .width('100%')
@@ -308,7 +308,7 @@ export struct SettingsTab {
             .justifyContent(FlexAlign.SpaceBetween)
             .alignItems(VerticalAlign.Center)
             .onClick(() => {
-              router.pushUrl({ url: 'pages/WellnessView' })
+              router.pushUrl({ url: '@bundle:com.atomicservice.6917603804064535609/feature_wellness/ets/pages/WellnessView' })
             })
           }
           .width('100%')
@@ -661,7 +661,7 @@ export struct SettingsTab {
             .justifyContent(FlexAlign.SpaceBetween)
             .alignItems(VerticalAlign.Center)
             .onClick(() => {
-              router.pushUrl({ url: 'pages/RecycleBin' })
+              router.pushUrl({ url: '@bundle:com.atomicservice.6917603804064535609/feature_schedule/ets/pages/RecycleBin' })
             })
           }
           .width('100%')
@@ -703,7 +703,7 @@ export struct SettingsTab {
                 .fontColor(UiTokens.brand)
                 .layoutWeight(1)
                 .onClick(() => {
-                  router.pushUrl({ url: 'pages/UserAgreementPage' })
+                  router.pushUrl({ url: '@bundle:com.atomicservice.6917603804064535609/feature_schedule/ets/pages/UserAgreementPage' })
                 })
               Text('《隐私政策》')
                 .fontSize(this.settings.largeText ? UiTokens.textM : UiTokens.textS)
@@ -711,7 +711,7 @@ export struct SettingsTab {
                 .layoutWeight(1)
                 .textAlign(TextAlign.End)
                 .onClick(() => {
-                  router.pushUrl({ url: 'pages/PrivacyPolicyPage' })
+                  router.pushUrl({ url: '@bundle:com.atomicservice.6917603804064535609/feature_schedule/ets/pages/PrivacyPolicyPage' })
                 })
             }
             .width('100%')

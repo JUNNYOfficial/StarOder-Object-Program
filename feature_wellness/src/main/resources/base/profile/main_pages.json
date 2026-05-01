@@ -1,0 +1,7 @@
+{
+  "src": [
+    "pages/WellnessView",
+    "pages/FaceMoodCheckPage",
+    "pages/MoodSelfCheckPage"
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "name": "feature_course",
+  "version": "1.0.0",
+  "description": "StarOrder course schedule feature module",
+  "main": "Index.ets",
+  "author": "",
+  "license": "",
+  "dependencies": {
+    "commons": "file:../commons"
+  }
+}
